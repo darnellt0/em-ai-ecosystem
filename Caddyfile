@@ -1,0 +1,57 @@
+# Caddy reverse proxy configuration for Elevated Movements
+
+{
+  # Global settings
+  auto_https off
+  admin 0.0.0.0:2019
+}
+
+# Main domain routing
+localhost:80 {
+  # Root redirects to dashboard
+  redir / /dashboard
+
+  # API routes
+  handle /api* {
+    reverse_proxy api:3000
+  }
+
+  # Dashboard routes
+  handle /dashboard* {
+    reverse_proxy dashboard:80
+  }
+
+  # Health check endpoint
+  handle /health {
+    reverse_proxy api:3000
+  }
+
+  # n8n workflow automation
+  handle /workflows* {
+    reverse_proxy n8n:5678
+  }
+
+  # Logging
+  log {
+    output stdout
+    format json
+  }
+
+  # Security headers
+  header {
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    X-XSS-Protection "1; mode=block"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  }
+}
+
+# n8n configuration
+n8n.localhost {
+  reverse_proxy n8n:5678
+}
+
+# API-only configuration
+api.localhost {
+  reverse_proxy api:3000
+}
