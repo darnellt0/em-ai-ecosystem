@@ -28,22 +28,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const checkStoredAuth = async () => {
     try {
-      const token = await authService.getStoredToken();
-      const user = await authService.getStoredUser();
+      // Add a timeout to ensure we don't hang indefinitely
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      );
 
-      if (token && user) {
-        setState({
-          user,
-          token,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        setState((prev) => ({ ...prev, isLoading: false }));
-      }
+      const authPromise = (async () => {
+        const token = await authService.getStoredToken();
+        const user = await authService.getStoredUser();
+
+        if (token && user) {
+          setState({
+            user,
+            token,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } else {
+          setState((prev) => ({ ...prev, isLoading: false }));
+        }
+      })();
+
+      await Promise.race([authPromise, timeoutPromise]);
     } catch (error: any) {
       console.error('Error checking stored auth:', error);
+      // Always set isLoading to false, even on error
       setState((prev) => ({ ...prev, isLoading: false }));
     }
   };
