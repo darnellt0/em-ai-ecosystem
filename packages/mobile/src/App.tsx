@@ -141,16 +141,26 @@ const RootNavigator = () => {
 
 // Main App Component
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppProvider>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          <RootNavigator />
-        </NavigationContainer>
-      </AppProvider>
-    </AuthProvider>
-  );
+  console.log('[App] Rendering main App component');
+  try {
+    return (
+      <AuthProvider>
+        <AppProvider>
+          <NavigationContainer>
+            <StatusBar style="auto" />
+            <RootNavigator />
+          </NavigationContainer>
+        </AppProvider>
+      </AuthProvider>
+    );
+  } catch (error) {
+    console.error('[App] Error rendering:', error);
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <Text style={{ color: colors.text, fontSize: 16 }}>Error loading app. Check console.</Text>
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
