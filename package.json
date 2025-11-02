@@ -21,7 +21,12 @@
     "kill-switch": "bash scripts/kill-switch.sh",
     "docker:up": "docker-compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f infrastructure/docker/docker-compose.yml down",
-    "docker:logs": "docker-compose -f infrastructure/docker/docker-compose.yml logs -f"
+    "docker:logs": "docker-compose -f infrastructure/docker/docker-compose.yml logs -f",
+    "mobile:start": "cd packages/mobile && npm start",
+    "mobile:ios": "cd packages/mobile && npm run ios",
+    "mobile:android": "cd packages/mobile && npm run android",
+    "mobile:build:android": "cd packages/mobile && npm run build:android",
+    "mobile:build:ios": "cd packages/mobile && npm run build:ios"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
