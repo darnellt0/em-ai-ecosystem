@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevated Movements - AI Mobile App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        .status {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .status h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .status-icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .status-item.loading .status-icon {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f4ff;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .features {
+            margin-top: 40px;
+            text-align: left;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .features h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .feature-list li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .error {
+            background: #fff5f5;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎯</div>
+        <h1>Elevated Movements</h1>
+        <p class="subtitle">AI-Powered Mobile App</p>
+
+        <div class="status">
+            <h3>System Status</h3>
+            <div class="status-item loading">
+                <span class="status-icon">⚙️</span>
+                <span>Initializing React Native Web...</span>
+            </div>
+            <div class="status-item" id="api-status">
+                <span class="status-icon">🔌</span>
+                <span>Checking backend API...</span>
+            </div>
+            <div class="status-item" id="voice-status">
+                <span class="status-icon">🎤</span>
+                <span>Voice recognition ready</span>
+            </div>
+        </div>
+
+        <button class="btn-primary" onclick="launchApp()">Launch Web App</button>
+        <button class="btn-secondary" onclick="window.location.reload()">Retry</button>
+
+        <div class="features">
+            <h4>Features Available</h4>
+            <ul class="feature-list">
+                <li>Voice command input</li>
+                <li>Analytics dashboard</li>
+                <li>User profiles</li>
+                <li>Offline synchronization</li>
+                <li>Real-time updates</li>
+            </ul>
+        </div>
+
+        <div class="error" id="error-message"></div>
+    </div>
+
+    <script>
+        // Check API backend
+        fetch('http://localhost:3000/health', { mode: 'no-cors' })
+            .then(() => {
+                document.getElementById('api-status').innerHTML = '<span class="status-icon">✅</span><span>Backend API running on port 3000</span>';
+            })
+            .catch(() => {
+                document.getElementById('api-status').innerHTML = '<span class="status-icon">⚠️</span><span>Backend API not detected</span>';
+            });
+
+        // Check voice support
+        const hasVoice = window.webkitSpeechRecognition || window.SpeechRecognition;
+        if (!hasVoice) {
+            document.getElementById('voice-status').innerHTML = '<span class="status-icon">⚠️</span><span>Voice not supported in this browser</span>';
+        }
+
+        function launchApp() {
+            // Check if on mobile
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                // Redirect to mobile app page
+                window.location.href = './mobile-app.html';
+            } else {
+                // On desktop, try to load in iframe
+                const iframe = document.createElement('iframe');
+                iframe.style.position = 'fixed';
+                iframe.style.top = '0';
+                iframe.style.left = '0';
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                iframe.src = 'http://localhost:19006/mobile-app.html';
+                document.body.appendChild(iframe);
+            }
+        }
+
+        // Auto-check if React app is ready
+        setTimeout(() => {
+            fetch('http://localhost:19006', { mode: 'no-cors' })
+                .then(() => {
+                    // App is ready
+                    const msg = document.querySelector('.status-item:first-child');
+                    if (msg) {
+                        msg.innerHTML = '<span class="status-icon">✅</span><span>React app is ready!</span>';
+                        msg.classList.remove('loading');
+                    }
+                })
+                .catch(() => {
+                    // Still loading
+                    setTimeout(arguments.callee, 2000);
+                });
+        }, 3000);
+    </script>
+</body>
+</html>

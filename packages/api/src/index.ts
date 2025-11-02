@@ -382,6 +382,14 @@ app.use((req: Request, res: Response) => {
       '/api/voice/coach/pause',
       '/api/voice/support/log-complete',
       '/api/voice/support/follow-up',
+      '/api/voice/analytics/daily-brief',
+      '/api/voice/analytics/insights',
+      '/api/voice/business/grants',
+      '/api/voice/business/relationships',
+      '/api/voice/business/budget',
+      '/api/voice/business/content',
+      '/api/voice/business/brand-story',
+      '/api/voice/hybrid',
     ],
   });
 });
