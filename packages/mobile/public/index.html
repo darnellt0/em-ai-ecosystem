@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevated Movements AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #F5F7FA;
+            color: #1F2937;
+        }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6C63FF 0%, #4338CA 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6B7280;
+            margin-bottom: 40px;
+        }
+
+        .form {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background-color: white;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #6C63FF;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #6C63FF 0%, #4338CA 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: transform 0.1s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .signup-link {
+            text-align: center;
+        }
+
+        .signup-link a {
+            color: #6C63FF;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: #EF4444;
+            margin-bottom: 16px;
+            padding: 12px;
+            background-color: #FEE2E2;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .main-content {
+            text-align: center;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-item {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status-ok {
+            color: #10B981;
+        }
+
+        .status-error {
+            color: #EF4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="logo">
+                <div class="logo-text">EM</div>
+            </div>
+            <h1>Elevated Movements AI</h1>
+            <p class="subtitle">AI Executive Assistant</p>
+
+            <div id="app"></div>
+
+            <div class="status">
+                <h3>System Status</h3>
+                <div class="status-item" id="api-status">
+                    <span class="status-error">✗ Checking API...</span>
+                </div>
+                <div class="status-item" id="db-status">
+                    <span class="status-error">✗ Checking Database...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check API status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch('https://nonlevel-promilitarism-lorita.ngrok-free.dev/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    document.getElementById('api-status').innerHTML = '<span class="status-ok">✓ API Running</span>';
+                    return true;
+                } else {
+                    document.getElementById('api-status').innerHTML = '<span class="status-error">✗ API Error: ' + response.status + '</span>';
+                    return false;
+                }
+            } catch (error) {
+                document.getElementById('api-status').innerHTML = '<span class="status-error">✗ API Unreachable: ' + error.message + '</span>';
+                return false;
+            }
+        }
+
+        // Show login form
+        function showLoginForm() {
+            const html = `
+                <form id="login-form" class="form" onsubmit="handleLogin(event)">
+                    <div id="error-message"></div>
+                    <div class="form-group">
+                        <input type="email" id="email" placeholder="Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" placeholder="Password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                    <div class="signup-link">
+                        Don't have an account? <a onclick="showSignupForm()">Sign up</a>
+                    </div>
+                </form>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function showSignupForm() {
+            const html = `
+                <form id="signup-form" class="form" onsubmit="handleSignup(event)">
+                    <div id="error-message"></div>
+                    <div class="form-group">
+                        <input type="text" id="name" placeholder="Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="email" placeholder="Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" placeholder="Password" minlength="6" required>
+                    </div>
+                    <button type="submit">Sign Up</button>
+                    <div class="signup-link">
+                        Already have an account? <a onclick="showLoginForm()">Login</a>
+                    </div>
+                </form>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const button = event.target.querySelector('button');
+
+            button.disabled = true;
+            button.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                const response = await fetch('https://nonlevel-promilitarism-lorita.ngrok-free.dev/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    showMainApp(data.user);
+                } else {
+                    document.getElementById('error-message').innerHTML =
+                        '<div class="error-message">' + (data.message || 'Login failed') + '</div>';
+                    button.disabled = false;
+                    button.innerHTML = 'Login';
+                }
+            } catch (error) {
+                document.getElementById('error-message').innerHTML =
+                    '<div class="error-message">Network error: ' + error.message + '</div>';
+                button.disabled = false;
+                button.innerHTML = 'Login';
+            }
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const button = event.target.querySelector('button');
+
+            button.disabled = true;
+            button.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                const response = await fetch('https://nonlevel-promilitarism-lorita.ngrok-free.dev/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    showMainApp(data.user);
+                } else {
+                    document.getElementById('error-message').innerHTML =
+                        '<div class="error-message">' + (data.message || 'Signup failed') + '</div>';
+                    button.disabled = false;
+                    button.innerHTML = 'Sign Up';
+                }
+            } catch (error) {
+                document.getElementById('error-message').innerHTML =
+                    '<div class="error-message">Network error: ' + error.message + '</div>';
+                button.disabled = false;
+                button.innerHTML = 'Sign Up';
+            }
+        }
+
+        function showMainApp(user) {
+            const html = `
+                <div style="text-align: left; max-width: 400px;">
+                    <h2>Welcome, ${user.name}!</h2>
+                    <p style="margin: 20px 0; color: #6B7280;">You are logged in to the Elevated Movements AI system.</p>
+                    <button onclick="handleLogout()">Logout</button>
+                    <div class="status">
+                        <h3>User Information</h3>
+                        <div class="status-item">Name: ${user.name}</div>
+                        <div class="status-item">Email: ${user.email}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            showLoginForm();
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', function() {
+            checkApiStatus();
+
+            const token = localStorage.getItem('auth_token');
+            const userData = localStorage.getItem('user_data');
+
+            if (token && userData) {
+                try {
+                    showMainApp(JSON.parse(userData));
+                } catch {
+                    showLoginForm();
+                }
+            } else {
+                showLoginForm();
+            }
+        });
+    </script>
+</body>
+</html>
