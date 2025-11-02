@@ -1,0 +1,154 @@
+{
+  "name": "Voice API Failure → Incident + Apology",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-failure-hook",
+        "httpMethod": "POST"
+      },
+      "name": "Failure Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "voice-failure-webhook-id"
+    },
+    {
+      "parameters": {
+        "url": "http://api:3000/api/incidents",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"source\": \"elevenlabs-voice\",\n  \"payload\": {{ JSON.stringify($json) }},\n  \"message\": \"{{ $json.humanSummary || 'Unknown voice API error' }}\",\n  \"severity\": \"low\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\",\n  \"endpoint\": \"{{ $json.endpoint }}\",\n  \"requestId\": \"{{ $json.requestId || 'unknown' }}\"\n}"
+      },
+      "name": "Log Incident",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ $json.status }}",
+              "value2": "201"
+            }
+          ]
+        }
+      },
+      "name": "Check Incident Logged",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://api:3000/api/voice/support/follow-up",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.VOICE_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"subject\": \"Follow-up: Voice API Issue\",\n  \"dueISO\": \"{{ new Date(Date.now() + 3600000).toISOString() }}\",\n  \"context\": \"Error during voice command execution: {{ $json.humanSummary }}. Issue has been logged and escalated.\",\n  \"founder\": \"{{ $json.founder || 'shria' }}\"\n}"
+      },
+      "name": "Create Follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 250]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"incidentId\": \"{{ $json.body?.id || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "name": "Respond with Apology",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"An error occurred while processing your request. We are investigating.\"\n}"
+      },
+      "name": "Respond Fallback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 450]
+    }
+  ],
+  "connections": {
+    "Failure Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Incident": {
+      "main": [
+        [
+          {
+            "node": "Check Incident Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Incident Logged": {
+      "main": [
+        [
+          {
+            "node": "Create Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Respond with Apology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "staticData": null,
+  "description": "Handles voice API failures: logs incident, creates follow-up reminder, and responds with empathetic apology message to user."
+}

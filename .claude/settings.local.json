@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 node:*)",
+      "Bash(tee:*)",
+      "Bash(ss:*)",
+      "Bash(export ELEVENLABS_API_KEY:*)",
+      "Bash(TEXT=\"Blocked 45 minutes for focus on 11/1/2025, 9:53:11 PM.\")",
+      "Bash(RACHEL_ID=\"21m00Tcm4TlvDq8ikWAM\":*)",
+      "Bash(CLYDE_ID=\"IKne3meq5aSrNqZdkZeT\")",
+      "Bash(TEXT=\"Test\")",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(npm run build:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(/tmp/build.log)",
+      "Bash(/tmp/rebuild.log)",
+      "Bash(npx tsc:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
