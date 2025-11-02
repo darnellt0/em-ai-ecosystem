@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build:web || expo export --platform web",
+  "outputDirectory": "dist",
+  "framework": "expo",
+  "env": {
+    "API_URL": "@api_url"
+  }
+}
