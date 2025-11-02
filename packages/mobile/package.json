@@ -14,7 +14,8 @@
     "build:ios": "eas build --platform ios",
     "test": "jest",
     "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "vercel-build": "npm install --legacy-peer-deps && npm run build:web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.1.3",
