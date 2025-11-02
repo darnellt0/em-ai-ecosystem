@@ -116,7 +116,10 @@ const TabIcon: React.FC<{ icon: string; color: string }> = ({ icon }) => {
 const RootNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('[RootNavigator] Rendering - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
+
   if (isLoading) {
+    console.log('[RootNavigator] Showing loading spinner...');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -124,6 +127,7 @@ const RootNavigator = () => {
     );
   }
 
+  console.log('[RootNavigator] Showing', isAuthenticated ? 'Main' : 'Auth', 'navigator');
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
