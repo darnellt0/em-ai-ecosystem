@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "echo 'Build already pre-compiled'",
+    "postinstall": "npm run build",
     "build": "lerna run build",
     "dev": "lerna run dev --parallel",
     "test": "lerna run test",
