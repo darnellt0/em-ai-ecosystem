@@ -1,5 +1,4 @@
 {
-  "buildCommand": "npm install && npm run build:web",
-  "outputDirectory": "dist",
-  "framework": "expo"
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist"
 }
