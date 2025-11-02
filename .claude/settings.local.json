@@ -19,7 +19,8 @@
       "Bash(python -m json.tool:*)",
       "Bash(/tmp/build.log)",
       "Bash(/tmp/rebuild.log)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
