@@ -142,8 +142,16 @@ const RootNavigator = () => {
 // Main App Component
 export default function App() {
   console.log('[App] Rendering main App component');
-  try {
-    return (
+
+  // Simple test to see if React is working at all
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 24, color: colors.text, marginBottom: 20, fontWeight: 'bold' }}>
+        Elevated Movements AI
+      </Text>
+      <Text style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 40 }}>
+        Loading...
+      </Text>
       <AuthProvider>
         <AppProvider>
           <NavigationContainer>
@@ -152,15 +160,8 @@ export default function App() {
           </NavigationContainer>
         </AppProvider>
       </AuthProvider>
-    );
-  } catch (error) {
-    console.error('[App] Error rendering:', error);
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <Text style={{ color: colors.text, fontSize: 16 }}>Error loading app. Check console.</Text>
-      </View>
-    );
-  }
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
