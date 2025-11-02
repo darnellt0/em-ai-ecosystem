@@ -40,6 +40,7 @@ import {
   generateContent,
   generateBrandStory,
 } from './voice.services';
+import { HybridRouterService } from '../services/hybrid-router.service';
 
 const router = Router();
 
@@ -467,6 +468,58 @@ router.post(
       parsed.data.values
     );
     res.status(result.status === 'ok' ? 200 : 400).json(result);
+  })
+);
+
+// ============================================================================
+// HYBRID ENDPOINT: POST /api/voice/hybrid
+// ============================================================================
+
+/**
+ * Hybrid smart router - tries deterministic agents first, falls back to OpenAI
+ * for complex reasoning tasks. Best of both worlds:
+ * - Fast responses for simple requests (100ms)
+ * - Intelligent reasoning for complex requests (via GPT-4)
+ * - Cost-effective (only use OpenAI when needed)
+ *
+ * Request: { transcript: string, founder: 'darnell' | 'shria' }
+ * Response: { route: 'deterministic' | 'openai', complexity, humanSummary, nextBestAction, latency, cost }
+ */
+router.post(
+  '/hybrid',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const transcript = req.body?.transcript;
+    const founder = req.body?.founder || 'shria';
+
+    if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
+      res.status(400).json({
+        status: 'error',
+        humanSummary: 'Invalid request: transcript is required',
+        nextBestAction: 'Provide a non-empty transcript'
+      });
+      return;
+    }
+
+    try {
+      const hybridRouter = HybridRouterService.getInstance();
+      const result = await hybridRouter.route({
+        transcript: transcript.trim(),
+        founder: founder as 'darnell' | 'shria'
+      });
+
+      res.status(200).json({
+        status: 'ok',
+        ...result
+      });
+    } catch (error) {
+      console.error('Hybrid router error:', error);
+      res.status(500).json({
+        status: 'error',
+        humanSummary: 'Error processing request',
+        nextBestAction: 'Try again or use a simpler command'
+      });
+    }
   })
 );
 
