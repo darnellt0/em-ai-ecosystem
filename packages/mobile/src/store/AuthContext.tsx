@@ -27,17 +27,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const checkStoredAuth = async () => {
+    console.log('[AuthContext] Starting checkStoredAuth...');
     try {
       // Add a timeout to ensure we don't hang indefinitely
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+        setTimeout(() => {
+          console.log('[AuthContext] Auth check timeout - proceeding without stored auth');
+          reject(new Error('Auth check timeout'));
+        }, 5000)
       );
 
       const authPromise = (async () => {
+        console.log('[AuthContext] Checking stored token and user...');
         const token = await authService.getStoredToken();
         const user = await authService.getStoredUser();
+        console.log('[AuthContext] Token:', !!token, 'User:', !!user);
 
         if (token && user) {
+          console.log('[AuthContext] Found stored auth, setting as authenticated');
           setState({
             user,
             token,
@@ -46,13 +53,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             error: null,
           });
         } else {
+          console.log('[AuthContext] No stored auth, showing login screen');
           setState((prev) => ({ ...prev, isLoading: false }));
         }
       })();
 
       await Promise.race([authPromise, timeoutPromise]);
     } catch (error: any) {
-      console.error('Error checking stored auth:', error);
+      console.error('[AuthContext] Error checking stored auth:', error.message);
       // Always set isLoading to false, even on error
       setState((prev) => ({ ...prev, isLoading: false }));
     }
