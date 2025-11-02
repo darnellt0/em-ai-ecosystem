@@ -1,0 +1,176 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  🎤 VOICE API TESTING - CHEAT SHEET                            ║
+║                  Complete Guide in One Place                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: GET ELEVENLABS API KEY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Go to: https://elevenlabs.io
+  2. Sign up (free tier available)
+  3. Go to Account → API Keys
+  4. Copy your key (looks like: sk-abc123xyz...)
+
+STEP 2: INSTALL AUDIO PLAYBACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  macOS:
+    brew install ffmpeg
+
+  Ubuntu/Debian:
+    sudo apt install ffmpeg
+
+  Windows:
+    Download from https://ffmpeg.org/download.html
+
+STEP 3: SET ENVIRONMENT VARIABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  export ELEVENLABS_API_KEY="sk-your-key-here"
+
+  Verify:
+    echo $ELEVENLABS_API_KEY
+
+STEP 4: RUN THE TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  OPTION A: Quick Test (Easiest - 30 seconds)
+    bash quick-voice-test.sh
+    → Tests 4 endpoints with voice
+    → Plays audio directly
+    → Best for: First time testing
+
+  OPTION B: Browser Testing (Most Interactive)
+    open test-voice.html
+    → Test all 6 endpoints
+    → Adjust parameters easily
+    → Best for: Exploring options
+
+  OPTION C: Batch Testing (Save MP3s)
+    node test-voice-nodejs.js
+    → Tests all 6 endpoints
+    → Saves MP3 files
+    → Best for: Archiving responses
+
+════════════════════════════════════════════════════════════════════════════════
+
+VOICE OPTIONS
+
+  Female Voices:
+    21m00Tcm4TlvDq8ikWAM  Rachel (calm, professional) ← DEFAULT
+    EXAVITQu4zMVzdu7eNkl  Bella (warm, friendly)
+    ZQe5CZNOzWyzPSCn5a3c  Sara (helpful, clear)
+
+  Male Voices:
+    IKne3meq5aSrNqZdkZeT  Clyde (professional, steady)
+    pNInz6obpgDQGcFmaJgB  Josh (young, energetic)
+
+  To change voice:
+    1. Edit quick-voice-test.sh
+    2. Find: VOICE_ID="21m00Tcm4TlvDq8ikWAM"
+    3. Replace with different ID
+    4. Run: bash quick-voice-test.sh
+
+════════════════════════════════════════════════════════════════════════════════
+
+THE 6 ENDPOINTS
+
+  1. Block Focus Time
+     POST /api/voice/scheduler/block
+     Input:  {"minutes": 45, "founder": "shria"}
+     Output: "Blocked 45 minutes for focus..."
+
+  2. Confirm Meeting
+     POST /api/voice/scheduler/confirm
+     Input:  {"title": "Team Sync", "startAtISO": "...", "durationMinutes": 60}
+     Output: "Added Team Sync to calendar..."
+
+  3. Reschedule Meeting
+     POST /api/voice/scheduler/reschedule
+     Input:  {"eventId": "evt-123", "newStartAtISO": "..."}
+     Output: "Rescheduled event evt-123..."
+
+  4. Start Meditation
+     POST /api/voice/coach/pause
+     Input:  {"style": "grounding", "seconds": 60}
+     Output: "Starting a 60s grounding meditation..."
+
+  5. Log Task Complete
+     POST /api/voice/support/log-complete
+     Input:  {"taskId": "task-789"}
+     Output: "Marked task task-789 as complete..."
+
+  6. Create Follow-up
+     POST /api/voice/support/follow-up
+     Input:  {"subject": "Follow up on Q4"}
+     Output: "Created follow-up: Follow up on Q4..."
+
+════════════════════════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING
+
+  Q: "ffplay: command not found"
+  A: brew install ffmpeg
+
+  Q: "ELEVENLABS_API_KEY not set"
+  A: export ELEVENLABS_API_KEY="sk-your-actual-key"
+
+  Q: No sound but no error
+  A: Try: open response.mp3 (or ffplay response.mp3)
+
+  Q: API returns 401
+  A: Check API is running: docker-compose ps
+
+  Q: API returns 400
+  A: Check your request parameters
+
+════════════════════════════════════════════════════════════════════════════════
+
+QUICK START (Copy & Paste)
+
+  export ELEVENLABS_API_KEY="sk-your-key-from-elevenlabs"
+  bash quick-voice-test.sh
+
+  Done! You'll hear the API responses in 30 seconds.
+
+════════════════════════════════════════════════════════════════════════════════
+
+FILES CREATED FOR YOU
+
+  quick-voice-test.sh             ← Fastest way to test
+  test-voice.html                 ← Browser testing
+  test-voice-nodejs.js            ← Node.js testing
+  VOICE_TESTING_SUMMARY.md        ← Overview guide
+  VOICE_TESTING_QUICK_START.md    ← Quick reference
+  TESTING_WITH_VOICE.md           ← Complete guide (50+ examples)
+
+════════════════════════════════════════════════════════════════════════════════
+
+TESTING WORKFLOW
+
+  API Call
+     ↓
+  Get Response Text
+     ↓
+  Send to ElevenLabs TTS
+     ↓
+  Get Audio MP3
+     ↓
+  Play with ffplay
+     ↓
+  Hear Voice Response! 🎵
+
+════════════════════════════════════════════════════════════════════════════════
+
+NEXT STEPS AFTER TESTING
+
+  1. Explore different voices
+  2. Customize voice settings
+  3. Test all 6 endpoints
+  4. Save MP3 files
+  5. Wire real agents into voice.services.ts
+  6. Rebuild API: cd packages/api && npm run build
+  7. Restart: docker-compose restart api
+  8. Deploy to production
+
+════════════════════════════════════════════════════════════════════════════════

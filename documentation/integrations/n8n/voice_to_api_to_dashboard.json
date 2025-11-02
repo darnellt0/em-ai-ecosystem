@@ -1,0 +1,237 @@
+{
+  "name": "Voice → API → Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-hook",
+        "httpMethod": "POST"
+      },
+      "name": "Voice Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "voice-hook-webhook-id"
+    },
+    {
+      "parameters": {
+        "url": "http://api:3000/api/voice/{{ $json.endpoint }}",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.VOICE_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Idempotency-Key",
+              "value": "{{ $json.idempotencyKey || $json.timestamp }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "minutes",
+              "value": "{{ $json.minutes }}"
+            },
+            {
+              "name": "reason",
+              "value": "{{ $json.reason }}"
+            },
+            {
+              "name": "bufferMinutes",
+              "value": "{{ $json.bufferMinutes }}"
+            },
+            {
+              "name": "startAtISO",
+              "value": "{{ $json.startAtISO }}"
+            },
+            {
+              "name": "title",
+              "value": "{{ $json.title }}"
+            },
+            {
+              "name": "startAtISO",
+              "value": "{{ $json.startAtISO }}"
+            },
+            {
+              "name": "durationMinutes",
+              "value": "{{ $json.durationMinutes }}"
+            },
+            {
+              "name": "location",
+              "value": "{{ $json.location }}"
+            },
+            {
+              "name": "eventId",
+              "value": "{{ $json.eventId }}"
+            },
+            {
+              "name": "newStartAtISO",
+              "value": "{{ $json.newStartAtISO }}"
+            },
+            {
+              "name": "newDurationMinutes",
+              "value": "{{ $json.newDurationMinutes }}"
+            },
+            {
+              "name": "style",
+              "value": "{{ $json.style }}"
+            },
+            {
+              "name": "seconds",
+              "value": "{{ $json.seconds }}"
+            },
+            {
+              "name": "taskId",
+              "value": "{{ $json.taskId }}"
+            },
+            {
+              "name": "note",
+              "value": "{{ $json.note }}"
+            },
+            {
+              "name": "subject",
+              "value": "{{ $json.subject }}"
+            },
+            {
+              "name": "dueISO",
+              "value": "{{ $json.dueISO }}"
+            },
+            {
+              "name": "context",
+              "value": "{{ $json.context }}"
+            },
+            {
+              "name": "founder",
+              "value": "{{ $json.founder }}"
+            }
+          ]
+        }
+      },
+      "name": "Call Voice API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ $json.status }}",
+              "value2": "ok"
+            }
+          ]
+        }
+      },
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://dashboard:8080/api/ingest",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"source\": \"elevenlabs-voice\",\n  \"endpoint\": \"{{ $json.endpoint }}\",\n  \"result\": {{ JSON.stringify($json) }},\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "name": "Ingest to Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"ok\",\n  \"message\": \"{{ $json.humanSummary }}\",\n  \"nextAction\": \"{{ $json.nextBestAction }}\"\n}"
+      },
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"{{ $json.humanSummary || 'Sorry — something went wrong.' }}\"\n}"
+      },
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Voice Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call Voice API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Voice API": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Ingest to Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest to Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "staticData": null,
+  "description": "Receives voice commands via webhook, routes to appropriate Voice API endpoint, ingests result to dashboard, and responds with human-friendly summary."
+}

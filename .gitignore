@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.*.example
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+
+# Runtime
+tmp/
+temp/
+*.pid
+*.seed
+*.pid.lock
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Credentials and secrets
+credentials.json
+token.json
+oauth.json
+*.pem
+*.key
+.gpg-id
+
+# NAS mounts
+/mnt/wdmycloud/backup/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# OS
+Thumbs.db
+.DS_Store

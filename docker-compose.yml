@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # API Server - Express with Voice API Integration
+  api:
+    image: node:18-alpine
+    container_name: em-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgresql://elevated_movements:T0ml!ns0n@database:5432/em_ecosystem
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/config/google-credentials.json
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
+      - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
+      - VOICE_API_TOKEN=${VOICE_API_TOKEN}
+    depends_on:
+      - database
+      - redis
+    volumes:
+      - ./packages/api/dist:/app/dist:ro
+      - ./packages/api/package.json:/app/package.json:ro
+      - ./packages/api/node_modules:/app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+    working_dir: /app
+    command: sh -c "npm install --production && node dist/index.js"
+    networks:
+      - em-network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: em-database
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=elevated_movements
+      - POSTGRES_PASSWORD=T0ml!ns0n
+      - POSTGRES_DB=em_ecosystem
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - em-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elevated_movements"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: em-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - em-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: em-n8n
+    ports:
+      - "5679:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme}
+      - N8N_HOST=n8n.localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - em-network
+    depends_on:
+      - database
+    restart: unless-stopped
+
+  # Caddy Reverse Proxy
+  caddy:
+    image: caddy:latest
+    container_name: em-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - em-network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  em-network:
+    driver: bridge
