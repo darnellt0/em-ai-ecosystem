@@ -19,3 +19,5 @@ export class TtsAdapter {
     }
   }
 }
+
+export type TtsAdapterContract = Pick<TtsAdapter, 'start'>;

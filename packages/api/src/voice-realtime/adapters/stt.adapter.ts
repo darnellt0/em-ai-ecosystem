@@ -71,3 +71,5 @@ export class SttAdapter {
     }
   }
 }
+
+export type SttAdapterContract = Pick<SttAdapter, 'pushPcm' | 'onPartial' | 'onFinal'>;

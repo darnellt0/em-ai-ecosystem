@@ -9,7 +9,11 @@ export interface VoiceIntentClientOptions {
   readonly authorizationToken?: string;
 }
 
-export class VoiceIntentClient {
+export interface IntentClientContract {
+  postIntent(text: string): Promise<IntentResponse>;
+}
+
+export class VoiceIntentClient implements IntentClientContract {
   private readonly baseUrl: string;
 
   private readonly authorizationToken?: string;
@@ -44,8 +48,8 @@ export class VoiceIntentClient {
 }
 
 export interface VoiceRealtimeDependencies {
-  readonly createSttAdapter?: () => import('./adapters/stt.adapter').SttAdapter;
-  readonly createTtsAdapter?: () => import('./adapters/tts.adapter').TtsAdapter;
-  readonly intentClient?: VoiceIntentClient;
+  readonly createSttAdapter?: () => import('./adapters/stt.adapter').SttAdapterContract;
+  readonly createTtsAdapter?: () => import('./adapters/tts.adapter').TtsAdapterContract;
+  readonly intentClient?: IntentClientContract;
   readonly now?: () => number;
 }
