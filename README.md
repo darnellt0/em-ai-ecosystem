@@ -112,6 +112,7 @@ docker-compose logs -f api
 | [AGENTS_COMPLETE.md](./AGENTS_COMPLETE.md) | Detailed specs for all 12 agents |
 | [packages/api/README.md](./packages/api/README.md) | API endpoint documentation |
 | [packages/dashboard/README.md](./packages/dashboard/README.md) | Dashboard features and usage |
+| [documentation/VOICE_REALTIME_WS.md](./documentation/VOICE_REALTIME_WS.md) | Realtime voice WebSocket protocol |
 
 ## 🔌 API Endpoints (30+)
 
@@ -138,6 +139,20 @@ curl http://localhost:3000/api/config/schedules
 ```
 
 See [API Documentation](./packages/api/README.md) for complete endpoint reference.
+
+## 🔊 Voice Realtime Gateway
+
+The API also exposes a low-latency WebSocket endpoint at `ws://localhost:3000/ws/voice` for streaming speech in and synthesized
+audio back out. Authenticate each connection with the `token` query parameter (`VOICE_WS_TOKEN` environment variable). The
+server expects base64-encoded 16 kHz PCM audio frames and responds with incremental transcripts plus text-to-speech audio
+chunks.
+
+```bash
+wscat -c "ws://localhost:3000/ws/voice?token=$VOICE_WS_TOKEN"
+```
+
+For full protocol details, sample payloads, and heartbeat behavior see the
+[VOICE_REALTIME_WS.md](./documentation/VOICE_REALTIME_WS.md) guide.
 
 ## 🎨 Dashboard
 

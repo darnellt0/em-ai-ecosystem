@@ -10,6 +10,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -429,6 +430,8 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
   console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
 });
+
+initVoiceRealtimeWSS(server);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

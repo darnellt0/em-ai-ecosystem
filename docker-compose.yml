@@ -24,6 +24,7 @@ services:
       - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
       - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
       - VOICE_API_TOKEN=${VOICE_API_TOKEN}
+      - VOICE_WS_TOKEN=${VOICE_WS_TOKEN}
     depends_on:
       - database
       - redis
