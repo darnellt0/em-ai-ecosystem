@@ -1,7 +1,6 @@
 {
-  "buildCommand": "",
-  "outputDirectory": "public",
-  "deploymentProtection": {
-    "enabled": false
-  }
+  "version": 2,
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
