@@ -6,14 +6,31 @@
  * Integrated Voice API endpoints + existing dashboard/agent endpoints
  */
 
-import express, { Request, Response, NextFunction } from 'express';
+import http from 'http';
+import express, { Request, Response, NextFunction, Router } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import {
+  createVoiceMetricsMiddleware,
+  getPrometheusContentType,
+  getPrometheusMetrics,
+  getVoiceMetricsSnapshot,
+} from './metrics/voice.metrics';
+import { getVoiceRealtimeStatus, initVoiceRealtime, shutdownVoiceRealtime } from './voice/voice.realtime';
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+export interface AppBuildResult {
+  app: express.Express;
+  port: number;
+  nodeEnv: string;
+  voiceEnabled: boolean;
+}
+
+export const buildApp = (): AppBuildResult => {
+  const app = express();
+  const port = parseInt(String(process.env.PORT || 3000), 10);
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const voiceEnabled = (process.env.VOICE_ENABLED ?? 'true').toLowerCase() !== 'false';
 
 // ============================================================================
 // MIDDLEWARE
@@ -64,11 +81,22 @@ const agents = {
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'running',
-    environment: NODE_ENV,
+    environment: nodeEnv,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     version: '1.0.0',
     message: 'Elevated Movements AI Ecosystem API',
+  });
+});
+
+app.get('/health/voice', (_req: Request, res: Response) => {
+  const realtime = getVoiceRealtimeStatus();
+  res.json({
+    ws: realtime.ready,
+    enabled: voiceEnabled,
+    clients: realtime.clients,
+    lastError: realtime.lastError,
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -109,14 +137,22 @@ app.get('/api/config', (_req: Request, res: Response) => {
   res.json({
     app_name: 'Elevated Movements AI Ecosystem',
     version: '1.0.0',
-    environment: NODE_ENV,
-    port: PORT,
+    environment: nodeEnv,
+    port,
     database: process.env.DATABASE_URL ? 'configured' : 'not configured',
     redis: process.env.REDIS_URL ? 'configured' : 'not configured',
     openai_key: process.env.OPENAI_API_KEY ? 'configured' : 'not configured',
     claude_key: process.env.CLAUDE_API_KEY ? 'configured' : 'not configured',
     elevenlabs_key: process.env.ELEVENLABS_API_KEY ? 'configured' : 'not configured',
-    voice_api_token: process.env.VOICE_API_TOKEN ? 'configured' : 'not configured',
+    voice: {
+      enabled: voiceEnabled,
+      api_token: process.env.VOICE_API_TOKEN ? 'configured' : 'not configured',
+      ws_token: process.env.VOICE_WS_TOKEN ? 'configured' : 'not configured',
+      realtime_clients: getVoiceRealtimeStatus().clients,
+      stt_provider: process.env.STT_PROVIDER || 'not configured',
+      tts_provider: process.env.TTS_PROVIDER || 'not configured',
+      provider_keys: process.env.PROVIDER_KEYS ? 'configured' : 'not configured',
+    },
     smtp_configured: process.env.SMTP_HOST ? true : false,
     founders: [
       {
@@ -205,15 +241,40 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
  * POST /api/voice/support/log-complete
  * POST /api/voice/support/follow-up
  */
-app.use('/api/voice', voiceRouter);
+if (voiceEnabled) {
+  const voiceCompositeRouter = Router();
+  const voiceMetricsMiddleware = createVoiceMetricsMiddleware();
+  voiceCompositeRouter.use(voiceMetricsMiddleware);
+  voiceCompositeRouter.use(voiceRouter);
+  voiceCompositeRouter.use(voiceAudioRouter);
+  app.use('/api/voice', voiceCompositeRouter);
+} else {
+  app.use('/api/voice', (_req: Request, res: Response) => {
+    res.status(503).json({
+      status: 'disabled',
+      message: 'Voice services are currently disabled',
+      timestamp: new Date().toISOString(),
+    });
+  });
+}
 
-/**
- * Audio generation endpoints for ElevenLabs TTS integration
- * POST /api/voice/audio/generate     - Generate single audio from text
- * POST /api/voice/audio/batch        - Generate multiple audios
- * GET  /api/voice/audio/voices       - List available voices
- */
-app.use('/api/voice', voiceAudioRouter);
+app.get('/api/metrics', async (req: Request, res: Response) => {
+  const format = Array.isArray(req.query.format) ? req.query.format[0] : req.query.format;
+  if (format === 'prom') {
+    res.setHeader('Content-Type', getPrometheusContentType());
+    res.send(await getPrometheusMetrics());
+    return;
+  }
+
+  const metrics = getVoiceMetricsSnapshot();
+  res.json({
+    timestamp: new Date().toISOString(),
+    voice: {
+      ...metrics,
+      enabled: voiceEnabled,
+    },
+  });
+});
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
@@ -405,46 +466,74 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// ============================================================================
+  return { app, port, nodeEnv, voiceEnabled };
+};
+
+// ===========================================================================
 // SERVER START
-// ============================================================================
+// ===========================================================================
 
-const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
-  console.log('\n✅ Elevated Movements AI Ecosystem API Server');
-  console.log(`   Port: ${PORT}`);
-  console.log(`   Environment: ${NODE_ENV}`);
-  console.log(`   Status: Running\n`);
-  console.log(`Available endpoints:`);
-  console.log(`   GET /health                        - Health check`);
-  console.log(`   GET /api/agents                    - List all agents`);
-  console.log(`   GET /api/agents/status             - Agent status`);
-  console.log(`   GET /api/config                    - Configuration`);
-  console.log(`   GET /api/executions                - Recent executions`);
-  console.log(`   GET /api/dashboard                 - Dashboard data\n`);
-  console.log(`🎤 VOICE API ENDPOINTS (Phase Voice-0):`);
-  console.log(`   POST /api/voice/scheduler/block         - Block focus time`);
-  console.log(`   POST /api/voice/scheduler/confirm       - Confirm meeting`);
-  console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
-  console.log(`   POST /api/voice/coach/pause             - Start meditation`);
-  console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
-  console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
-});
+const { app, port, nodeEnv, voiceEnabled } = buildApp();
+let server: http.Server | null = null;
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+if (!process.env.JEST_WORKER_ID) {
+  server = http.createServer(app);
+  if (voiceEnabled) {
+    initVoiceRealtime(server, {
+      path: '/ws/voice',
+      token: process.env.VOICE_WS_TOKEN,
+    });
+  }
+
+  server.listen(port, '0.0.0.0', () => {
+    console.log('\n✅ Elevated Movements AI Ecosystem API Server');
+    console.log(`   Port: ${port}`);
+    console.log(`   Environment: ${nodeEnv}`);
+    console.log(`   Status: Running\n`);
+    console.log(`Available endpoints:`);
+    console.log(`   GET /health                        - Health check`);
+    console.log(`   GET /health/voice                  - Voice realtime health`);
+    console.log(`   GET /api/agents                    - List all agents`);
+    console.log(`   GET /api/agents/status             - Agent status`);
+    console.log(`   GET /api/config                    - Configuration`);
+    console.log(`   GET /api/executions                - Recent executions`);
+    console.log(`   GET /api/dashboard                 - Dashboard data`);
+    console.log(`   GET /api/metrics                   - Voice metrics\n`);
+    console.log(`🎤 VOICE API ENDPOINTS (Phase Voice-0):`);
+    console.log(`   POST /api/voice/scheduler/block         - Block focus time`);
+    console.log(`   POST /api/voice/scheduler/confirm       - Confirm meeting`);
+    console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
+    console.log(`   POST /api/voice/coach/pause             - Start meditation`);
+    console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
+    console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
+
+    if (voiceEnabled) {
+
+      const realtime = getVoiceRealtimeStatus();
+      console.log(`🎧 Voice realtime websocket: /ws/voice (ready=${realtime.ready})`);
+    } else {
+      console.log('⚠️  Voice realtime disabled via VOICE_ENABLED flag');
+    }
   });
-});
+}
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
+const shutdown = () => {
+  console.log('Shutdown signal received, closing gracefully...');
+  if (voiceEnabled) {
+    shutdownVoiceRealtime();
+  }
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
-});
+  }
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 export default app;
+export { server };

@@ -11,6 +11,7 @@ COPY package.json lerna.json ./
 
 # Copy packages
 COPY packages ./packages
+COPY config ./config
 
 # Install dependencies (ignore postinstall for Docker build)
 RUN npm install --legacy-peer-deps --ignore-scripts

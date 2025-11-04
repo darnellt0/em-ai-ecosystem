@@ -174,7 +174,7 @@ describe('Voice Router', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
-      expect(res.body.humanSummary).toContain('evt-123');
+      expect(res.body.humanSummary).toContain('Rescheduled Meeting');
     });
 
     it('POST /coach/pause should return 200 with style', async () => {
@@ -201,7 +201,7 @@ describe('Voice Router', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
-      expect(res.body.humanSummary).toContain('task-456');
+      expect(res.body.humanSummary).toContain('Task Completed');
       expect(res.body.humanSummary).toContain('complete');
     });
 

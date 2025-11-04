@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - feat/devops-voice
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Test Suite ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [A, B, C, D, E, F, G]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build API workspace
+        run: npm run build --workspace=@em/api
+      - name: Run tests
+        run: npm run test --workspace=@em/api -- --runInBand
+        env:
+          TEST_SUITE: ${{ matrix.suite }}
+          VOICE_API_TOKEN: test-suite-token
+          VOICE_WS_TOKEN: test-suite-ws-token
+          VOICE_ENABLED: 'true'
+
+  e2e-voice-smoke:
+    name: Voice realtime smoke test
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build API workspace
+        run: npm run build --workspace=@em/api
+      - name: Run voice websocket smoke test
+        run: ./scripts/e2e-voice.sh
+        env:
+          PORT: 3100
+          VOICE_API_TOKEN: e2e-voice-api-token
+          VOICE_WS_TOKEN: e2e-voice-ws-token
+          VOICE_ENABLED: 'true'
+          NODE_ENV: ci
