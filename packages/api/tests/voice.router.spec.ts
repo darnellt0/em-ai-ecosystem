@@ -161,20 +161,23 @@ describe('Voice Router', () => {
     });
 
     it('POST /scheduler/reschedule should return 200', async () => {
-      const now = new Date().toISOString();
+      const payload = {
+        eventId: 'evt-123',
+        newStartAtISO: new Date().toISOString(),
+        newDurationMinutes: 30,
+        founder: 'darnell',
+      };
+
       const res = await request(app)
         .post('/api/voice/scheduler/reschedule')
         .set('Authorization', validToken)
-        .send({
-          eventId: 'evt-123',
-          newStartAtISO: now,
-          newDurationMinutes: 30,
-          founder: 'darnell',
-        });
+        .send(payload);
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
-      expect(res.body.humanSummary).toContain('evt-123');
+      expect(res.body.humanSummary).toContain('Rescheduled');
+      expect(res.body.data?.eventId).toBe(payload.eventId);
+      expect(res.body.data?.attendees?.length).toBeGreaterThan(0);
     });
 
     it('POST /coach/pause should return 200 with style', async () => {
@@ -190,19 +193,22 @@ describe('Voice Router', () => {
     });
 
     it('POST /support/log-complete should return 200', async () => {
+      const payload = {
+        taskId: 'task-456',
+        note: 'Completed successfully',
+        founder: 'shria',
+      };
+
       const res = await request(app)
         .post('/api/voice/support/log-complete')
         .set('Authorization', validToken)
-        .send({
-          taskId: 'task-456',
-          note: 'Completed successfully',
-          founder: 'shria',
-        });
+        .send(payload);
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
-      expect(res.body.humanSummary).toContain('task-456');
+      expect(res.body.humanSummary).toContain('Task Completed');
       expect(res.body.humanSummary).toContain('complete');
+      expect(res.body.data?.taskId).toBe(payload.taskId);
     });
 
     it('POST /support/follow-up should return 200', async () => {

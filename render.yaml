@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: em-ai-ecosystem-api
+    env: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci && npm --prefix packages/api run build
+    startCommand: node packages/api/dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: ALLOWED_ORIGINS
+        value: https://your-vercel-app.vercel.app,http://localhost:5173
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: VOICE_API_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+    healthCheckPath: /health

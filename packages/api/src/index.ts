@@ -10,7 +10,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import voiceProcessRouter from './voice/voice.process';
+import authRouter from './auth/auth.router';
 import intentRouter from './voice/intent.router';
+import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +24,21 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // ============================================================================
 
 // CORS
-app.use(cors());
+const allowList = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowList.length === 0 || allowList.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`Blocked CORS origin: ${origin}`);
+    return callback(new Error('CORS not allowed'), false);
+  },
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 // JSON body parsing
 app.use(express.json());
@@ -194,6 +211,19 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 });
 
 // ============================================================================
+// ROUTES - AUTHENTICATION
+// ============================================================================
+
+/**
+ * Mount auth router with all auth endpoints
+ * POST /api/auth/signup     - Create new account
+ * POST /api/auth/login      - Authenticate user
+ * POST /api/auth/logout     - Logout user
+ * GET  /api/auth/me         - Get current user
+ */
+app.use('/api/auth', authRouter);
+
+// ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
 // ============================================================================
 
@@ -211,6 +241,7 @@ app.use('/api/voice', intentRouter);
  * POST /api/voice/support/log-complete
  * POST /api/voice/support/follow-up
  */
+app.use('/api/voice', intentRouter);
 app.use('/api/voice', voiceRouter);
 
 /**
@@ -220,6 +251,12 @@ app.use('/api/voice', voiceRouter);
  * GET  /api/voice/audio/voices       - List available voices
  */
 app.use('/api/voice', voiceAudioRouter);
+
+/**
+ * Voice command processing
+ * POST /api/voice/process            - Process natural language voice commands
+ */
+app.use('/api/voice', voiceProcessRouter);
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
@@ -377,6 +414,10 @@ app.use((req: Request, res: Response) => {
     message: 'The requested endpoint does not exist',
     available_endpoints: [
       '/health',
+      '/api/auth/signup',
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/me',
       '/api/agents',
       '/api/agents/status',
       '/api/config',
@@ -420,7 +461,12 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   Port: ${PORT}`);
   console.log(`   Environment: ${NODE_ENV}`);
   console.log(`   Status: Running\n`);
-  console.log(`Available endpoints:`);
+  console.log(`🔐 AUTHENTICATION ENDPOINTS:`);
+  console.log(`   POST /api/auth/signup              - Create new account`);
+  console.log(`   POST /api/auth/login               - Authenticate user`);
+  console.log(`   POST /api/auth/logout              - Logout user`);
+  console.log(`   GET  /api/auth/me                  - Get current user\n`);
+  console.log(`📊 DASHBOARD ENDPOINTS:`);
   console.log(`   GET /health                        - Health check`);
   console.log(`   GET /api/agents                    - List all agents`);
   console.log(`   GET /api/agents/status             - Agent status`);
@@ -433,8 +479,14 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
   console.log(`   POST /api/voice/coach/pause             - Start meditation`);
   console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
-  console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
+  console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
+  console.log(`   POST /api/voice/process                 - Process voice commands\n`);
 });
+
+if (!(global as any).__VOICE_WSS_INITIALIZED__) {
+  initVoiceRealtimeWSS(server);
+  (global as any).__VOICE_WSS_INITIALIZED__ = true;
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
