@@ -209,12 +209,6 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 });
 
 // ============================================================================
-// ROUTES - AUTHENTICATION
-// ============================================================================
-
-// NOTE: Auth endpoints are temporarily disabled until the auth router is reintroduced.
-
-// ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
 // ============================================================================
 
@@ -224,21 +218,12 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 app.use('/api/voice', intentRouter);
 
 /**
- * Mount voice router with all 6 endpoints
- * POST /api/voice/scheduler/block
- * POST /api/voice/scheduler/confirm
- * POST /api/voice/scheduler/reschedule
- * POST /api/voice/coach/pause
- * POST /api/voice/support/log-complete
- * POST /api/voice/support/follow-up
+ * Mount voice router with voice-first endpoints
  */
 app.use('/api/voice', voiceRouter);
 
 /**
  * Audio generation endpoints for ElevenLabs TTS integration
- * POST /api/voice/audio/generate     - Generate single audio from text
- * POST /api/voice/audio/batch        - Generate multiple audios
- * GET  /api/voice/audio/voices       - List available voices
  */
 app.use('/api/voice', voiceAudioRouter);
 
@@ -445,11 +430,6 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   Port: ${PORT}`);
   console.log(`   Environment: ${NODE_ENV}`);
   console.log(`   Status: Running\n`);
-  console.log(`🔐 AUTHENTICATION ENDPOINTS:`);
-  console.log(`   POST /api/auth/signup              - Create new account`);
-  console.log(`   POST /api/auth/login               - Authenticate user`);
-  console.log(`   POST /api/auth/logout              - Logout user`);
-  console.log(`   GET  /api/auth/me                  - Get current user\n`);
   console.log(`📊 DASHBOARD ENDPOINTS:`);
   console.log(`   GET /health                        - Health check`);
   console.log(`   GET /api/agents                    - List all agents`);
@@ -464,7 +444,6 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   POST /api/voice/coach/pause             - Start meditation`);
   console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
   console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
-  console.log(`   POST /api/voice/process                 - Process voice commands\n`);
 });
 
 if (!(global as any).__VOICE_WSS_INITIALIZED__) {
