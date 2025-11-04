@@ -10,8 +10,6 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
-import voiceProcessRouter from './voice/voice.process';
-import authRouter from './auth/auth.router';
 import intentRouter from './voice/intent.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
@@ -214,14 +212,7 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 // ROUTES - AUTHENTICATION
 // ============================================================================
 
-/**
- * Mount auth router with all auth endpoints
- * POST /api/auth/signup     - Create new account
- * POST /api/auth/login      - Authenticate user
- * POST /api/auth/logout     - Logout user
- * GET  /api/auth/me         - Get current user
- */
-app.use('/api/auth', authRouter);
+// NOTE: Auth endpoints are temporarily disabled until the auth router is reintroduced.
 
 // ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
@@ -241,7 +232,6 @@ app.use('/api/voice', intentRouter);
  * POST /api/voice/support/log-complete
  * POST /api/voice/support/follow-up
  */
-app.use('/api/voice', intentRouter);
 app.use('/api/voice', voiceRouter);
 
 /**
@@ -251,12 +241,6 @@ app.use('/api/voice', voiceRouter);
  * GET  /api/voice/audio/voices       - List available voices
  */
 app.use('/api/voice', voiceAudioRouter);
-
-/**
- * Voice command processing
- * POST /api/voice/process            - Process natural language voice commands
- */
-app.use('/api/voice', voiceProcessRouter);
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
