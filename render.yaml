@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: .
-    buildCommand: npm ci && npm --prefix packages/api run build
+    buildCommand: npm install --workspaces --include=dev --no-fund --no-audit && npm --prefix packages/api run build
     startCommand: node packages/api/dist/index.js
     envVars:
       - key: NODE_ENV

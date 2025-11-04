@@ -4,15 +4,15 @@
   "description": "Elevated Movements AI Executive Assistant Ecosystem - Dual-Founder Edition",
   "private": true,
   "engines": {
-    "node": "22.x",
-    "npm": "10.x"
+    "node": ">=20",
+    "npm": ">=10"
   },
+  "packageManager": "npm@10.7.0",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm run build",
-    "build": "lerna run build",
+    "build": "echo \"root build noop\"",
     "dev": "lerna run dev --parallel",
     "test": "lerna run test",
     "test:coverage": "lerna run test:coverage",

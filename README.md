@@ -149,6 +149,19 @@ curl -i -X POST https://<your-render-service>.onrender.com/api/voice/coach/pause
 new WebSocket("wss://<your-render-service>.onrender.com/realtime");
 ```
 
+### Render Deploy Notes
+
+- Free-tier dynos may sleep; the first request after idle time can take up to ~50 seconds while Render wakes the container.
+- Required environment variables on Render: `PORT=3000`, `ALLOWED_ORIGINS`, `OPENAI_API_KEY`, `CLAUDE_API_KEY`, `ELEVENLABS_API_KEY`, `VOICE_API_TOKEN`, `DATABASE_URL`, `REDIS_URL`, `FOUNDER_DARNELL_EMAIL`, `FOUNDER_SHRIA_EMAIL`.
+- Vercel frontend projects must target the Render-hosted API via:
+  - `PUBLIC_API_BASE_URL=https://em-ai-ecosystem.onrender.com`
+  - `PUBLIC_WS_URL=wss://em-ai-ecosystem.onrender.com`
+- Render installs devDependencies (`--include=dev`) so TypeScript compiles; you can also set `NPM_CONFIG_PRODUCTION=false` in Render if needed.
+- Quick health check:
+  ```bash
+  curl -i https://em-ai-ecosystem.onrender.com/health
+  ```
+
 ## 📖 Documentation
 
 | Document | Purpose |
