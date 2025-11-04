@@ -10,6 +10,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import intentRouter from './voice/intent.router';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -195,6 +196,11 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 // ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
 // ============================================================================
+
+/**
+ * Natural language intent endpoint with planner support
+ */
+app.use('/api/voice', intentRouter);
 
 /**
  * Mount voice router with all 6 endpoints
