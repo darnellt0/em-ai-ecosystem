@@ -23,6 +23,7 @@
   "author": "Elevated Movements",
   "license": "ISC",
   "dependencies": {
+    "@em/orchestrator": "workspace:*",
     "@slack/web-api": "^7.12.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

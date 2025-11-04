@@ -18,6 +18,8 @@
     "paths": {
       "@core/*": ["packages/core/src/*"],
       "@orchestrator/*": ["packages/orchestrator/src/*"],
+      "@em/orchestrator": ["packages/orchestrator/src/index"],
+      "@em/orchestrator/*": ["packages/orchestrator/src/*"],
       "@api/*": ["packages/api/src/*"],
       "@agents/*": ["packages/agents/*/src/*"]
     }
