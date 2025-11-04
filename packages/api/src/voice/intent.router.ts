@@ -38,7 +38,7 @@ router.post('/intent', async (req: Request<unknown, unknown, IntentRequestBody>,
 
     const referents = resolveReferents(text, sessionTurns);
     const classification = await classifier.classify(text, { founder, ...referents });
-    const plan = await createPlan(text, sessionTurns, classifier);
+    const plan = await createPlan(text, sessionTurns, classifier, classification);
 
     if (plan.isMultiStep) {
       return res.status(200).json({

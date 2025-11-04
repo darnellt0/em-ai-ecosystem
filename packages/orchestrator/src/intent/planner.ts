@@ -1,6 +1,6 @@
 import { IntentClassifier } from './classifier';
 import { resolveReferents } from './context';
-import { PlanningResult, PlanStep, SessionTurn } from './types';
+import { IntentClassification, PlanningResult, PlanStep, SessionTurn } from './types';
 
 const MULTI_STEP_SPLIT_REGEX = /\b(?:then|after that|and then|and afterwards|next)\b/i;
 
@@ -19,6 +19,7 @@ export async function createPlan(
   text: string,
   sessionTurns: SessionTurn[] = [],
   classifier: IntentClassifier = new IntentClassifier(),
+  seedClassification?: IntentClassification,
 ): Promise<PlanningResult> {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -28,8 +29,8 @@ export async function createPlan(
   const segments = splitUtterance(trimmed);
 
   if (segments.length === 1) {
-    const referents = resolveReferents(trimmed, sessionTurns);
-    const classification = await classifier.classify(trimmed, referents);
+    const classification =
+      seedClassification ?? (await classifier.classify(trimmed, resolveReferents(trimmed, sessionTurns)));
     return {
       isMultiStep: false,
       steps: [

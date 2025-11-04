@@ -27,5 +27,6 @@ declare module '@em/orchestrator' {
     text: string,
     sessionTurns?: SessionTurn[],
     classifier?: IntentClassifier,
+    seedClassification?: IntentClassification,
   ): Promise<PlanningResult>;
 }
