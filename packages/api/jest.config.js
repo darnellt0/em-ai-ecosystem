@@ -4,6 +4,10 @@ module.exports = {
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  moduleNameMapper: {
+    '^@em/context-memory$': '<rootDir>/../context-memory/src',
+    '^@em/context-memory/(.*)$': '<rootDir>/../context-memory/src/$1',
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -15,10 +19,7 @@ module.exports = {
   ],
   globals: {
     'ts-jest': {
-      tsconfig: {
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-      },
+      tsconfig: '<rootDir>/tsconfig.json',
     },
   },
   testTimeout: 10000,

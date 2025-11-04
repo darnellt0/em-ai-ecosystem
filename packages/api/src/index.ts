@@ -10,6 +10,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import contextRouter from './context/context.router';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -206,6 +207,9 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
  * POST /api/voice/support/follow-up
  */
 app.use('/api/voice', voiceRouter);
+
+// Context memory endpoints (session turns + long-term memory)
+app.use('/api/context', contextRouter);
 
 /**
  * Audio generation endpoints for ElevenLabs TTS integration

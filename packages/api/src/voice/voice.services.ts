@@ -147,7 +147,7 @@ export async function rescheduleMeeting(input: RescheduleInput): Promise<VoiceRe
 
     return {
       status: 'ok',
-      humanSummary: `Rescheduled "${result.title}" to ${newStartTime.toLocaleString()} for ${input.newDurationMinutes} minutes.`,
+      humanSummary: `Rescheduled "${result.title}" (${result.eventId}) to ${newStartTime.toLocaleString()} for ${input.newDurationMinutes} minutes.`,
       nextBestAction: `Notifying ${result.attendees.length} attendees of the time change.`,
       data: {
         founderEmail: input.founder,
@@ -243,7 +243,7 @@ export async function logTaskComplete(input: LogCompleteInput): Promise<VoiceRes
 
     return {
       status: 'ok',
-      humanSummary: `Marked "${result.title}" as complete.${
+      humanSummary: `Marked "${result.title}" (${result.taskId}) as complete.${
         input.note ? ` Noted: "${input.note}"` : ''
       }`,
       nextBestAction: result.nextTask

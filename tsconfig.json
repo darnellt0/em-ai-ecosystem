@@ -19,7 +19,9 @@
       "@core/*": ["packages/core/src/*"],
       "@orchestrator/*": ["packages/orchestrator/src/*"],
       "@api/*": ["packages/api/src/*"],
-      "@agents/*": ["packages/agents/*/src/*"]
+      "@agents/*": ["packages/agents/*/src/*"],
+      "@em/context-memory": ["packages/context-memory/src"],
+      "@em/context-memory/*": ["packages/context-memory/src/*"]
     }
   },
   "include": ["packages/*/src/**/*", "packages/*/tests/**/*"],
