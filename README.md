@@ -103,6 +103,52 @@ docker-compose ps
 docker-compose logs -f api
 ```
 
+## ?? Deployment (Render + Vercel)
+
+### Render API Service
+
+1. Push your changes and connect the repo in Render.
+2. Choose **New > Web Service**, select this repo, and Render auto-detects the build and start commands via `render.yaml`.
+3. Confirm the service region (Oregon) and plan (Free) or adjust as needed.
+4. Allow Render to create environment variables from `render.yaml`, then supply secrets for the API keys, database, and Redis.
+5. Optional automation: add `RENDER_SERVICE_ID` and `RENDER_API_KEY` as GitHub repository secrets to let the included GitHub Action auto-trigger a Render deploy on pushes to `main`.
+
+### Vercel Frontend
+
+1. Point your Vercel project at the appropriate frontend folder or static build.
+2. In Project Settings → Environment Variables, set:
+   - `PUBLIC_API_BASE_URL` (example: `https://<your-render-service>.onrender.com`)
+   - `PUBLIC_WS_URL` (example: `wss://<your-render-service>.onrender.com`)
+3. Redeploy the frontend so it picks up the new variables.
+
+### Frontend Usage
+
+```ts
+const baseUrl = process.env.PUBLIC_API_BASE_URL;
+const wsUrl = process.env.PUBLIC_WS_URL;
+
+await fetch(`${baseUrl}/api/voice/intent`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ text: 'Block deep work next Tuesday' }),
+});
+
+const socket = new WebSocket(`${wsUrl}/realtime`);
+socket.onmessage = (event) => console.log(event.data);
+```
+
+### Smoke Tests
+
+```bash
+curl -i https://<your-render-service>.onrender.com/health
+curl -i -X POST https://<your-render-service>.onrender.com/api/voice/coach/pause \
+  -H "Content-Type: application/json" \
+  -d '{"minutes":1}'
+
+# Browser console or Node REPL
+new WebSocket("wss://<your-render-service>.onrender.com/realtime");
+```
+
 ## 📖 Documentation
 
 | Document | Purpose |
