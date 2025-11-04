@@ -20,7 +20,13 @@
     "noUnusedParameters": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "baseUrl": "./src",
+    "paths": {
+      "@em/orchestrator": ["../orchestrator/src/index"],
+      "@em/orchestrator/*": ["../orchestrator/src/*"]
+    },
+    "rootDirs": ["./src", "../orchestrator/src"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests/**/*"],
