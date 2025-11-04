@@ -9,16 +9,17 @@ module.exports = {
     '!src/**/*.d.ts',
     '!src/index.ts',
   ],
+  moduleNameMapper: {
+    '^@em/orchestrator$': '<rootDir>/../orchestrator/src/index',
+    '^@em/orchestrator/(.*)$': '<rootDir>/../orchestrator/src/$1',
+  },
   coveragePathIgnorePatterns: [
     'node_modules',
     'dist',
   ],
   globals: {
     'ts-jest': {
-      tsconfig: {
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-      },
+      tsconfig: '<rootDir>/tsconfig.json',
     },
   },
   testTimeout: 10000,
