@@ -11,6 +11,7 @@ import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
+import analyticsRouter from './analytics/analytics.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
@@ -226,6 +227,15 @@ app.use('/api/voice', voiceRouter);
  * Audio generation endpoints for ElevenLabs TTS integration
  */
 app.use('/api/voice', voiceAudioRouter);
+
+// ============================================================================
+// ROUTES - ANALYTICS (PHASE 3)
+// ============================================================================
+
+/**
+ * Analytics endpoints for dashboard metrics and insights
+ */
+app.use('/api/analytics', analyticsRouter);
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
