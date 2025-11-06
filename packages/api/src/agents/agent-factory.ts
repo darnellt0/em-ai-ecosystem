@@ -139,18 +139,29 @@ class AgentFactory {
     this.logger.info(`[Calendar Optimizer] Confirming meeting: ${title} for ${founderEmail}`);
 
     try {
-      // Phase 2: Connect to Google Calendar API
-      // calendar.events.insert() with attendees and notifications
+      // Phase 2B: Use real Google Calendar API
       const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+
+      // Format attendees for Google Calendar
+      const attendeesList = (attendees || []).map(email => ({ email }));
+
+      // Create calendar event
+      const eventResult = await calendarService.createEvent(founderEmail, {
+        summary: title,
+        description: location ? `Location: ${location}\nAdded via Voice API` : `Added via Voice API - ${new Date().toISOString()}`,
+        start: { dateTime: startTime.toISOString(), timeZone: 'America/Los_Angeles' },
+        end: { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' },
+        attendees: attendeesList.length > 0 ? attendeesList : undefined,
+      });
 
       return {
         success: true,
-        eventId: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        eventId: eventResult.id,
         title: title,
         startTime: startTime,
         endTime: endTime,
         attendees: attendees || [founderEmail],
-        description: `Added via Voice API - ${new Date().toISOString()}`,
+        description: location ? `Location: ${location}` : `Added via Voice API`,
       };
     } catch (error) {
       this.logger.error('[Calendar Optimizer] Confirm meeting error:', error);
@@ -167,12 +178,25 @@ class AgentFactory {
     this.logger.info(`[Calendar Optimizer] Rescheduling event ${eventId} for ${founderEmail}`);
 
     try {
-      // Phase 2: Fetch event, check availability, update via Google Calendar API
+      // Phase 2B: Use real Google Calendar API to update event
       const endTime = new Date(newStartTime.getTime() + newDurationMinutes * 60000);
+
+      // Check for conflicts at new time
+      const conflicts = await calendarService.checkConflicts(founderEmail, newStartTime, endTime);
+      if (conflicts.length > 0) {
+        this.logger.warn(`[Calendar Optimizer] Conflicts found at new time: ${conflicts.join(', ')}`);
+      }
+
+      // Update the calendar event
+      const updateResult = await calendarService.updateEvent(founderEmail, eventId, {
+        start: { dateTime: newStartTime.toISOString(), timeZone: 'America/Los_Angeles' },
+        end: { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' },
+        description: `Rescheduled via Voice API - ${new Date().toISOString()}`,
+      });
 
       return {
         success: true,
-        eventId: eventId,
+        eventId: updateResult.id,
         title: 'Rescheduled Meeting',
         startTime: newStartTime,
         endTime: endTime,
