@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # API Service
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: em-api-production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://em_user:${DB_PASSWORD:-em_password}@database:5432/em_ecosystem
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-10}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      VOICE_API_TOKEN: ${VOICE_API_TOKEN}
+      FOUNDER_DARNELL_EMAIL: ${FOUNDER_DARNELL_EMAIL}
+      FOUNDER_SHRIA_EMAIL: ${FOUNDER_SHRIA_EMAIL}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://em-ai-mobile.vercel.app}
+    ports:
+      - "3000:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - em-network
+
+  # ============================================================================
+  # PostgreSQL Database
+  # ============================================================================
+  database:
+    image: postgres:15-alpine
+    container_name: em-database-production
+    environment:
+      POSTGRES_USER: em_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-em_password}
+      POSTGRES_DB: em_ecosystem
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./packages/api/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U em_user -d em_ecosystem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - em-network
+
+  # ============================================================================
+  # Redis Cache
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: em-redis-production
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - em-network
+
+  # ============================================================================
+  # Caddy Reverse Proxy (HTTPS)
+  # ============================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: em-caddy-production
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - em-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  em-network:
+    driver: bridge
