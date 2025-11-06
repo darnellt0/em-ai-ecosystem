@@ -10,6 +10,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
+import authRouter from './auth/auth.router';
+import { requireAuth, optionalAuth } from './middleware/auth.middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -193,11 +195,25 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 });
 
 // ============================================================================
+// ROUTES - AUTHENTICATION
+// ============================================================================
+
+/**
+ * Mount authentication router
+ * POST /api/auth/signup   - Register new user
+ * POST /api/auth/login    - Authenticate user
+ * POST /api/auth/logout   - Invalidate token
+ * POST /api/auth/refresh  - Refresh token
+ * GET  /api/auth/me       - Get current user
+ */
+app.use('/api/auth', authRouter);
+
+// ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
 // ============================================================================
 
 /**
- * Mount voice router with all 6 endpoints
+ * Mount voice router with all 6 endpoints (with optional auth)
  * POST /api/voice/scheduler/block
  * POST /api/voice/scheduler/confirm
  * POST /api/voice/scheduler/reschedule
@@ -205,7 +221,7 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
  * POST /api/voice/support/log-complete
  * POST /api/voice/support/follow-up
  */
-app.use('/api/voice', voiceRouter);
+app.use('/api/voice', optionalAuth, voiceRouter);
 
 /**
  * Audio generation endpoints for ElevenLabs TTS integration
@@ -213,7 +229,7 @@ app.use('/api/voice', voiceRouter);
  * POST /api/voice/audio/batch        - Generate multiple audios
  * GET  /api/voice/audio/voices       - List available voices
  */
-app.use('/api/voice', voiceAudioRouter);
+app.use('/api/voice', optionalAuth, voiceAudioRouter);
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
@@ -371,6 +387,11 @@ app.use((req: Request, res: Response) => {
     message: 'The requested endpoint does not exist',
     available_endpoints: [
       '/health',
+      '/api/auth/signup',
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/refresh',
+      '/api/auth/me',
       '/api/agents',
       '/api/agents/status',
       '/api/config',
@@ -414,13 +435,19 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   Port: ${PORT}`);
   console.log(`   Environment: ${NODE_ENV}`);
   console.log(`   Status: Running\n`);
-  console.log(`Available endpoints:`);
-  console.log(`   GET /health                        - Health check`);
-  console.log(`   GET /api/agents                    - List all agents`);
-  console.log(`   GET /api/agents/status             - Agent status`);
-  console.log(`   GET /api/config                    - Configuration`);
-  console.log(`   GET /api/executions                - Recent executions`);
-  console.log(`   GET /api/dashboard                 - Dashboard data\n`);
+  console.log(`🔐 AUTHENTICATION ENDPOINTS:`);
+  console.log(`   POST /api/auth/signup               - Register new user`);
+  console.log(`   POST /api/auth/login                - Authenticate user`);
+  console.log(`   POST /api/auth/logout               - Invalidate token`);
+  console.log(`   POST /api/auth/refresh              - Refresh token`);
+  console.log(`   GET  /api/auth/me                   - Get current user\n`);
+  console.log(`📊 DASHBOARD ENDPOINTS:`);
+  console.log(`   GET /health                         - Health check`);
+  console.log(`   GET /api/agents                     - List all agents`);
+  console.log(`   GET /api/agents/status              - Agent status`);
+  console.log(`   GET /api/config                     - Configuration`);
+  console.log(`   GET /api/executions                 - Recent executions`);
+  console.log(`   GET /api/dashboard                  - Dashboard data\n`);
   console.log(`🎤 VOICE API ENDPOINTS (Phase Voice-0):`);
   console.log(`   POST /api/voice/scheduler/block         - Block focus time`);
   console.log(`   POST /api/voice/scheduler/confirm       - Confirm meeting`);
