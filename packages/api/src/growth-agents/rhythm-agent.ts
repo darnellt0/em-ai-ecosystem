@@ -40,7 +40,8 @@ export class RhythmAgent extends BaseAgent {
         scopes: ['https://www.googleapis.com/auth/calendar'],
       });
 
-      this.calendar = google.calendar({ version: 'v3', auth: await auth.getClient() });
+      const authClient = await auth.getClient();
+      this.calendar = google.calendar({ version: 'v3', auth: authClient as any });
     }
 
     await this.reportProgress(10, 'Google Calendar API initialized');

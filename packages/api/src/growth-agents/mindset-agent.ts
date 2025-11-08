@@ -43,7 +43,8 @@ export class MindsetAgent extends BaseAgent {
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
 
-      this.sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+      const authClient = await auth.getClient();
+      this.sheets = google.sheets({ version: 'v4', auth: authClient as any });
     }
 
     await this.reportProgress(10, 'Google Sheets API initialized');
