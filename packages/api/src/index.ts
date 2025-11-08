@@ -237,6 +237,11 @@ app.use('/api/voice', voiceAudioRouter);
  */
 app.use('/api/orchestrator', orchestratorRouter);
 
+/**
+ * Serve growth agents monitoring UI
+ */
+app.use('/agents', express.static('src/public'));
+
 // ============================================================================
 // ROUTES - DASHBOARD HTML
 // ============================================================================
