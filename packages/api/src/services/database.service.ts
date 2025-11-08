@@ -3,14 +3,14 @@
  * Handles all database operations for tasks and activities
  */
 
-import { Pool, QueryResult, PoolClient } from 'pg';
+import { Pool, QueryResult, PoolClient } from "pg";
 
 interface TaskRecord {
   id: string;
   founder_email: string;
   title: string;
   description?: string;
-  status: 'completed' | 'pending' | 'updated';
+  status: "completed" | "pending" | "updated";
   created_at: Date;
   updated_at: Date;
   due_date?: Date;
@@ -41,8 +41,11 @@ export class DatabaseService {
       connectionTimeoutMillis: 2000,
     });
 
-    this.pool.on('error', (err) => {
-      this.logger.error('[Database Service] Unexpected error on idle client:', err);
+    this.pool.on("error", (err) => {
+      this.logger.error(
+        "[Database Service] Unexpected error on idle client:",
+        err,
+      );
     });
 
     this.testConnection();
@@ -54,13 +57,15 @@ export class DatabaseService {
   private async testConnection(): Promise<void> {
     try {
       const client = await this.pool.connect();
-      const result = await client.query('SELECT 1');
+      const result = await client.query("SELECT 1");
       client.release();
       this.isConnected = true;
-      this.logger.info('[Database Service] Connected to PostgreSQL successfully');
+      this.logger.info(
+        "[Database Service] Connected to PostgreSQL successfully",
+      );
     } catch (error) {
       this.isConnected = false;
-      this.logger.error('[Database Service] Connection test failed:', error);
+      this.logger.error("[Database Service] Connection test failed:", error);
     }
   }
 
@@ -69,14 +74,19 @@ export class DatabaseService {
    */
   async logTaskComplete(
     taskId: string,
-    completionNote: string
-  ): Promise<{ success: boolean; nextTask?: { title: string; dueDate: Date } }> {
+    completionNote: string,
+  ): Promise<{
+    success: boolean;
+    nextTask?: { title: string; dueDate: Date };
+  }> {
     if (!this.isConnected) {
-      this.logger.warn('[Database Service] Database not connected. Using mock response.');
+      this.logger.warn(
+        "[Database Service] Database not connected. Using mock response.",
+      );
       return {
         success: true,
         nextTask: {
-          title: 'Next priority task',
+          title: "Next priority task",
           dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       };
@@ -85,7 +95,7 @@ export class DatabaseService {
     const client = await this.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       // Update task as complete
       const updateResult = await client.query(
@@ -93,7 +103,7 @@ export class DatabaseService {
          SET status = $1, completed_at = $2, completion_note = $3, updated_at = $4
          WHERE id = $5
          RETURNING id, founder_email`,
-        ['completed', new Date(), completionNote, new Date(), taskId]
+        ["completed", new Date(), completionNote, new Date(), taskId],
       );
 
       if (updateResult.rows.length === 0) {
@@ -106,7 +116,14 @@ export class DatabaseService {
       await client.query(
         `INSERT INTO task_history (task_id, action, change_details)
          VALUES ($1, $2, $3)`,
-        [taskId, 'completed', JSON.stringify({ note: completionNote, timestamp: new Date().toISOString() })]
+        [
+          taskId,
+          "completed",
+          JSON.stringify({
+            note: completionNote,
+            timestamp: new Date().toISOString(),
+          }),
+        ],
       );
 
       // Get next task
@@ -116,24 +133,26 @@ export class DatabaseService {
          WHERE founder_email = $1 AND status = 'pending' AND id != $2
          ORDER BY due_date ASC NULLS LAST, created_at ASC
          LIMIT 1`,
-        [founderEmail, taskId]
+        [founderEmail, taskId],
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       const nextTask = nextTaskResult.rows[0];
       return {
         success: true,
         nextTask: nextTask
           ? {
-            title: nextTask.title,
-            dueDate: nextTask.due_date ? new Date(nextTask.due_date) : new Date(),
-          }
+              title: nextTask.title,
+              dueDate: nextTask.due_date
+                ? new Date(nextTask.due_date)
+                : new Date(),
+            }
           : undefined,
       };
     } catch (error) {
-      await client.query('ROLLBACK');
-      this.logger.error('[Database Service] logTaskComplete error:', error);
+      await client.query("ROLLBACK");
+      this.logger.error("[Database Service] logTaskComplete error:", error);
       throw error;
     } finally {
       client.release();
@@ -147,10 +166,12 @@ export class DatabaseService {
     founderEmail: string,
     subject: string,
     dueDate?: Date,
-    context?: string
+    context?: string,
   ): Promise<{ taskId: string; success: boolean }> {
     if (!this.isConnected) {
-      this.logger.warn('[Database Service] Database not connected. Using mock response.');
+      this.logger.warn(
+        "[Database Service] Database not connected. Using mock response.",
+      );
       return {
         taskId: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         success: true,
@@ -168,21 +189,25 @@ export class DatabaseService {
         `INSERT INTO tasks (id, founder_email, title, description, status, due_date, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [taskId, founderEmail, subject, context, 'pending', dueDate, now, now]
+        [taskId, founderEmail, subject, context, "pending", dueDate, now, now],
       );
 
       // Log to history
       await client.query(
         `INSERT INTO task_history (task_id, action, change_details)
          VALUES ($1, $2, $3)`,
-        [taskId, 'created', JSON.stringify({ context, dueDate: dueDate?.toISOString() })]
+        [
+          taskId,
+          "created",
+          JSON.stringify({ context, dueDate: dueDate?.toISOString() }),
+        ],
       );
 
       this.logger.info(`[Database Service] Follow-up task created: ${taskId}`);
 
       return { taskId, success: true };
     } catch (error) {
-      this.logger.error('[Database Service] createFollowUp error:', error);
+      this.logger.error("[Database Service] createFollowUp error:", error);
       throw error;
     } finally {
       client.release();
@@ -196,10 +221,12 @@ export class DatabaseService {
     founderEmail: string,
     activity: string,
     durationMinutes: number,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<{ success: boolean; activityId: number }> {
     if (!this.isConnected) {
-      this.logger.warn('[Database Service] Database not connected. Using mock response.');
+      this.logger.warn(
+        "[Database Service] Database not connected. Using mock response.",
+      );
       return {
         success: true,
         activityId: Math.floor(Math.random() * 1000000),
@@ -213,13 +240,19 @@ export class DatabaseService {
         `INSERT INTO activities (founder_email, activity_type, duration_minutes, metadata, timestamp)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-        [founderEmail, activity, durationMinutes, JSON.stringify(metadata || {}), new Date()]
+        [
+          founderEmail,
+          activity,
+          durationMinutes,
+          JSON.stringify(metadata || {}),
+          new Date(),
+        ],
       );
 
       const activityId = result.rows[0].id;
 
       this.logger.info(
-        `[Database Service] Activity recorded: ${activity} for ${founderEmail} (ID: ${activityId})`
+        `[Database Service] Activity recorded: ${activity} for ${founderEmail} (ID: ${activityId})`,
       );
 
       return {
@@ -227,7 +260,7 @@ export class DatabaseService {
         activityId,
       };
     } catch (error) {
-      this.logger.error('[Database Service] recordActivity error:', error);
+      this.logger.error("[Database Service] recordActivity error:", error);
       throw error;
     } finally {
       client.release();
@@ -245,12 +278,12 @@ export class DatabaseService {
     try {
       const result = await this.pool.query(
         `SELECT * FROM tasks WHERE id = $1`,
-        [taskId]
+        [taskId],
       );
 
       return result.rows[0] || null;
     } catch (error) {
-      this.logger.error('[Database Service] getTask error:', error);
+      this.logger.error("[Database Service] getTask error:", error);
       return null;
     }
   }
@@ -268,12 +301,12 @@ export class DatabaseService {
         `SELECT * FROM tasks
          WHERE founder_email = $1 AND status = 'pending'
          ORDER BY due_date ASC NULLS LAST, created_at ASC`,
-        [founderEmail]
+        [founderEmail],
       );
 
       return result.rows;
     } catch (error) {
-      this.logger.error('[Database Service] getPendingTasks error:', error);
+      this.logger.error("[Database Service] getPendingTasks error:", error);
       return [];
     }
   }
@@ -284,7 +317,7 @@ export class DatabaseService {
   async getActivityStats(
     founderEmail: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<{ totalMinutes: number; byType: Record<string, number> }> {
     if (!this.isConnected) {
       return { totalMinutes: 0, byType: {} };
@@ -296,7 +329,7 @@ export class DatabaseService {
          FROM activities
          WHERE founder_email = $1 AND timestamp BETWEEN $2 AND $3
          GROUP BY activity_type`,
-        [founderEmail, startTime, endTime]
+        [founderEmail, startTime, endTime],
       );
 
       let totalMinutes = 0;
@@ -310,7 +343,7 @@ export class DatabaseService {
 
       return { totalMinutes, byType };
     } catch (error) {
-      this.logger.error('[Database Service] getActivityStats error:', error);
+      this.logger.error("[Database Service] getActivityStats error:", error);
       return { totalMinutes: 0, byType: {} };
     }
   }
@@ -320,7 +353,9 @@ export class DatabaseService {
    */
   async ensureTablesExist(): Promise<void> {
     if (!this.isConnected) {
-      this.logger.warn('[Database Service] Cannot ensure tables - database not connected');
+      this.logger.warn(
+        "[Database Service] Cannot ensure tables - database not connected",
+      );
       return;
     }
 
@@ -396,9 +431,9 @@ export class DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_activities_timestamp ON activities(timestamp)
       `);
 
-      this.logger.info('[Database Service] Tables ensured to exist');
+      this.logger.info("[Database Service] Tables ensured to exist");
     } catch (error) {
-      this.logger.error('[Database Service] ensureTablesExist error:', error);
+      this.logger.error("[Database Service] ensureTablesExist error:", error);
     } finally {
       client.release();
     }
@@ -411,9 +446,9 @@ export class DatabaseService {
     try {
       await this.pool.end();
       this.isConnected = false;
-      this.logger.info('[Database Service] Pool closed');
+      this.logger.info("[Database Service] Pool closed");
     } catch (error) {
-      this.logger.error('[Database Service] Error closing pool:', error);
+      this.logger.error("[Database Service] Error closing pool:", error);
     }
   }
 
@@ -427,7 +462,7 @@ export class DatabaseService {
     return {
       connected: this.isConnected,
       warning: !this.isConnected
-        ? 'Database service not connected. Check DATABASE_URL environment variable.'
+        ? "Database service not connected. Check DATABASE_URL environment variable."
         : undefined,
     };
   }
@@ -438,11 +473,11 @@ export class DatabaseService {
   async healthCheck(): Promise<boolean> {
     try {
       const client = await this.pool.connect();
-      await client.query('SELECT 1');
+      await client.query("SELECT 1");
       client.release();
       return true;
     } catch (error) {
-      this.logger.error('[Database Service] Health check failed:', error);
+      this.logger.error("[Database Service] Health check failed:", error);
       return false;
     }
   }

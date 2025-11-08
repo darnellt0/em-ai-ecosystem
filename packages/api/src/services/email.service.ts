@@ -3,7 +3,7 @@
  * Handles email notifications via Gmail or SMTP
  */
 
-import nodemailer, { Transporter } from 'nodemailer';
+import nodemailer, { Transporter } from "nodemailer";
 
 interface EmailTemplate {
   taskTitle?: string;
@@ -35,7 +35,7 @@ export class EmailService {
       // Try Gmail first
       if (gmailUser && gmailPassword) {
         this.transporter = nodemailer.createTransport({
-          service: 'gmail',
+          service: "gmail",
           auth: {
             user: gmailUser,
             pass: gmailPassword,
@@ -43,7 +43,7 @@ export class EmailService {
         });
 
         this.isConfigured = true;
-        this.logger.info('[Email Service] Configured with Gmail account');
+        this.logger.info("[Email Service] Configured with Gmail account");
         return;
       }
 
@@ -52,7 +52,7 @@ export class EmailService {
         this.transporter = nodemailer.createTransport({
           host: smtpHost,
           port: parseInt(smtpPort, 10),
-          secure: process.env.SMTP_SECURE === 'true',
+          secure: process.env.SMTP_SECURE === "true",
           auth: {
             user: smtpUser,
             pass: smtpPass,
@@ -60,14 +60,18 @@ export class EmailService {
         });
 
         this.isConfigured = true;
-        this.logger.info('[Email Service] Configured with SMTP server');
+        this.logger.info("[Email Service] Configured with SMTP server");
         return;
       }
 
-      this.logger.warn('[Email Service] No email configuration found in environment variables');
-      this.logger.info('[Email Service] Email notifications will be logged but not sent');
+      this.logger.warn(
+        "[Email Service] No email configuration found in environment variables",
+      );
+      this.logger.info(
+        "[Email Service] Email notifications will be logged but not sent",
+      );
     } catch (error) {
-      this.logger.error('[Email Service] Initialization error:', error);
+      this.logger.error("[Email Service] Initialization error:", error);
       this.isConfigured = false;
     }
   }
@@ -79,10 +83,12 @@ export class EmailService {
     to: string,
     subject: string,
     html: string,
-    text?: string
+    text?: string,
   ): Promise<{ messageId: string; success: boolean }> {
     if (!this.isConfigured || !this.transporter) {
-      this.logger.warn(`[Email Service] Email not configured. Would send to ${to}: ${subject}`);
+      this.logger.warn(
+        `[Email Service] Email not configured. Would send to ${to}: ${subject}`,
+      );
       return {
         messageId: `msg_mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         success: true,
@@ -93,23 +99,28 @@ export class EmailService {
       this.logger.info(`[Email Service] Sending email to ${to}: ${subject}`);
 
       const info = await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.GMAIL_USER || 'noreply@elevatedmovements.com',
+        from:
+          process.env.EMAIL_FROM ||
+          process.env.GMAIL_USER ||
+          "noreply@elevatedmovements.com",
         to,
         subject,
         text: text || this.stripHtml(html),
         html,
       });
 
-      this.logger.info(`[Email Service] Email sent successfully: ${info.messageId}`);
+      this.logger.info(
+        `[Email Service] Email sent successfully: ${info.messageId}`,
+      );
 
       return {
-        messageId: info.messageId || '',
+        messageId: info.messageId || "",
         success: true,
       };
     } catch (error) {
-      this.logger.error('[Email Service] Send error:', error);
+      this.logger.error("[Email Service] Send error:", error);
       return {
-        messageId: '',
+        messageId: "",
         success: false,
       };
     }
@@ -141,15 +152,19 @@ export class EmailService {
             <div class="content">
               <p>Great work! You have successfully completed:</p>
               <div class="task-item">
-                <strong>${data.taskTitle || 'Task'}</strong>
+                <strong>${data.taskTitle || "Task"}</strong>
               </div>
 
-              ${data.nextTaskTitle ? `
+              ${
+                data.nextTaskTitle
+                  ? `
                 <p style="margin-top: 20px;">Your next priority is:</p>
                 <div class="next-task">
                   <strong>${data.nextTaskTitle}</strong>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
 
               <p style="margin-top: 20px; font-style: italic; color: #666;">
                 This notification was sent by Elevated Movements Voice Assistant.
@@ -189,8 +204,8 @@ export class EmailService {
             <div class="content">
               <p>You have a follow-up reminder:</p>
               <div class="reminder-item">
-                <strong>${data.subject || 'Follow-up'}</strong>
-                ${data.dueDate ? `<p>Due: ${data.dueDate}</p>` : ''}
+                <strong>${data.subject || "Follow-up"}</strong>
+                ${data.dueDate ? `<p>Due: ${data.dueDate}</p>` : ""}
               </div>
 
               <p style="margin-top: 20px; font-style: italic; color: #666;">
@@ -231,8 +246,8 @@ export class EmailService {
             <div class="content">
               <p>Your meeting has been rescheduled:</p>
               <div class="meeting-item">
-                <strong>${data.meetingTitle || 'Meeting'}</strong>
-                ${data.newTime ? `<p>New time: ${data.newTime}</p>` : ''}
+                <strong>${data.meetingTitle || "Meeting"}</strong>
+                ${data.newTime ? `<p>New time: ${data.newTime}</p>` : ""}
               </div>
 
               <p style="margin-top: 20px; font-style: italic; color: #666;">
@@ -251,7 +266,11 @@ export class EmailService {
   /**
    * Focus block confirmation template
    */
-  getFocusBlockTemplate(data: { reason: string; duration: number; startTime: string }): string {
+  getFocusBlockTemplate(data: {
+    reason: string;
+    duration: number;
+    startTime: string;
+  }): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -305,10 +324,13 @@ export class EmailService {
 
     try {
       await this.transporter.verify();
-      this.logger.info('[Email Service] Connection verified');
+      this.logger.info("[Email Service] Connection verified");
       return true;
     } catch (error) {
-      this.logger.error('[Email Service] Connection verification failed:', error);
+      this.logger.error(
+        "[Email Service] Connection verification failed:",
+        error,
+      );
       return false;
     }
   }
@@ -317,7 +339,10 @@ export class EmailService {
    * Strip HTML tags for plain text version
    */
   private stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    return html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .trim();
   }
 
   /**
@@ -330,9 +355,13 @@ export class EmailService {
   } {
     return {
       configured: this.isConfigured,
-      provider: process.env.GMAIL_USER ? 'Gmail' : process.env.SMTP_HOST ? 'SMTP' : undefined,
+      provider: process.env.GMAIL_USER
+        ? "Gmail"
+        : process.env.SMTP_HOST
+          ? "SMTP"
+          : undefined,
       warning: !this.isConfigured
-        ? 'Email service not configured. Add GMAIL_USER/GMAIL_APP_PASSWORD or SMTP credentials to .env'
+        ? "Email service not configured. Add GMAIL_USER/GMAIL_APP_PASSWORD or SMTP credentials to .env"
         : undefined,
     };
   }

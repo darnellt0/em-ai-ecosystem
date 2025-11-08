@@ -6,11 +6,15 @@
  * Production routes for audio streaming and generation
  */
 
-import { Router, Response, RequestHandler } from 'express';
-import { z } from 'zod';
-import { authBearer, AuthenticatedRequest } from '../middleware/authBearer';
-import { rateLimitSimple } from '../middleware/rateLimitSimple';
-import { generateAudio, VOICE_PRESETS, ElevenLabsConfig } from './voice.elevenlabs';
+import { Router, Response, RequestHandler } from "express";
+import { z } from "zod";
+import { authBearer, AuthenticatedRequest } from "../middleware/authBearer";
+import { rateLimitSimple } from "../middleware/rateLimitSimple";
+import {
+  generateAudio,
+  VOICE_PRESETS,
+  ElevenLabsConfig,
+} from "./voice.elevenlabs";
 
 const router = Router();
 
@@ -18,7 +22,9 @@ const router = Router();
 const middleware = [authBearer, rateLimitSimple];
 
 // Helper to wrap async handlers
-const asyncHandler = (fn: (req: AuthenticatedRequest, res: Response) => Promise<void>): RequestHandler => {
+const asyncHandler = (
+  fn: (req: AuthenticatedRequest, res: Response) => Promise<void>,
+): RequestHandler => {
   return (req, res, next) => {
     Promise.resolve(fn(req as AuthenticatedRequest, res)).catch(next);
   };
@@ -29,12 +35,31 @@ const asyncHandler = (fn: (req: AuthenticatedRequest, res: Response) => Promise<
 // ============================================================================
 
 const GenerateAudioSchema = z.object({
-  text: z.string().min(1).max(1000).describe('Text to generate audio from'),
-  voiceId: z.string().optional().describe('ElevenLabs voice ID (default: Shria)'),
-  modelId: z.string().optional().describe('ElevenLabs model ID (default: eleven_turbo_v2_5)'),
-  stability: z.number().min(0).max(1).optional().describe('Voice stability (0-1)'),
-  similarity_boost: z.number().min(0).max(1).optional().describe('Similarity boost (0-1)'),
-  returnFormat: z.enum(['buffer', 'base64', 'url']).optional().default('buffer'),
+  text: z.string().min(1).max(1000).describe("Text to generate audio from"),
+  voiceId: z
+    .string()
+    .optional()
+    .describe("ElevenLabs voice ID (default: Shria)"),
+  modelId: z
+    .string()
+    .optional()
+    .describe("ElevenLabs model ID (default: eleven_turbo_v2_5)"),
+  stability: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Voice stability (0-1)"),
+  similarity_boost: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Similarity boost (0-1)"),
+  returnFormat: z
+    .enum(["buffer", "base64", "url"])
+    .optional()
+    .default("buffer"),
 });
 
 type GenerateAudioInput = z.infer<typeof GenerateAudioSchema>;
@@ -61,7 +86,7 @@ type GenerateAudioInput = z.infer<typeof GenerateAudioSchema>;
  * - If returnFormat=url: Would integrate with S3/storage (future)
  */
 router.post(
-  '/audio/generate',
+  "/audio/generate",
   ...middleware,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     // Validate request
@@ -71,9 +96,12 @@ router.post(
     } catch (err) {
       const zodErr = err as z.ZodError;
       res.status(400).json({
-        status: 'error',
-        message: 'Validation error',
-        errors: zodErr.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+        status: "error",
+        message: "Validation error",
+        errors: zodErr.errors.map((e) => ({
+          path: e.path.join("."),
+          message: e.message,
+        })),
       });
       return;
     }
@@ -90,35 +118,39 @@ router.post(
     }
 
     // Generate audio
-    const result = await generateAudio(input.text, config, input.returnFormat === 'base64');
+    const result = await generateAudio(
+      input.text,
+      config,
+      input.returnFormat === "base64",
+    );
 
     if (!result.success) {
       res.status(500).json({
-        status: 'error',
-        message: 'Audio generation failed',
+        status: "error",
+        message: "Audio generation failed",
         error: result.error,
       });
       return;
     }
 
     // Return based on format
-    if (input.returnFormat === 'base64') {
+    if (input.returnFormat === "base64") {
       res.json({
-        status: 'ok',
+        status: "ok",
         audioBase64: result.audioBase64,
         size: result.size,
-        format: 'mp3',
-        voiceId: config.voiceId || 'DoEstgRs2aKZVhKhJhnx',
+        format: "mp3",
+        voiceId: config.voiceId || "DoEstgRs2aKZVhKhJhnx",
       });
       return;
     }
 
     // Default: return as audio stream
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', result.size);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", result.size);
+    res.setHeader("Cache-Control", "public, max-age=3600");
     res.send(result.audioBuffer);
-  })
+  }),
 );
 
 // ============================================================================
@@ -137,16 +169,20 @@ router.post(
  *   }
  * }
  */
-router.get('/audio/voices', middleware, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  res.json({
-    status: 'ok',
-    voices: Object.entries(VOICE_PRESETS).map(([key, voice]) => ({
-      key,
-      ...voice,
-    })),
-    default: 'shria',
-  });
-}));
+router.get(
+  "/audio/voices",
+  middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    res.json({
+      status: "ok",
+      voices: Object.entries(VOICE_PRESETS).map(([key, voice]) => ({
+        key,
+        ...voice,
+      })),
+      default: "shria",
+    });
+  }),
+);
 
 // ============================================================================
 // ENDPOINT 3: POST /api/voice/audio/batch
@@ -185,7 +221,7 @@ const BatchAudioSchema = z.object({
 type BatchAudioInput = z.infer<typeof BatchAudioSchema>;
 
 router.post(
-  '/audio/batch',
+  "/audio/batch",
   ...middleware,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     // Validate
@@ -195,9 +231,12 @@ router.post(
     } catch (err) {
       const zodErr = err as z.ZodError;
       res.status(400).json({
-        status: 'error',
-        message: 'Validation error',
-        errors: zodErr.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+        status: "error",
+        message: "Validation error",
+        errors: zodErr.errors.map((e) => ({
+          path: e.path.join("."),
+          message: e.message,
+        })),
       });
       return;
     }
@@ -209,18 +248,20 @@ router.post(
 
     // Generate all in parallel
     const results = await Promise.all(
-      input.texts.map((text) => generateAudio(text, config, true)) // Always return base64 for batch
+      input.texts.map((text) => generateAudio(text, config, true)), // Always return base64 for batch
     );
 
     res.json({
-      status: 'ok',
+      status: "ok",
       count: results.length,
       audios: results.map((result) => ({
         success: result.success,
-        ...(result.success ? { audioBase64: result.audioBase64, size: result.size } : { error: result.error }),
+        ...(result.success
+          ? { audioBase64: result.audioBase64, size: result.size }
+          : { error: result.error }),
       })),
     });
-  })
+  }),
 );
 
 export default router;

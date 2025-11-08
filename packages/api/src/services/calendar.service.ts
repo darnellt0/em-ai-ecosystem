@@ -3,9 +3,9 @@
  * Handles real Google Calendar API calls for calendar operations
  */
 
-import { google, calendar_v3 } from 'googleapis';
-import * as path from 'path';
-import * as fs from 'fs';
+import { google, calendar_v3 } from "googleapis";
+import * as path from "path";
+import * as fs from "fs";
 
 interface CalendarEvent {
   summary: string;
@@ -24,7 +24,10 @@ export class CalendarService {
     try {
       this.initializeCalendarClient();
     } catch (error) {
-      this.logger.warn('[Calendar Service] Failed to initialize Google Calendar client:', error);
+      this.logger.warn(
+        "[Calendar Service] Failed to initialize Google Calendar client:",
+        error,
+      );
       this.calendar = null;
     }
   }
@@ -33,25 +36,27 @@ export class CalendarService {
     // Check if credentials file exists
     const credentialsPath = path.join(
       __dirname,
-      '../../config/google-credentials.json'
+      "../../config/google-credentials.json",
     );
 
     if (!fs.existsSync(credentialsPath)) {
       this.logger.warn(
-        `[Calendar Service] Credentials file not found at ${credentialsPath}`
+        `[Calendar Service] Credentials file not found at ${credentialsPath}`,
       );
-      this.logger.info('[Calendar Service] Using mock calendar responses');
+      this.logger.info("[Calendar Service] Using mock calendar responses");
       return;
     }
 
-    const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+    const SCOPES = ["https://www.googleapis.com/auth/calendar"];
     const auth = new google.auth.GoogleAuth({
       keyFile: credentialsPath,
       scopes: SCOPES,
     });
 
-    this.calendar = google.calendar({ version: 'v3', auth });
-    this.logger.info('[Calendar Service] Google Calendar client initialized successfully');
+    this.calendar = google.calendar({ version: "v3", auth });
+    this.logger.info(
+      "[Calendar Service] Google Calendar client initialized successfully",
+    );
   }
 
   /**
@@ -59,11 +64,13 @@ export class CalendarService {
    */
   async createEvent(
     calendarId: string,
-    event: CalendarEvent
+    event: CalendarEvent,
   ): Promise<{ id: string; htmlLink: string }> {
     if (!this.calendar) {
       // Return mock response if calendar not initialized
-      this.logger.warn('[Calendar Service] Using mock response - Calendar not initialized');
+      this.logger.warn(
+        "[Calendar Service] Using mock response - Calendar not initialized",
+      );
       return {
         id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         htmlLink: `https://calendar.google.com/calendar/r/eventedit/${Date.now()}`,
@@ -72,29 +79,31 @@ export class CalendarService {
 
     try {
       this.logger.info(
-        `[Calendar Service] Creating event: ${event.summary} for ${calendarId}`
+        `[Calendar Service] Creating event: ${event.summary} for ${calendarId}`,
       );
 
       const response = await this.calendar.events.insert({
         calendarId,
         requestBody: {
           ...event,
-          transparency: event.transparency || 'opaque',
+          transparency: event.transparency || "opaque",
         },
       });
 
       if (!response.data.id || !response.data.htmlLink) {
-        throw new Error('Invalid response from Google Calendar API');
+        throw new Error("Invalid response from Google Calendar API");
       }
 
-      this.logger.info(`[Calendar Service] Event created with ID: ${response.data.id}`);
+      this.logger.info(
+        `[Calendar Service] Event created with ID: ${response.data.id}`,
+      );
 
       return {
         id: response.data.id,
         htmlLink: response.data.htmlLink,
       };
     } catch (error) {
-      this.logger.error('[Calendar Service] Create event error:', error);
+      this.logger.error("[Calendar Service] Create event error:", error);
       throw error;
     }
   }
@@ -102,9 +111,12 @@ export class CalendarService {
   /**
    * Get a calendar event
    */
-  async getEvent(calendarId: string, eventId: string): Promise<calendar_v3.Schema$Event> {
+  async getEvent(
+    calendarId: string,
+    eventId: string,
+  ): Promise<calendar_v3.Schema$Event> {
     if (!this.calendar) {
-      throw new Error('Calendar service not initialized');
+      throw new Error("Calendar service not initialized");
     }
 
     try {
@@ -117,7 +129,7 @@ export class CalendarService {
 
       return response.data;
     } catch (error) {
-      this.logger.error('[Calendar Service] Get event error:', error);
+      this.logger.error("[Calendar Service] Get event error:", error);
       throw error;
     }
   }
@@ -128,10 +140,12 @@ export class CalendarService {
   async updateEvent(
     calendarId: string,
     eventId: string,
-    event: Partial<CalendarEvent>
+    event: Partial<CalendarEvent>,
   ): Promise<{ id: string; htmlLink: string }> {
     if (!this.calendar) {
-      this.logger.warn('[Calendar Service] Using mock response - Calendar not initialized');
+      this.logger.warn(
+        "[Calendar Service] Using mock response - Calendar not initialized",
+      );
       return {
         id: eventId,
         htmlLink: `https://calendar.google.com/calendar/r/eventedit/${eventId}`,
@@ -148,7 +162,7 @@ export class CalendarService {
       });
 
       if (!response.data.id || !response.data.htmlLink) {
-        throw new Error('Invalid response from Google Calendar API');
+        throw new Error("Invalid response from Google Calendar API");
       }
 
       this.logger.info(`[Calendar Service] Event updated: ${response.data.id}`);
@@ -158,7 +172,7 @@ export class CalendarService {
         htmlLink: response.data.htmlLink,
       };
     } catch (error) {
-      this.logger.error('[Calendar Service] Update event error:', error);
+      this.logger.error("[Calendar Service] Update event error:", error);
       throw error;
     }
   }
@@ -168,7 +182,9 @@ export class CalendarService {
    */
   async deleteEvent(calendarId: string, eventId: string): Promise<boolean> {
     if (!this.calendar) {
-      this.logger.warn('[Calendar Service] Using mock response - Calendar not initialized');
+      this.logger.warn(
+        "[Calendar Service] Using mock response - Calendar not initialized",
+      );
       return true;
     }
 
@@ -184,7 +200,7 @@ export class CalendarService {
 
       return true;
     } catch (error) {
-      this.logger.error('[Calendar Service] Delete event error:', error);
+      this.logger.error("[Calendar Service] Delete event error:", error);
       throw error;
     }
   }
@@ -195,16 +211,18 @@ export class CalendarService {
   async listEvents(
     calendarId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<calendar_v3.Schema$Event[]> {
     if (!this.calendar) {
-      this.logger.warn('[Calendar Service] Using mock response - Calendar not initialized');
+      this.logger.warn(
+        "[Calendar Service] Using mock response - Calendar not initialized",
+      );
       return [];
     }
 
     try {
       this.logger.info(
-        `[Calendar Service] Listing events from ${startTime.toISOString()} to ${endTime.toISOString()}`
+        `[Calendar Service] Listing events from ${startTime.toISOString()} to ${endTime.toISOString()}`,
       );
 
       const response = await this.calendar.events.list({
@@ -212,13 +230,13 @@ export class CalendarService {
         timeMin: startTime.toISOString(),
         timeMax: endTime.toISOString(),
         singleEvents: true,
-        orderBy: 'startTime',
+        orderBy: "startTime",
         showDeleted: false,
       });
 
       return response.data.items || [];
     } catch (error) {
-      this.logger.error('[Calendar Service] List events error:', error);
+      this.logger.error("[Calendar Service] List events error:", error);
       throw error;
     }
   }
@@ -229,7 +247,7 @@ export class CalendarService {
   async checkConflicts(
     calendarId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<string[]> {
     try {
       const events = await this.listEvents(calendarId, startTime, endTime);
@@ -242,12 +260,14 @@ export class CalendarService {
       }
 
       if (conflicts.length > 0) {
-        this.logger.info(`[Calendar Service] Found ${conflicts.length} conflicts: ${conflicts.join(', ')}`);
+        this.logger.info(
+          `[Calendar Service] Found ${conflicts.length} conflicts: ${conflicts.join(", ")}`,
+        );
       }
 
       return conflicts;
     } catch (error) {
-      this.logger.error('[Calendar Service] Check conflicts error:', error);
+      this.logger.error("[Calendar Service] Check conflicts error:", error);
       return [];
     }
   }
@@ -258,10 +278,12 @@ export class CalendarService {
   async getFreeBusy(
     calendarId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<{ busy: boolean; reason?: string }> {
     if (!this.calendar) {
-      this.logger.warn('[Calendar Service] Using mock response - Calendar not initialized');
+      this.logger.warn(
+        "[Calendar Service] Using mock response - Calendar not initialized",
+      );
       return { busy: false };
     }
 
@@ -287,7 +309,7 @@ export class CalendarService {
 
       return { busy: false };
     } catch (error) {
-      this.logger.error('[Calendar Service] Free/busy check error:', error);
+      this.logger.error("[Calendar Service] Free/busy check error:", error);
       return { busy: false };
     }
   }
@@ -300,7 +322,7 @@ export class CalendarService {
       return [];
     }
 
-    return attendeeEmails.map(email => ({
+    return attendeeEmails.map((email) => ({
       email,
     }));
   }
@@ -320,13 +342,16 @@ export class CalendarService {
     credentialsPath: string;
     warning?: string;
   } {
-    const credentialsPath = path.join(__dirname, '../../config/google-credentials.json');
+    const credentialsPath = path.join(
+      __dirname,
+      "../../config/google-credentials.json",
+    );
 
     return {
       initialized: this.isInitialized(),
       credentialsPath,
       warning: !this.isInitialized()
-        ? 'Calendar service using mock responses. Place Google credentials.json in config/ directory for real integration.'
+        ? "Calendar service using mock responses. Place Google credentials.json in config/ directory for real integration."
         : undefined,
     };
   }

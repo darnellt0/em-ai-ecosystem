@@ -1,4 +1,4 @@
-declare module '@em/orchestrator' {
+declare module "@em/orchestrator" {
   import type {
     IntentClassification,
     IntentEntities,
@@ -6,7 +6,7 @@ declare module '@em/orchestrator' {
     PlanStep,
     SessionTurn,
     VoiceIntent,
-  } from '../../../orchestrator/src/intent/types';
+  } from "../../../orchestrator/src/intent/types";
 
   export type {
     IntentClassification,
@@ -18,10 +18,16 @@ declare module '@em/orchestrator' {
   };
 
   export class IntentClassifier {
-    classify(text: string, baseEntities?: IntentEntities): Promise<IntentClassification>;
+    classify(
+      text: string,
+      baseEntities?: IntentEntities,
+    ): Promise<IntentClassification>;
   }
 
-  export function resolveReferents(text: string, sessionTurns?: SessionTurn[]): IntentEntities;
+  export function resolveReferents(
+    text: string,
+    sessionTurns?: SessionTurn[],
+  ): IntentEntities;
 
   export function createPlan(
     text: string,

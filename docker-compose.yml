@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # API Server - Express with Voice API Integration
   api:
-    image: node:18-alpine
+    image: node:20-alpine
     container_name: em-api
     ports:
       - "3000:3000"
@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - LOG_LEVEL=info
-      - DATABASE_URL=postgresql://elevated_movements:T0ml!ns0n@database:5432/em_ecosystem
+      - DATABASE_URL=postgresql://elevated_movements:${POSTGRES_PASSWORD}@database:5432/em_ecosystem
       - REDIS_URL=redis://redis:6379
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
@@ -53,7 +53,7 @@ services:
       - "5433:5432"
     environment:
       - POSTGRES_USER=elevated_movements
-      - POSTGRES_PASSWORD=T0ml!ns0n
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=em_ecosystem
     volumes:
       - postgres_data:/var/lib/postgresql/data

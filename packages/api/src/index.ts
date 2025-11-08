@@ -6,24 +6,24 @@
  * Integrated Voice API endpoints + existing dashboard/agent endpoints
  */
 
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import voiceRouter from './voice/voice.router';
-import voiceAudioRouter from './voice/voice.audio.router';
-import intentRouter from './voice/intent.router';
-import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import voiceRouter from "./voice/voice.router";
+import voiceAudioRouter from "./voice/voice.audio.router";
+import intentRouter from "./voice/intent.router";
+import { initVoiceRealtimeWSS } from "./voice-realtime/ws.server";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = process.env.NODE_ENV || "development";
 
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
 
 // CORS
-const allowList = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
+const allowList = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 const corsOptions: cors.CorsOptions = {
@@ -32,7 +32,7 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
     console.warn(`Blocked CORS origin: ${origin}`);
-    return callback(new Error('CORS not allowed'), false);
+    return callback(new Error("CORS not allowed"), false);
   },
   credentials: true,
 };
@@ -44,9 +44,11 @@ app.use(express.json());
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
-  res.on('finish', () => {
+  res.on("finish", () => {
     const duration = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] ${_req.method} ${_req.path} - ${res.statusCode} (${duration}ms)`);
+    console.log(
+      `[${new Date().toISOString()}] ${_req.method} ${_req.path} - ${res.statusCode} (${duration}ms)`,
+    );
   });
   next();
 });
@@ -56,18 +58,18 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // ============================================================================
 
 const agents = {
-  'inbox-assistant': { status: 'running', last_run: new Date() },
-  'calendar-optimizer': { status: 'running', last_run: new Date() },
-  'email-responder': { status: 'running', last_run: new Date() },
-  'meeting-analyst': { status: 'running', last_run: new Date() },
-  'task-orchestrator': { status: 'running', last_run: new Date() },
-  'cost-tracker': { status: 'running', last_run: new Date() },
-  'deep-work-monitor': { status: 'running', last_run: new Date() },
-  'decision-architect': { status: 'running', last_run: new Date() },
-  'voice-dna-learner': { status: 'running', last_run: new Date() },
-  'approval-workflow': { status: 'running', last_run: new Date() },
-  'network-intelligence': { status: 'running', last_run: new Date() },
-  'knowledge-curator': { status: 'running', last_run: new Date() },
+  "inbox-assistant": { status: "running", last_run: new Date() },
+  "calendar-optimizer": { status: "running", last_run: new Date() },
+  "email-responder": { status: "running", last_run: new Date() },
+  "meeting-analyst": { status: "running", last_run: new Date() },
+  "task-orchestrator": { status: "running", last_run: new Date() },
+  "cost-tracker": { status: "running", last_run: new Date() },
+  "deep-work-monitor": { status: "running", last_run: new Date() },
+  "decision-architect": { status: "running", last_run: new Date() },
+  "voice-dna-learner": { status: "running", last_run: new Date() },
+  "approval-workflow": { status: "running", last_run: new Date() },
+  "network-intelligence": { status: "running", last_run: new Date() },
+  "knowledge-curator": { status: "running", last_run: new Date() },
 };
 
 // ============================================================================
@@ -77,14 +79,14 @@ const agents = {
 /**
  * Health check endpoint
  */
-app.get('/health', (_req: Request, res: Response) => {
+app.get("/health", (_req: Request, res: Response) => {
   res.json({
-    status: 'running',
+    status: "running",
     environment: NODE_ENV,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: '1.0.0',
-    message: 'Elevated Movements AI Ecosystem API',
+    version: "1.0.0",
+    message: "Elevated Movements AI Ecosystem API",
   });
 });
 
@@ -95,7 +97,7 @@ app.get('/health', (_req: Request, res: Response) => {
 /**
  * List all agents
  */
-app.get('/api/agents', (_req: Request, res: Response) => {
+app.get("/api/agents", (_req: Request, res: Response) => {
   res.json({
     agents: Object.keys(agents),
     count: Object.keys(agents).length,
@@ -106,10 +108,10 @@ app.get('/api/agents', (_req: Request, res: Response) => {
 /**
  * Agent status details
  */
-app.get('/api/agents/status', (_req: Request, res: Response) => {
+app.get("/api/agents/status", (_req: Request, res: Response) => {
   res.json({
     agents: agents,
-    overall_status: 'operational',
+    overall_status: "operational",
     timestamp: new Date().toISOString(),
   });
 });
@@ -121,27 +123,31 @@ app.get('/api/agents/status', (_req: Request, res: Response) => {
 /**
  * System configuration status
  */
-app.get('/api/config', (_req: Request, res: Response) => {
+app.get("/api/config", (_req: Request, res: Response) => {
   res.json({
-    app_name: 'Elevated Movements AI Ecosystem',
-    version: '1.0.0',
+    app_name: "Elevated Movements AI Ecosystem",
+    version: "1.0.0",
     environment: NODE_ENV,
     port: PORT,
-    database: process.env.DATABASE_URL ? 'configured' : 'not configured',
-    redis: process.env.REDIS_URL ? 'configured' : 'not configured',
-    openai_key: process.env.OPENAI_API_KEY ? 'configured' : 'not configured',
-    claude_key: process.env.CLAUDE_API_KEY ? 'configured' : 'not configured',
-    elevenlabs_key: process.env.ELEVENLABS_API_KEY ? 'configured' : 'not configured',
-    voice_api_token: process.env.VOICE_API_TOKEN ? 'configured' : 'not configured',
+    database: process.env.DATABASE_URL ? "configured" : "not configured",
+    redis: process.env.REDIS_URL ? "configured" : "not configured",
+    openai_key: process.env.OPENAI_API_KEY ? "configured" : "not configured",
+    claude_key: process.env.CLAUDE_API_KEY ? "configured" : "not configured",
+    elevenlabs_key: process.env.ELEVENLABS_API_KEY
+      ? "configured"
+      : "not configured",
+    voice_api_token: process.env.VOICE_API_TOKEN
+      ? "configured"
+      : "not configured",
     smtp_configured: process.env.SMTP_HOST ? true : false,
     founders: [
       {
-        name: 'Darnell',
-        email: process.env.FOUNDER_DARNELL_EMAIL || 'not configured',
+        name: "Darnell",
+        email: process.env.FOUNDER_DARNELL_EMAIL || "not configured",
       },
       {
-        name: 'Shria',
-        email: process.env.FOUNDER_SHRIA_EMAIL || 'not configured',
+        name: "Shria",
+        email: process.env.FOUNDER_SHRIA_EMAIL || "not configured",
       },
     ],
     timestamp: new Date().toISOString(),
@@ -155,13 +161,13 @@ app.get('/api/config', (_req: Request, res: Response) => {
 /**
  * Recent executions
  */
-app.get('/api/executions', (_req: Request, res: Response) => {
+app.get("/api/executions", (_req: Request, res: Response) => {
   res.json({
     executions: [
       {
         id: 1,
-        agent: 'inbox-assistant',
-        status: 'completed',
+        agent: "inbox-assistant",
+        status: "completed",
         duration: 1234,
         timestamp: new Date().toISOString(),
       },
@@ -178,10 +184,11 @@ app.get('/api/executions', (_req: Request, res: Response) => {
 /**
  * Dashboard data aggregation
  */
-app.get('/api/dashboard', (_req: Request, res: Response) => {
+app.get("/api/dashboard", (_req: Request, res: Response) => {
   res.json({
-    dashboard: 'Elevated Movements AI Ecosystem',
-    agents_running: Object.values(agents).filter((a) => a.status === 'running').length,
+    dashboard: "Elevated Movements AI Ecosystem",
+    agents_running: Object.values(agents).filter((a) => a.status === "running")
+      .length,
     total_agents: Object.keys(agents).length,
     operational: true,
     last_update: new Date().toISOString(),
@@ -194,14 +201,14 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
     },
     founders: [
       {
-        name: 'Darnell',
-        email_status: 'connected',
-        calendar_status: 'connected',
+        name: "Darnell",
+        email_status: "connected",
+        calendar_status: "connected",
       },
       {
-        name: 'Shria',
-        email_status: 'connected',
-        calendar_status: 'connected',
+        name: "Shria",
+        email_status: "connected",
+        calendar_status: "connected",
       },
     ],
     timestamp: new Date().toISOString(),
@@ -215,17 +222,17 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 /**
  * Natural language intent endpoint with planner support
  */
-app.use('/api/voice', intentRouter);
+app.use("/api/voice", intentRouter);
 
 /**
  * Mount voice router with voice-first endpoints
  */
-app.use('/api/voice', voiceRouter);
+app.use("/api/voice", voiceRouter);
 
 /**
  * Audio generation endpoints for ElevenLabs TTS integration
  */
-app.use('/api/voice', voiceAudioRouter);
+app.use("/api/voice", voiceAudioRouter);
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
@@ -234,7 +241,7 @@ app.use('/api/voice', voiceAudioRouter);
 /**
  * Serve dashboard HTML for root and non-API routes
  */
-app.get('/', (_req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   const dashboardHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -365,7 +372,7 @@ app.get('/', (_req: Request, res: Response) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(dashboardHTML);
 });
 
@@ -378,34 +385,34 @@ app.get('/', (_req: Request, res: Response) => {
  */
 app.use((req: Request, res: Response) => {
   res.status(404).json({
-    error: 'Not Found',
+    error: "Not Found",
     path: req.url,
-    message: 'The requested endpoint does not exist',
+    message: "The requested endpoint does not exist",
     available_endpoints: [
-      '/health',
-      '/api/auth/signup',
-      '/api/auth/login',
-      '/api/auth/logout',
-      '/api/auth/me',
-      '/api/agents',
-      '/api/agents/status',
-      '/api/config',
-      '/api/executions',
-      '/api/dashboard',
-      '/api/voice/scheduler/block',
-      '/api/voice/scheduler/confirm',
-      '/api/voice/scheduler/reschedule',
-      '/api/voice/coach/pause',
-      '/api/voice/support/log-complete',
-      '/api/voice/support/follow-up',
-      '/api/voice/analytics/daily-brief',
-      '/api/voice/analytics/insights',
-      '/api/voice/business/grants',
-      '/api/voice/business/relationships',
-      '/api/voice/business/budget',
-      '/api/voice/business/content',
-      '/api/voice/business/brand-story',
-      '/api/voice/hybrid',
+      "/health",
+      "/api/auth/signup",
+      "/api/auth/login",
+      "/api/auth/logout",
+      "/api/auth/me",
+      "/api/agents",
+      "/api/agents/status",
+      "/api/config",
+      "/api/executions",
+      "/api/dashboard",
+      "/api/voice/scheduler/block",
+      "/api/voice/scheduler/confirm",
+      "/api/voice/scheduler/reschedule",
+      "/api/voice/coach/pause",
+      "/api/voice/support/log-complete",
+      "/api/voice/support/follow-up",
+      "/api/voice/analytics/daily-brief",
+      "/api/voice/analytics/insights",
+      "/api/voice/business/grants",
+      "/api/voice/business/relationships",
+      "/api/voice/business/budget",
+      "/api/voice/business/content",
+      "/api/voice/business/brand-story",
+      "/api/voice/hybrid",
     ],
   });
 });
@@ -414,9 +421,9 @@ app.use((req: Request, res: Response) => {
  * Global error handler
  */
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
   res.status(500).json({
-    error: 'Internal Server Error',
+    error: "Internal Server Error",
     message: err.message,
   });
 });
@@ -425,8 +432,8 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // SERVER START
 // ============================================================================
 
-const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
-  console.log('\n✅ Elevated Movements AI Ecosystem API Server');
+const server = app.listen(parseInt(String(PORT), 10), "0.0.0.0", () => {
+  console.log("\n✅ Elevated Movements AI Ecosystem API Server");
   console.log(`   Port: ${PORT}`);
   console.log(`   Environment: ${NODE_ENV}`);
   console.log(`   Status: Running\n`);
@@ -452,18 +459,18 @@ if (!(global as any).__VOICE_WSS_INITIALIZED__) {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully...");
   server.close(() => {
-    console.log('Server closed');
+    console.log("Server closed");
     process.exit(0);
   });
 });
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully...");
   server.close(() => {
-    console.log('Server closed');
+    console.log("Server closed");
     process.exit(0);
   });
 });

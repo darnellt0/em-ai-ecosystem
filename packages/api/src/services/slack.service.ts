@@ -3,7 +3,7 @@
  * Handles Slack notifications via Web API
  */
 
-import { WebClient, ChatPostMessageArguments } from '@slack/web-api';
+import { WebClient, ChatPostMessageArguments } from "@slack/web-api";
 
 interface SlackBlock {
   type: string;
@@ -30,16 +30,18 @@ export class SlackService {
       const botToken = process.env.SLACK_BOT_TOKEN;
 
       if (!botToken) {
-        this.logger.warn('[Slack Service] No SLACK_BOT_TOKEN found in environment');
+        this.logger.warn(
+          "[Slack Service] No SLACK_BOT_TOKEN found in environment",
+        );
         return;
       }
 
       this.client = new WebClient(botToken);
       this.isConfigured = true;
 
-      this.logger.info('[Slack Service] Slack client initialized successfully');
+      this.logger.info("[Slack Service] Slack client initialized successfully");
     } catch (error) {
-      this.logger.error('[Slack Service] Initialization error:', error);
+      this.logger.error("[Slack Service] Initialization error:", error);
       this.isConfigured = false;
     }
   }
@@ -50,10 +52,12 @@ export class SlackService {
   async sendMessage(
     userId: string,
     text: string,
-    blocks?: SlackBlock[]
+    blocks?: SlackBlock[],
   ): Promise<{ ts: string; success: boolean }> {
     if (!this.isConfigured || !this.client) {
-      this.logger.warn(`[Slack Service] Slack not configured. Would send to ${userId}: ${text}`);
+      this.logger.warn(
+        `[Slack Service] Slack not configured. Would send to ${userId}: ${text}`,
+      );
       return {
         ts: `${Date.now()}`,
         success: true,
@@ -78,16 +82,18 @@ export class SlackService {
         throw new Error(`Slack API error: ${result.error}`);
       }
 
-      this.logger.info(`[Slack Service] Message sent successfully: ${result.ts}`);
+      this.logger.info(
+        `[Slack Service] Message sent successfully: ${result.ts}`,
+      );
 
       return {
         ts: result.ts,
         success: true,
       };
     } catch (error) {
-      this.logger.error('[Slack Service] Send error:', error);
+      this.logger.error("[Slack Service] Send error:", error);
       return {
-        ts: '',
+        ts: "",
         success: false,
       };
     }
@@ -98,7 +104,9 @@ export class SlackService {
    */
   async getUserByEmail(email: string): Promise<string | null> {
     if (!this.isConfigured || !this.client) {
-      this.logger.warn(`[Slack Service] Slack not configured. Would lookup ${email}`);
+      this.logger.warn(
+        `[Slack Service] Slack not configured. Would lookup ${email}`,
+      );
       return null;
     }
 
@@ -118,7 +126,7 @@ export class SlackService {
 
       return result.user.id;
     } catch (error) {
-      this.logger.error('[Slack Service] Lookup error:', error);
+      this.logger.error("[Slack Service] Lookup error:", error);
       return null;
     }
   }
@@ -126,9 +134,13 @@ export class SlackService {
   /**
    * Get user info
    */
-  async getUserInfo(userId: string): Promise<{ name: string; email?: string } | null> {
+  async getUserInfo(
+    userId: string,
+  ): Promise<{ name: string; email?: string } | null> {
     if (!this.isConfigured || !this.client) {
-      this.logger.warn(`[Slack Service] Slack not configured. Would get info for ${userId}`);
+      this.logger.warn(
+        `[Slack Service] Slack not configured. Would get info for ${userId}`,
+      );
       return null;
     }
 
@@ -142,11 +154,11 @@ export class SlackService {
       }
 
       return {
-        name: result.user.real_name || result.user.name || '',
+        name: result.user.real_name || result.user.name || "",
         email: result.user.profile?.email,
       };
     } catch (error) {
-      this.logger.error('[Slack Service] User info error:', error);
+      this.logger.error("[Slack Service] User info error:", error);
       return null;
     }
   }
@@ -154,21 +166,24 @@ export class SlackService {
   /**
    * Task completion block template
    */
-  getTaskCompleteBlocks(taskTitle: string, nextTaskTitle?: string): SlackBlock[] {
+  getTaskCompleteBlocks(
+    taskTitle: string,
+    nextTaskTitle?: string,
+  ): SlackBlock[] {
     const blocks: SlackBlock[] = [
       {
-        type: 'header',
+        type: "header",
         text: {
-          type: 'plain_text',
-          text: '✅ Task Completed!',
+          type: "plain_text",
+          text: "✅ Task Completed!",
           emoji: true,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Completed:*\n${taskTitle}`,
           },
         ],
@@ -177,10 +192,10 @@ export class SlackService {
 
     if (nextTaskTitle) {
       blocks.push({
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Next Priority:*\n${nextTaskTitle}`,
           },
         ],
@@ -188,7 +203,7 @@ export class SlackService {
     }
 
     blocks.push({
-      type: 'divider',
+      type: "divider",
     });
 
     return blocks;
@@ -200,32 +215,32 @@ export class SlackService {
   getReminderBlocks(subject: string, dueDate?: string): SlackBlock[] {
     return [
       {
-        type: 'header',
+        type: "header",
         text: {
-          type: 'plain_text',
-          text: '⏰ Reminder',
+          type: "plain_text",
+          text: "⏰ Reminder",
           emoji: true,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Follow-up:*\n${subject}`,
           },
           ...(dueDate
             ? [
-              {
-                type: 'mrkdwn',
-                text: `*Due:*\n${dueDate}`,
-              },
-            ]
+                {
+                  type: "mrkdwn",
+                  text: `*Due:*\n${dueDate}`,
+                },
+              ]
             : []),
         ],
       },
       {
-        type: 'divider',
+        type: "divider",
       },
     ];
   }
@@ -233,30 +248,34 @@ export class SlackService {
   /**
    * Meeting update block template
    */
-  getMeetingBlocks(meetingTitle: string, newTime?: string, attendees?: string[]): SlackBlock[] {
+  getMeetingBlocks(
+    meetingTitle: string,
+    newTime?: string,
+    attendees?: string[],
+  ): SlackBlock[] {
     const blocks: SlackBlock[] = [
       {
-        type: 'header',
+        type: "header",
         text: {
-          type: 'plain_text',
-          text: '📅 Meeting Updated',
+          type: "plain_text",
+          text: "📅 Meeting Updated",
           emoji: true,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Meeting:*\n${meetingTitle}`,
           },
           ...(newTime
             ? [
-              {
-                type: 'mrkdwn',
-                text: `*New Time:*\n${newTime}`,
-              },
-            ]
+                {
+                  type: "mrkdwn",
+                  text: `*New Time:*\n${newTime}`,
+                },
+              ]
             : []),
         ],
       },
@@ -264,16 +283,16 @@ export class SlackService {
 
     if (attendees && attendees.length > 0) {
       blocks.push({
-        type: 'section',
+        type: "section",
         text: {
-          type: 'mrkdwn',
-          text: `*Attendees:*\n${attendees.join(', ')}`,
+          type: "mrkdwn",
+          text: `*Attendees:*\n${attendees.join(", ")}`,
         },
       });
     }
 
     blocks.push({
-      type: 'divider',
+      type: "divider",
     });
 
     return blocks;
@@ -282,42 +301,46 @@ export class SlackService {
   /**
    * Focus block confirmation block template
    */
-  getFocusBlockBlocks(reason: string, duration: number, startTime: string): SlackBlock[] {
+  getFocusBlockBlocks(
+    reason: string,
+    duration: number,
+    startTime: string,
+  ): SlackBlock[] {
     return [
       {
-        type: 'header',
+        type: "header",
         text: {
-          type: 'plain_text',
-          text: '🎯 Focus Block Confirmed',
+          type: "plain_text",
+          text: "🎯 Focus Block Confirmed",
           emoji: true,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Duration:*\n${duration} minutes`,
           },
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Reason:*\n${reason}`,
           },
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Start Time:*\n${startTime}`,
           },
         ],
       },
       {
-        type: 'section',
+        type: "section",
         text: {
-          type: 'mrkdwn',
-          text: 'All notifications have been silenced. Focus on your work! 💪',
+          type: "mrkdwn",
+          text: "All notifications have been silenced. Focus on your work! 💪",
         },
       },
       {
-        type: 'divider',
+        type: "divider",
       },
     ];
   }
@@ -327,43 +350,43 @@ export class SlackService {
    */
   getPauseSessionBlocks(style: string, duration: number): SlackBlock[] {
     const styleEmoji: Record<string, string> = {
-      breath: '🌬️',
-      box: '📦',
-      grounding: '🌍',
-      'body-scan': '🧘',
+      breath: "🌬️",
+      box: "📦",
+      grounding: "🌍",
+      "body-scan": "🧘",
     };
 
     return [
       {
-        type: 'header',
+        type: "header",
         text: {
-          type: 'plain_text',
-          text: `${styleEmoji[style] || '🧘'} Pause Session Started`,
+          type: "plain_text",
+          text: `${styleEmoji[style] || "🧘"} Pause Session Started`,
           emoji: true,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: [
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Style:*\n${style}`,
           },
           {
-            type: 'mrkdwn',
+            type: "mrkdwn",
             text: `*Duration:*\n${duration} seconds`,
           },
         ],
       },
       {
-        type: 'section',
+        type: "section",
         text: {
-          type: 'mrkdwn',
-          text: 'Take a few moments to breathe and reset. You\'ve got this! ✨',
+          type: "mrkdwn",
+          text: "Take a few moments to breathe and reset. You've got this! ✨",
         },
       },
       {
-        type: 'divider',
+        type: "divider",
       },
     ];
   }
@@ -374,7 +397,7 @@ export class SlackService {
   async sendBlockMessage(
     userId: string,
     blocks: SlackBlock[],
-    fallbackText: string
+    fallbackText: string,
   ): Promise<{ ts: string; success: boolean }> {
     return this.sendMessage(userId, fallbackText, blocks);
   }
@@ -390,12 +413,17 @@ export class SlackService {
     try {
       const result = await this.client.auth.test();
       if (result.ok) {
-        this.logger.info(`[Slack Service] Connection verified. Bot: ${result.user_id}`);
+        this.logger.info(
+          `[Slack Service] Connection verified. Bot: ${result.user_id}`,
+        );
         return true;
       }
       return false;
     } catch (error) {
-      this.logger.error('[Slack Service] Connection verification failed:', error);
+      this.logger.error(
+        "[Slack Service] Connection verification failed:",
+        error,
+      );
       return false;
     }
   }
@@ -411,7 +439,7 @@ export class SlackService {
     return {
       configured: this.isConfigured,
       warning: !this.isConfigured
-        ? 'Slack service not configured. Add SLACK_BOT_TOKEN to .env'
+        ? "Slack service not configured. Add SLACK_BOT_TOKEN to .env"
         : undefined,
     };
   }

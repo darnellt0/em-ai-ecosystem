@@ -1,0 +1,10 @@
+{
+  "name": "@em/dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard static files and nginx configuration for Elevated Movements AI Ecosystem",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Dashboard uses static HTML - no build needed'",
+    "clean": "echo 'No build artifacts to clean'"
+  }
+}

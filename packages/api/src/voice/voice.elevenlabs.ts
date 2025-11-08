@@ -5,7 +5,7 @@
  * Production integration for converting Voice API responses to audio
  */
 
-import https from 'https';
+import https from "https";
 
 export interface ElevenLabsConfig {
   apiKey: string;
@@ -29,9 +29,9 @@ export interface GeneratedAudio {
  * Default voice configuration - Shria (cloned voice)
  */
 export const DEFAULT_VOICE_CONFIG: ElevenLabsConfig = {
-  apiKey: process.env.ELEVENLABS_API_KEY || '',
-  voiceId: 'DoEstgRs2aKZVhKhJhnx', // Shria (cloned voice)
-  modelId: 'eleven_turbo_v2_5',
+  apiKey: process.env.ELEVENLABS_API_KEY || "",
+  voiceId: "DoEstgRs2aKZVhKhJhnx", // Shria (cloned voice)
+  modelId: "eleven_turbo_v2_5",
   voiceSettings: {
     stability: 0.5,
     similarity_boost: 0.75,
@@ -43,24 +43,24 @@ export const DEFAULT_VOICE_CONFIG: ElevenLabsConfig = {
  */
 export const VOICE_PRESETS = {
   shria: {
-    voiceId: 'DoEstgRs2aKZVhKhJhnx',
-    name: 'Shria (Cloned Voice)',
-    description: 'Custom cloned voice for primary responses',
+    voiceId: "DoEstgRs2aKZVhKhJhnx",
+    name: "Shria (Cloned Voice)",
+    description: "Custom cloned voice for primary responses",
   },
   josh: {
-    voiceId: 'pNInz6obpgDQGcFmaJgB',
-    name: 'Josh (Male)',
-    description: 'Young & Energetic male voice',
+    voiceId: "pNInz6obpgDQGcFmaJgB",
+    name: "Josh (Male)",
+    description: "Young & Energetic male voice",
   },
   sara: {
-    voiceId: 'ZQe5CZNOzWyzPSCn5a3c',
-    name: 'Sara (Female)',
-    description: 'Helpful & Clear female voice',
+    voiceId: "ZQe5CZNOzWyzPSCn5a3c",
+    name: "Sara (Female)",
+    description: "Helpful & Clear female voice",
   },
   rachel: {
-    voiceId: '21m00Tcm4TlvDq8ikWAM',
-    name: 'Rachel (Female)',
-    description: 'Calm & Professional female voice',
+    voiceId: "21m00Tcm4TlvDq8ikWAM",
+    name: "Rachel (Female)",
+    description: "Calm & Professional female voice",
   },
 } as const;
 
@@ -76,7 +76,7 @@ export const VOICE_PRESETS = {
 export async function generateAudio(
   text: string,
   config: Partial<ElevenLabsConfig> = {},
-  returnBase64 = false
+  returnBase64 = false,
 ): Promise<GeneratedAudio> {
   try {
     // Merge with defaults
@@ -89,7 +89,7 @@ export async function generateAudio(
     if (!finalConfig.apiKey) {
       return {
         success: false,
-        error: 'ELEVENLABS_API_KEY not configured',
+        error: "ELEVENLABS_API_KEY not configured",
       };
     }
 
@@ -97,7 +97,7 @@ export async function generateAudio(
     if (!text || text.trim().length === 0) {
       return {
         success: false,
-        error: 'Text cannot be empty',
+        error: "Text cannot be empty",
       };
     }
 
@@ -111,24 +111,24 @@ export async function generateAudio(
     // Make HTTPS request
     return new Promise((resolve) => {
       const options = {
-        hostname: 'api.elevenlabs.io',
+        hostname: "api.elevenlabs.io",
         path: `/v1/text-to-speech/${finalConfig.voiceId}/stream`,
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'xi-api-key': finalConfig.apiKey,
-          'Content-Length': Buffer.byteLength(requestBody),
+          "Content-Type": "application/json",
+          "xi-api-key": finalConfig.apiKey,
+          "Content-Length": Buffer.byteLength(requestBody),
         },
       };
 
       const req = https.request(options, (res) => {
         const chunks: Buffer[] = [];
 
-        res.on('data', (chunk) => {
+        res.on("data", (chunk) => {
           chunks.push(chunk);
         });
 
-        res.on('end', () => {
+        res.on("end", () => {
           const audioBuffer = Buffer.concat(chunks);
 
           // Check for error (usually very small response)
@@ -142,7 +142,7 @@ export async function generateAudio(
           if (returnBase64) {
             return resolve({
               success: true,
-              audioBase64: audioBuffer.toString('base64'),
+              audioBase64: audioBuffer.toString("base64"),
               size: audioBuffer.length,
             });
           }
@@ -155,7 +155,7 @@ export async function generateAudio(
         });
       });
 
-      req.on('error', (err) => {
+      req.on("error", (err) => {
         resolve({
           success: false,
           error: `Network error: ${err.message}`,
@@ -166,7 +166,7 @@ export async function generateAudio(
       req.end();
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = err instanceof Error ? err.message : "Unknown error";
     return {
       success: false,
       error: message,
@@ -184,7 +184,7 @@ export async function generateAudio(
  */
 export async function generateAudioBatch(
   texts: string[],
-  config: Partial<ElevenLabsConfig> = {}
+  config: Partial<ElevenLabsConfig> = {},
 ): Promise<GeneratedAudio[]> {
   return Promise.all(texts.map((text) => generateAudio(text, config)));
 }
@@ -199,23 +199,32 @@ export function getAvailableVoices() {
 /**
  * Validate voice configuration
  */
-export function validateConfig(config: Partial<ElevenLabsConfig>): { valid: boolean; errors: string[] } {
+export function validateConfig(config: Partial<ElevenLabsConfig>): {
+  valid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   if (!config.apiKey && !DEFAULT_VOICE_CONFIG.apiKey) {
-    errors.push('ELEVENLABS_API_KEY is not set');
+    errors.push("ELEVENLABS_API_KEY is not set");
   }
 
-  if (config.modelId && !config.modelId.startsWith('eleven_')) {
-    errors.push('Invalid model ID');
+  if (config.modelId && !config.modelId.startsWith("eleven_")) {
+    errors.push("Invalid model ID");
   }
 
   if (config.voiceSettings) {
-    if (config.voiceSettings.stability < 0 || config.voiceSettings.stability > 1) {
-      errors.push('Stability must be between 0 and 1');
+    if (
+      config.voiceSettings.stability < 0 ||
+      config.voiceSettings.stability > 1
+    ) {
+      errors.push("Stability must be between 0 and 1");
     }
-    if (config.voiceSettings.similarity_boost < 0 || config.voiceSettings.similarity_boost > 1) {
-      errors.push('Similarity boost must be between 0 and 1');
+    if (
+      config.voiceSettings.similarity_boost < 0 ||
+      config.voiceSettings.similarity_boost > 1
+    ) {
+      errors.push("Similarity boost must be between 0 and 1");
     }
   }
 

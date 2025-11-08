@@ -10,7 +10,7 @@
  * Example: https://redis.io/commands/sliding-window-counter
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 interface RateLimitEntry {
   timestamp: number;
@@ -30,9 +30,9 @@ const MAX_REQUESTS = 20; // 20 requests per window
 export function rateLimitSimple(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
-  const clientIp = (req.ip || req.socket.remoteAddress || 'unknown').toString();
+  const clientIp = (req.ip || req.socket.remoteAddress || "unknown").toString();
   const now = Date.now();
 
   let entry = rateLimitMap.get(clientIp);
@@ -50,9 +50,9 @@ export function rateLimitSimple(
 
   if (entry.count > MAX_REQUESTS) {
     res.status(429).json({
-      status: 'error',
+      status: "error",
       humanSummary: `Rate limit exceeded: ${MAX_REQUESTS} requests per ${WINDOW_MS / 1000}s allowed.`,
-      nextBestAction: 'Retry after a moment.',
+      nextBestAction: "Retry after a moment.",
     });
     return;
   }

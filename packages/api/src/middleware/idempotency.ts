@@ -11,7 +11,7 @@
  *   redis.expire(`idempotency:${key}`, 60)
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 interface IdempotencyEntry {
   ts: number;
@@ -33,9 +33,9 @@ const TTL_MS = 60000; // 60 seconds
 export function idempotency(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
-  const key = req.headers['idempotency-key'] as string | undefined;
+  const key = req.headers["idempotency-key"] as string | undefined;
 
   if (!key) {
     // No key provided; allow request normally

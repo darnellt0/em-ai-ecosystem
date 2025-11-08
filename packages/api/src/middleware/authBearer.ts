@@ -3,7 +3,7 @@
  * Verifies Authorization: Bearer <VOICE_API_TOKEN> header.
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 export interface AuthenticatedRequest extends Request {
   voiceAuthed: boolean;
@@ -17,27 +17,27 @@ export interface AuthenticatedRequest extends Request {
 export function authBearer(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
   const expectedToken = process.env.VOICE_API_TOKEN;
 
   if (!expectedToken) {
     res.status(500).json({
-      status: 'error',
-      humanSummary: 'Server misconfiguration: VOICE_API_TOKEN not set.',
-      nextBestAction: 'Contact administrator.',
+      status: "error",
+      humanSummary: "Server misconfiguration: VOICE_API_TOKEN not set.",
+      nextBestAction: "Contact administrator.",
     });
     return;
   }
 
-  const authHeader = req.headers.authorization || '';
-  const [scheme, token] = authHeader.split(' ');
+  const authHeader = req.headers.authorization || "";
+  const [scheme, token] = authHeader.split(" ");
 
-  if (scheme !== 'Bearer' || token !== expectedToken) {
+  if (scheme !== "Bearer" || token !== expectedToken) {
     res.status(401).json({
-      status: 'error',
-      humanSummary: 'Unauthorized: invalid or missing bearer token.',
-      nextBestAction: 'Verify token and retry.',
+      status: "error",
+      humanSummary: "Unauthorized: invalid or missing bearer token.",
+      nextBestAction: "Verify token and retry.",
     });
     return;
   }
