@@ -241,6 +241,60 @@ export const GenerateBrandStorySchema = z.object({
 export type GenerateBrandStoryInput = z.infer<typeof GenerateBrandStorySchema>;
 
 // ============================================================================
+// IDEATION COACH ENDPOINTS
+// ============================================================================
+
+// ENDPOINT 14: START IDEATION SESSION
+export const StartIdeationSchema = z.object({
+  clientName: z
+    .string()
+    .min(2, 'Client name must be at least 2 characters'),
+  initialIdea: z
+    .string()
+    .min(10, 'Initial idea must be at least 10 characters')
+    .describe('The initial idea or concept to explore'),
+  clientEmail: z
+    .string()
+    .email()
+    .optional()
+    .describe('Client email for follow-up'),
+  founder: FounderSchema,
+});
+
+export type StartIdeationInput = z.infer<typeof StartIdeationSchema>;
+
+// ENDPOINT 15: CONTINUE IDEATION SESSION
+export const ContinueIdeationSchema = z.object({
+  sessionId: z
+    .string()
+    .min(10, 'Session ID required'),
+  clientResponse: z
+    .string()
+    .min(1, 'Response cannot be empty')
+    .describe('Client response to continue the conversation'),
+});
+
+export type ContinueIdeationInput = z.infer<typeof ContinueIdeationSchema>;
+
+// ENDPOINT 16: GET IDEATION SUMMARY
+export const IdeationSummarySchema = z.object({
+  sessionId: z
+    .string()
+    .min(10, 'Session ID required'),
+});
+
+export type IdeationSummaryInput = z.infer<typeof IdeationSummarySchema>;
+
+// ENDPOINT 17: END IDEATION SESSION
+export const EndIdeationSchema = z.object({
+  sessionId: z
+    .string()
+    .min(10, 'Session ID required'),
+});
+
+export type EndIdeationInput = z.infer<typeof EndIdeationSchema>;
+
+// ============================================================================
 // VALIDATION HELPER
 // ============================================================================
 

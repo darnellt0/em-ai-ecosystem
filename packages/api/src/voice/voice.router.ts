@@ -23,6 +23,10 @@ import {
   AllocateBudgetSchema,
   GenerateContentSchema,
   GenerateBrandStorySchema,
+  StartIdeationSchema,
+  ContinueIdeationSchema,
+  IdeationSummarySchema,
+  EndIdeationSchema,
   parseVoiceRequest,
 } from './voice.types';
 import {
@@ -40,6 +44,13 @@ import {
   generateContent,
   generateBrandStory,
 } from './voice.services';
+import {
+  startIdeationSession,
+  continueIdeationSession,
+  getSessionSummary,
+  endSession,
+  getActiveSessions,
+} from '../agents/ideation-coach.agent';
 import { HybridRouterService } from '../services/hybrid-router.service';
 
 const router = Router();
@@ -468,6 +479,134 @@ router.post(
       parsed.data.values
     );
     res.status(result.status === 'ok' ? 200 : 400).json(result);
+  })
+);
+
+// ============================================================================
+// IDEATION COACH ENDPOINTS
+// ============================================================================
+
+/**
+ * ENDPOINT 14: POST /api/voice/ideation/start
+ * Start a new ideation coaching session.
+ * Request: StartIdeationInput
+ * Response: IdeationCoachResponse
+ */
+router.post(
+  '/ideation/start',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const parsed = parseVoiceRequest(StartIdeationSchema, req.body);
+    if (!parsed.success) {
+      res.status(parsed.status).json({
+        status: 'error',
+        humanSummary: 'Invalid request: ' + parsed.errors.join('; '),
+        nextBestAction: 'Check payload and retry.',
+      });
+      return;
+    }
+
+    const result = await startIdeationSession(
+      parsed.data.clientName,
+      parsed.data.initialIdea,
+      parsed.data.clientEmail
+    );
+    res.status(result.status === 'ok' ? 200 : 400).json(result);
+  })
+);
+
+/**
+ * ENDPOINT 15: POST /api/voice/ideation/continue
+ * Continue an existing ideation coaching session.
+ * Request: ContinueIdeationInput
+ * Response: IdeationCoachResponse
+ */
+router.post(
+  '/ideation/continue',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const parsed = parseVoiceRequest(ContinueIdeationSchema, req.body);
+    if (!parsed.success) {
+      res.status(parsed.status).json({
+        status: 'error',
+        humanSummary: 'Invalid request: ' + parsed.errors.join('; '),
+        nextBestAction: 'Check payload and retry.',
+      });
+      return;
+    }
+
+    const result = await continueIdeationSession(
+      parsed.data.sessionId,
+      parsed.data.clientResponse
+    );
+    res.status(result.status === 'ok' ? 200 : 400).json(result);
+  })
+);
+
+/**
+ * ENDPOINT 16: GET /api/voice/ideation/summary/:sessionId
+ * Get summary and insights from an ideation session.
+ */
+router.get(
+  '/ideation/summary/:sessionId',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const sessionId = req.params.sessionId;
+
+    if (!sessionId || sessionId.length < 10) {
+      res.status(400).json({
+        status: 'error',
+        humanSummary: 'Invalid session ID',
+        nextBestAction: 'Provide a valid session ID',
+      });
+      return;
+    }
+
+    const result = getSessionSummary(sessionId);
+    res.status(result.status === 'ok' ? 200 : 404).json(result);
+  })
+);
+
+/**
+ * ENDPOINT 17: POST /api/voice/ideation/end
+ * End an ideation session and get final summary.
+ * Request: EndIdeationInput
+ * Response: Final summary with key insights and next steps
+ */
+router.post(
+  '/ideation/end',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const parsed = parseVoiceRequest(EndIdeationSchema, req.body);
+    if (!parsed.success) {
+      res.status(parsed.status).json({
+        status: 'error',
+        humanSummary: 'Invalid request: ' + parsed.errors.join('; '),
+        nextBestAction: 'Check payload and retry.',
+      });
+      return;
+    }
+
+    const result = await endSession(parsed.data.sessionId);
+    res.status(result.status === 'ok' ? 200 : 404).json(result);
+  })
+);
+
+/**
+ * ENDPOINT 18: GET /api/voice/ideation/sessions
+ * Get all active ideation sessions (admin/monitoring).
+ */
+router.get(
+  '/ideation/sessions',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const sessions = getActiveSessions();
+    res.status(200).json({
+      status: 'ok',
+      sessions,
+      count: sessions.length,
+      timestamp: new Date().toISOString(),
+    });
   })
 );
 
