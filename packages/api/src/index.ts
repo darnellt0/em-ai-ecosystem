@@ -6,6 +6,17 @@
  * Integrated Voice API endpoints + existing dashboard/agent endpoints
  */
 
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from root .env file
+// In dist: dist/index.js -> need to go up 3 levels: dist -> api -> packages -> root
+// In src: src/index.ts -> need to go up 3 levels: src -> api -> packages -> root
+const envPath = path.resolve(__dirname, '../../../.env');
+console.log(`[ENV] Loading .env from: ${envPath}`);
+dotenv.config({ path: envPath });
+console.log(`[ENV] VOICE_API_TOKEN loaded: ${process.env.VOICE_API_TOKEN ? 'Yes' : 'No'}`);
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
