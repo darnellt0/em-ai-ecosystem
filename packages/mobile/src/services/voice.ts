@@ -1,5 +1,7 @@
 // Voice Service - Cross-Platform Voice Recognition & Recording
 import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
 import api from './api';
 
 export interface VoiceRecordingResult {
@@ -11,8 +13,7 @@ export interface VoiceRecordingResult {
 class VoiceService {
   private isListening = false;
   private isRecording = false;
-  private mediaRecorder: MediaRecorder | null = null;
-  private audioChunks: Blob[] = [];
+  private recording: Audio.Recording | null = null;
   private startTime = 0;
   private onResultCallback?: (result: string) => void;
   private onErrorCallback?: (error: string) => void;
@@ -102,28 +103,34 @@ class VoiceService {
 
   async startRecording(): Promise<void> {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request permissions for audio recording
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Audio recording permission not granted');
+      }
 
-      this.mediaRecorder = new MediaRecorder(stream);
-      this.audioChunks = [];
+      // Set audio mode for recording
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      // Create and start recording
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      this.recording = recording;
       this.startTime = Date.now();
-
-      this.mediaRecorder.ondataavailable = (event) => {
-        this.audioChunks.push(event.data);
-      };
-
-      this.mediaRecorder.start();
       this.isRecording = true;
 
       console.log('Recording started');
 
-      // Haptic feedback if available
-      if (Haptics) {
-        try {
-          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } catch (e) {
-          // Haptics not available on web
-        }
+      // Haptic feedback
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (e) {
+        // Haptics not available
       }
     } catch (error: any) {
       console.error('Error starting recording:', error);
@@ -133,41 +140,39 @@ class VoiceService {
 
   async stopRecording(): Promise<VoiceRecordingResult> {
     try {
-      if (!this.mediaRecorder) {
+      if (!this.recording) {
         throw new Error('No active recording');
       }
 
-      return new Promise((resolve, reject) => {
-        this.mediaRecorder!.onstop = () => {
-          const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-          const duration = (Date.now() - this.startTime) / 1000;
+      // Stop the recording
+      await this.recording.stopAndUnloadAsync();
+      const uri = this.recording.getURI();
+      const duration = (Date.now() - this.startTime) / 1000;
 
-          const result: VoiceRecordingResult = {
-            transcript: '',
-            duration,
-          };
+      const result: VoiceRecordingResult = {
+        transcript: '',
+        audioUri: uri || undefined,
+        duration,
+      };
 
-          // Stop all tracks
-          this.mediaRecorder!.stream.getTracks().forEach(track => track.stop());
-          this.mediaRecorder = null;
-          this.isRecording = false;
-
-          console.log('Recording stopped:', duration);
-
-          resolve(result);
-        };
-
-        this.mediaRecorder!.stop();
-
-        // Haptic feedback if available
-        if (Haptics) {
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-          } catch (e) {
-            // Haptics not available
-          }
-        }
+      // Reset audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
       });
+
+      this.recording = null;
+      this.isRecording = false;
+
+      console.log('Recording stopped:', duration, 'URI:', uri);
+
+      // Haptic feedback
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (e) {
+        // Haptics not available
+      }
+
+      return result;
     } catch (error: any) {
       console.error('Error stopping recording:', error);
       this.isRecording = false;
@@ -196,10 +201,9 @@ class VoiceService {
 
   async cleanup(): Promise<void> {
     try {
-      if (this.mediaRecorder && this.isRecording) {
-        this.mediaRecorder.stop();
-        this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        this.mediaRecorder = null;
+      if (this.recording && this.isRecording) {
+        await this.recording.stopAndUnloadAsync();
+        this.recording = null;
       }
       this.isListening = false;
       this.isRecording = false;
