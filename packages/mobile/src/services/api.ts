@@ -95,7 +95,7 @@ class ApiService {
       formData.append('transcript', transcript);
     }
 
-    const response = await this.client.post('/voice/command', formData, {
+    const response = await this.client.post('/voice/transcribe', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 

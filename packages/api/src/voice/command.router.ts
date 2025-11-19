@@ -22,7 +22,8 @@ const openai = process.env.OPENAI_API_KEY
  * Accepts: multipart/form-data with audio file and optional transcript
  * Returns: VoiceResponse with transcription and command result
  */
-router.post('/command', upload.single('audio'), async (req: Request, res: Response) => {
+// New path to bypass caching issues with old /command endpoint
+router.post('/transcribe', upload.single('audio'), async (req: Request, res: Response) => {
   try {
     console.log('[VoiceCommand] Received request');
     console.log('[VoiceCommand] Has audio file:', !!req.file);
