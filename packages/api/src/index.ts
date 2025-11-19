@@ -11,6 +11,7 @@ import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
+import commandRouter from './voice/command.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
@@ -211,6 +212,11 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 // ============================================================================
 // ROUTES - VOICE API (PHASE VOICE-0)
 // ============================================================================
+
+/**
+ * Voice command endpoint for mobile app (with transcription)
+ */
+app.use('/api/voice', commandRouter);
 
 /**
  * Natural language intent endpoint with planner support
