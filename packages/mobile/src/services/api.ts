@@ -75,9 +75,21 @@ class ApiService {
   }
 
   // Voice endpoints
-  async sendVoiceCommand(audioBlob: Blob, transcript?: string) {
+  async sendVoiceCommand(audioUri: string, transcript?: string) {
+    console.log('[ApiService] Sending voice command:', { transcript });
+
+    // In React Native, we need to send the file URI
+    // FormData in React Native can handle file URIs directly
     const formData = new FormData();
-    formData.append('audio', audioBlob);
+
+    // Add audio file from URI
+    formData.append('audio', {
+      uri: audioUri,
+      type: 'audio/m4a',
+      name: 'recording.m4a',
+    } as any);
+
+    // Add transcript if available (fallback for when Whisper isn't available)
     if (transcript) {
       formData.append('transcript', transcript);
     }
@@ -85,6 +97,8 @@ class ApiService {
     const response = await this.client.post('/voice/command', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+
+    console.log('[ApiService] Voice command response:', response.data);
     return response.data;
   }
 

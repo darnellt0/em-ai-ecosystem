@@ -230,18 +230,14 @@ class VoiceService {
 
   async sendVoiceCommand(audioUri: string, transcript?: string): Promise<any> {
     try {
-      // In React Native, we need to create a file object from the URI
-      // The API expects a blob/file, but for now we'll send the URI and transcript
-      // The actual audio upload can be implemented later with proper file handling
-      console.log('Sending voice command - URI:', audioUri, 'Transcript:', transcript);
+      console.log('[VoiceService] Sending command with transcript:', transcript);
+      console.log('[VoiceService] Audio URI:', audioUri);
 
-      // For now, just return a mock response since the backend might not be set up
-      // This allows the UI to work without backend errors
-      return {
-        success: true,
-        transcript: transcript || 'Voice command recorded',
-        message: 'Command captured successfully (backend integration pending)'
-      };
+      // Send to API - the api service handles file upload
+      const result = await api.sendVoiceCommand(audioUri, transcript);
+
+      console.log('[VoiceService] API response:', result);
+      return result;
     } catch (error: any) {
       console.error('Error sending voice command:', error);
       throw error;
