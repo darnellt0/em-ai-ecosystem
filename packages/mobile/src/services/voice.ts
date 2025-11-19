@@ -2,6 +2,10 @@
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import api from './api';
 
 export interface VoiceRecordingResult {
@@ -15,11 +19,31 @@ class VoiceService {
   private isRecording = false;
   private recording: Audio.Recording | null = null;
   private startTime = 0;
+  private currentTranscript = '';
   private onResultCallback?: (result: string) => void;
   private onErrorCallback?: (error: string) => void;
 
   constructor() {
-    // Initialize - no native setup needed on web
+    // Initialize speech recognition event listeners
+    this.setupSpeechRecognition();
+  }
+
+  private setupSpeechRecognition() {
+    // Listen for speech recognition results
+    ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+      if (event.results && event.results.length > 0) {
+        const result = event.results[0];
+        if (result.transcript) {
+          this.currentTranscript = result.transcript;
+          console.log('Speech recognized:', result.transcript);
+        }
+      }
+    });
+
+    // Listen for errors
+    ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+      console.error('Speech recognition error:', event);
+    });
   }
 
   private onSpeechStart = () => {
@@ -109,6 +133,12 @@ class VoiceService {
         throw new Error('Audio recording permission not granted');
       }
 
+      // Request speech recognition permission
+      const speechPermission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!speechPermission.granted) {
+        throw new Error('Speech recognition permission not granted');
+      }
+
       // Set audio mode for recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
@@ -123,8 +153,20 @@ class VoiceService {
       this.recording = recording;
       this.startTime = Date.now();
       this.isRecording = true;
+      this.currentTranscript = '';
 
-      console.log('Recording started');
+      // Start speech recognition
+      ExpoSpeechRecognitionModule.start({
+        lang: "en-US",
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: true,
+        requiresOnDeviceRecognition: false,
+        addsPunctuation: true,
+        contextualStrings: ["Elevated Movements", "AI assistant", "calendar", "schedule"],
+      });
+
+      console.log('Recording and speech recognition started');
 
       // Haptic feedback
       try {
@@ -144,13 +186,19 @@ class VoiceService {
         throw new Error('No active recording');
       }
 
-      // Stop the recording
+      // Stop speech recognition first to get final transcript
+      ExpoSpeechRecognitionModule.stop();
+
+      // Give speech recognition a moment to finalize
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Stop the audio recording
       await this.recording.stopAndUnloadAsync();
       const uri = this.recording.getURI();
       const duration = (Date.now() - this.startTime) / 1000;
 
       const result: VoiceRecordingResult = {
-        transcript: '',
+        transcript: this.currentTranscript || '',
         audioUri: uri || undefined,
         duration,
       };
@@ -163,7 +211,7 @@ class VoiceService {
       this.recording = null;
       this.isRecording = false;
 
-      console.log('Recording stopped:', duration, 'URI:', uri);
+      console.log('Recording stopped:', duration, 'Transcript:', this.currentTranscript, 'URI:', uri);
 
       // Haptic feedback
       try {
@@ -210,12 +258,21 @@ class VoiceService {
 
   async cleanup(): Promise<void> {
     try {
+      // Stop speech recognition
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch (e) {
+        // Already stopped
+      }
+
+      // Stop audio recording
       if (this.recording && this.isRecording) {
         await this.recording.stopAndUnloadAsync();
         this.recording = null;
       }
       this.isListening = false;
       this.isRecording = false;
+      this.currentTranscript = '';
     } catch (error) {
       console.error('Error cleaning up voice service:', error);
     }
