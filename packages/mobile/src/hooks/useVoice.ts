@@ -51,7 +51,8 @@ export const useVoice = () => {
       // Send to backend or queue for offline
       try {
         if (result.audioUri) {
-          const response = await voiceService.sendVoiceCommand(result.audioUri, result.transcript);
+          // Don't send transcript - let backend transcribe with Whisper
+          const response = await voiceService.sendVoiceCommand(result.audioUri);
 
           // Update command with response
           updateVoiceCommand(command.id, {
@@ -66,11 +67,10 @@ export const useVoice = () => {
       } catch (apiError: any) {
         console.error('API error, adding to offline queue:', apiError);
 
-        // Add to offline queue
+        // Add to offline queue (without transcript - backend will transcribe)
         await offlineSyncService.addToQueue('voice_command', {
           commandId: command.id,
           audioUri: result.audioUri,
-          transcript: result.transcript,
         });
 
         updateVoiceCommand(command.id, { status: 'pending' });
