@@ -155,18 +155,18 @@ class VoiceService {
       this.isRecording = true;
       this.currentTranscript = '';
 
-      // Start speech recognition
-      ExpoSpeechRecognitionModule.start({
-        lang: "en-US",
-        interimResults: true,
-        maxAlternatives: 1,
-        continuous: true,
-        requiresOnDeviceRecognition: false,
-        addsPunctuation: true,
-        contextualStrings: ["Elevated Movements", "AI assistant", "calendar", "schedule"],
-      });
+      // Speech recognition disabled - using backend Whisper transcription instead
+      // ExpoSpeechRecognitionModule.start({
+      //   lang: "en-US",
+      //   interimResults: true,
+      //   maxAlternatives: 1,
+      //   continuous: true,
+      //   requiresOnDeviceRecognition: false,
+      //   addsPunctuation: true,
+      //   contextualStrings: ["Elevated Movements", "AI assistant", "calendar", "schedule"],
+      // });
 
-      console.log('Recording and speech recognition started');
+      console.log('Recording started (backend transcription mode)');
 
       // Haptic feedback
       try {
@@ -186,19 +186,18 @@ class VoiceService {
         throw new Error('No active recording');
       }
 
-      // Stop speech recognition first to get final transcript
-      ExpoSpeechRecognitionModule.stop();
-
-      // Give speech recognition a moment to finalize
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Speech recognition disabled - backend will transcribe
+      // ExpoSpeechRecognitionModule.stop();
+      // await new Promise(resolve => setTimeout(resolve, 300));
 
       // Stop the audio recording
       await this.recording.stopAndUnloadAsync();
       const uri = this.recording.getURI();
       const duration = (Date.now() - this.startTime) / 1000;
 
+      // Don't send transcript - let backend transcribe with Whisper
       const result: VoiceRecordingResult = {
-        transcript: this.currentTranscript || '',
+        transcript: '', // Empty - backend will transcribe
         audioUri: uri || undefined,
         duration,
       };
