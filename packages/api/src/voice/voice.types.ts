@@ -241,6 +241,29 @@ export const GenerateBrandStorySchema = z.object({
 export type GenerateBrandStoryInput = z.infer<typeof GenerateBrandStorySchema>;
 
 // ============================================================================
+// SESSION START (First Message Generator)
+// ============================================================================
+
+export const SessionStartSchema = z.object({
+  founder: FounderSchema,
+  entryContext: z
+    .enum(['open_app', 'post_meeting', 'resume', 'voice_wake_word'])
+    .optional()
+    .describe('How the session was initiated'),
+  lastInteractionAt: ISODateSchema.optional().describe('Last interaction timestamp'),
+  explicitOverwhelmed: z
+    .boolean()
+    .optional()
+    .describe('User explicitly indicated feeling overwhelmed'),
+  explicitTired: z
+    .boolean()
+    .optional()
+    .describe('User explicitly indicated feeling tired'),
+});
+
+export type SessionStartInput = z.infer<typeof SessionStartSchema>;
+
+// ============================================================================
 // VALIDATION HELPER
 // ============================================================================
 

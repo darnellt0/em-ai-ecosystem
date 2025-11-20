@@ -23,6 +23,7 @@ import {
   AllocateBudgetSchema,
   GenerateContentSchema,
   GenerateBrandStorySchema,
+  SessionStartSchema,
   parseVoiceRequest,
 } from './voice.types';
 import {
@@ -39,6 +40,7 @@ import {
   allocateBudget,
   generateContent,
   generateBrandStory,
+  startSession,
 } from './voice.services';
 import { HybridRouterService } from '../services/hybrid-router.service';
 
@@ -53,6 +55,35 @@ const asyncHandler = (fn: (req: AuthenticatedRequest, res: Response) => Promise<
     Promise.resolve(fn(req as AuthenticatedRequest, res)).catch(next);
   };
 };
+
+// ============================================================================
+// SESSION START: POST /api/voice/session/start
+// ============================================================================
+
+/**
+ * Start a voice session with Shria's Personal Assistant.
+ * Returns a context-aware first message for the ElevenLabs assistant.
+ * Request: SessionStartInput
+ * Response: VoiceResponse with personalized greeting
+ */
+router.post(
+  '/session/start',
+  ...middleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const parsed = parseVoiceRequest(SessionStartSchema, req.body);
+    if (!parsed.success) {
+      res.status(parsed.status).json({
+        status: 'error',
+        humanSummary: 'Invalid request: ' + parsed.errors.join('; '),
+        nextBestAction: 'Check payload and retry.',
+      });
+      return;
+    }
+
+    const result = await startSession(parsed.data);
+    res.status(result.status === 'ok' ? 200 : 400).json(result);
+  })
+);
 
 // ============================================================================
 // ENDPOINT 1: POST /api/voice/scheduler/block

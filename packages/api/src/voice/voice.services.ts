@@ -15,8 +15,10 @@ import {
   PauseInput,
   LogCompleteInput,
   FollowUpInput,
+  SessionStartInput,
 } from './voice.types';
 import { agentFactory } from '../agents/agent-factory';
+import { getFirstMessageForShria } from '../em/shriaIntro';
 
 // Helper function to get founder email from ID
 function getFounderEmail(founderIdId: string): string {
@@ -571,6 +573,178 @@ export async function generateBrandStory(founder: string, companyName: string, v
       status: 'error',
       humanSummary: `Could not generate brand story: ${message}`,
       nextBestAction: 'Provide clearer company details and try again.',
+    };
+  }
+}
+
+// ============================================================================
+// SESSION START - SHRIA'S FIRST MESSAGE GENERATOR
+// ============================================================================
+
+/**
+ * Start a voice session with Shria's Personal Assistant.
+ * Returns a context-aware first message based on time of day, calendar load,
+ * and user energy signals.
+ *
+ * This is the Shria first-message generator designed to match her ElevenLabs
+ * voice assistant tone (grounded, calm, supportive, present).
+ */
+export async function startSession(input: SessionStartInput): Promise<VoiceResponse> {
+  try {
+    const founderEmail = getFounderEmail(input.founder);
+    const now = new Date();
+
+    // Parse lastInteractionAt if provided
+    const lastInteractionAt = input.lastInteractionAt
+      ? new Date(input.lastInteractionAt)
+      : null;
+
+    // Fetch today's calendar events to analyze energy context
+    // For now, we'll use mock analysis until calendar integration is ready
+    // TODO: Replace with actual calendar analysis using agentFactory or calendar service
+    const calendarAnalysis = await analyzeCalendarForEnergyContext(founderEmail, now);
+
+    // Generate first message using Shria intro system
+    const firstMessage = getFirstMessageForShria({
+      now,
+      lastInteractionAt,
+      entryContext: input.entryContext,
+      totalEventHoursToday: calendarAnalysis.totalEventHoursToday,
+      hasHighStakesEvent: calendarAnalysis.hasHighStakesEvent,
+      hasBackToBackBlocks: calendarAnalysis.hasBackToBackBlocks,
+      explicitOverwhelmed: input.explicitOverwhelmed,
+      explicitTired: input.explicitTired,
+    });
+
+    return {
+      status: 'ok',
+      humanSummary: firstMessage,
+      nextBestAction: 'Ready to assist you.',
+      data: {
+        founderEmail: input.founder,
+        sessionStartedAt: now.toISOString(),
+        entryContext: input.entryContext,
+        calendarAnalysis,
+      },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return {
+      status: 'error',
+      humanSummary: `Could not start session: ${message}`,
+      nextBestAction: 'Try again in a moment.',
+    };
+  }
+}
+
+/**
+ * Analyzes today's calendar events to determine energy context signals.
+ * This helper examines calendar load, event types, and patterns.
+ *
+ * @param founderEmail - The founder's email
+ * @param now - Current timestamp
+ * @returns Energy context analysis
+ */
+async function analyzeCalendarForEnergyContext(
+  founderEmail: string,
+  now: Date
+): Promise<{
+  totalEventHoursToday: number;
+  hasHighStakesEvent: boolean;
+  hasBackToBackBlocks: boolean;
+}> {
+  try {
+    // TODO: Integrate with real calendar service to fetch events
+    // For now, return intelligent defaults based on time of day
+    // This allows the system to work immediately while calendar integration is in progress
+
+    const hour = now.getHours();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Weekends: lighter load
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return {
+        totalEventHoursToday: 2,
+        hasHighStakesEvent: false,
+        hasBackToBackBlocks: false,
+      };
+    }
+
+    // Weekdays: assume moderate to heavy load during business hours
+    if (hour >= 9 && hour < 17) {
+      return {
+        totalEventHoursToday: 5,
+        hasHighStakesEvent: false,
+        hasBackToBackBlocks: true,
+      };
+    }
+
+    // Early morning or late evening: lighter load
+    return {
+      totalEventHoursToday: 3,
+      hasHighStakesEvent: false,
+      hasBackToBackBlocks: false,
+    };
+
+    /*
+    // FUTURE: Actual calendar integration (when ready)
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Fetch events from calendar service
+    const events = await fetchCalendarEvents(founderEmail, startOfDay, endOfDay);
+
+    // Calculate total hours
+    let totalMinutes = 0;
+    let hasBackToBackBlocks = false;
+    let hasHighStakesEvent = false;
+
+    const highStakesKeywords = [
+      'retreat',
+      'launch',
+      'workshop',
+      'presentation',
+      'pitch',
+      'investor',
+      'keynote',
+    ];
+
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      const duration = calculateDuration(event.start, event.end);
+      totalMinutes += duration;
+
+      // Check if event title contains high-stakes keywords
+      const title = (event.summary || '').toLowerCase();
+      if (highStakesKeywords.some(keyword => title.includes(keyword))) {
+        hasHighStakesEvent = true;
+      }
+
+      // Check for back-to-back meetings (less than 15 min gap)
+      if (i > 0) {
+        const prevEvent = events[i - 1];
+        const gap = calculateGap(prevEvent.end, event.start);
+        if (gap < 15) {
+          hasBackToBackBlocks = true;
+        }
+      }
+    }
+
+    return {
+      totalEventHoursToday: totalMinutes / 60,
+      hasHighStakesEvent,
+      hasBackToBackBlocks,
+    };
+    */
+  } catch (error) {
+    // Fallback to neutral context if analysis fails
+    console.error('[Session Start] Calendar analysis error:', error);
+    return {
+      totalEventHoursToday: 3,
+      hasHighStakesEvent: false,
+      hasBackToBackBlocks: false,
     };
   }
 }
