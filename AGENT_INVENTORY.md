@@ -151,9 +151,11 @@ The EM AI Ecosystem consists of multiple specialized AI agents organized into th
 
 ## 2. Growth & Personal Development Agents (5 Agents)
 
-**Location**: `packages/api/src/growth-agents/` (phase6-growth-agents branch)
-**Status**: 🚧 In Development (Phase 6)
+**Location**: `packages/api/src/growth-agents/`
+**Status**: ✅ Integrated - Behind Feature Flags (Phase 6)
+**Branch**: `claude/count-total-items-01MMaVUwuCPEuiTLPMdkL6Sj`
 **Orchestration**: BullMQ-based concurrent execution via Growth Orchestrator
+**Feature Flags**: `ENABLE_GROWTH_AGENTS`, `ENABLE_GROWTH_DASHBOARD`
 
 ### 2.1 Journal Agent (Rooted Phase)
 - **Purpose**: Daily alignment journal with AI summarization
@@ -366,11 +368,13 @@ The EM AI Ecosystem consists of multiple specialized AI agents organized into th
 - **Database**: PostgreSQL on Render
 - **Monitoring**: Real-time dashboard at `/agents.html`
 
-### In Development (Phase 6)
-- **5 Growth Agents**: Implemented, needs integration
-- **Orchestrator**: BullMQ-based concurrent execution
-- **Testing**: Unit tests complete
-- **Next Steps**: Merge to main, production deployment
+### Integrated - Behind Feature Flags (Phase 6)
+- **5 Growth Agents**: ✅ Fully integrated
+- **Orchestrator**: ✅ BullMQ-based concurrent execution
+- **Testing**: ✅ Unit tests + integration tests complete
+- **Feature Flags**: `ENABLE_GROWTH_AGENTS=false` (default), `ENABLE_GROWTH_DASHBOARD=false` (default)
+- **Status**: Ready for staging/production rollout
+- **Rollout Guide**: See `PHASE_6_ROLLOUT.md`
 
 ### Standalone (Ideation Coach)
 - **Status**: Implemented but not yet integrated
