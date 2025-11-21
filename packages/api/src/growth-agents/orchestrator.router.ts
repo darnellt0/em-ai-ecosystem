@@ -3,10 +3,30 @@
  * Provides endpoints for launching, monitoring, and checking agent status
  */
 
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { orchestrator } from './orchestrator';
 
 const router = express.Router();
+
+/**
+ * Feature flag middleware - guards all growth agent endpoints
+ */
+const requireGrowthAgentsEnabled = (req: Request, res: Response, next: NextFunction) => {
+  const enabled = process.env.ENABLE_GROWTH_AGENTS === 'true';
+
+  if (!enabled) {
+    return res.status(403).json({
+      success: false,
+      error: 'Growth agents are not enabled',
+      message: 'Set ENABLE_GROWTH_AGENTS=true in environment to enable this feature',
+    });
+  }
+
+  next();
+};
+
+// Apply feature flag middleware to all routes
+router.use(requireGrowthAgentsEnabled);
 
 /**
  * POST /api/orchestrator/launch

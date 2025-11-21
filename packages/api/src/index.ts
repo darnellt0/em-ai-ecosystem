@@ -233,14 +233,19 @@ app.use('/api/voice', voiceAudioRouter);
 // ============================================================================
 
 /**
- * Growth agents orchestrator endpoints
+ * Growth agents orchestrator endpoints (protected by feature flag)
  */
 app.use('/api/orchestrator', orchestratorRouter);
 
 /**
- * Serve growth agents monitoring UI
+ * Serve growth agents monitoring UI (only if dashboard is enabled)
  */
-app.use('/agents', express.static('src/public'));
+if (process.env.ENABLE_GROWTH_DASHBOARD === 'true') {
+  app.use('/agents', express.static('src/public'));
+  console.log('🔓 Growth Agents Dashboard: Enabled at /agents');
+} else {
+  console.log('🔒 Growth Agents Dashboard: Disabled (set ENABLE_GROWTH_DASHBOARD=true to enable)');
+}
 
 // ============================================================================
 // ROUTES - DASHBOARD HTML
