@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Growth Agents Monitor | Elevated Movements AI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0a1b, #1a0f2e);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #36013f, #5a1a6f);
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #e0cd67;
+      margin-bottom: 10px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    .badge-success { background: #10b981; color: white; }
+    .badge-warning { background: #f59e0b; color: white; }
+    .badge-error { background: #ef4444; color: white; }
+    .badge-info { background: #3b82f6; color: white; }
+
+    .controls {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(224,205,103,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #176161, #1a8080);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(23,97,97,0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .agent-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(224,205,103,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .agent-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .agent-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
+    }
+
+    .agent-name {
+      color: #e0cd67;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .agent-phase {
+      background: rgba(224,205,103,0.2);
+      color: #e0cd67;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .agent-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-ready { background: #10b981; }
+    .status-running { background: #f59e0b; }
+    .status-error { background: #ef4444; }
+    .status-idle { background: #6b7280; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .agent-meta {
+      font-size: 13px;
+      color: #a0a0a0;
+      margin: 8px 0;
+    }
+
+    .agent-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #fca5a5;
+    }
+
+    .readiness-summary {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(224,205,103,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .readiness-summary h2 {
+      color: #e0cd67;
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    .readiness-checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .readiness-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+    }
+
+    .check-icon {
+      font-size: 20px;
+    }
+
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      color: #a0a0a0;
+      font-size: 12px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #a0a0a0;
+    }
+
+    .loading-spinner {
+      border: 3px solid rgba(224,205,103,0.1);
+      border-top: 3px solid #e0cd67;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌱 Growth Agents Monitor</h1>
+      <div style="margin-top: 15px;">
+        <span class="status-badge badge-info" id="system-status">Checking...</span>
+        <span style="margin-left: 15px; font-size: 14px; color: #a0a0a0;">Last updated: <span id="last-update">Never</span></span>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div>
+        <button id="launch-btn" onclick="launchAgents()">🚀 Launch All Growth Agents</button>
+        <button onclick="refreshData()" style="background: linear-gradient(135deg, #5a1a6f, #7a2a8f); margin-left: 10px;">🔄 Refresh</button>
+      </div>
+      <div>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()" checked>
+          <span style="font-size: 14px;">Auto-refresh (5s)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="readiness-summary" id="readiness-section">
+      <h2>Readiness Status</h2>
+      <div class="readiness-checks" id="readiness-checks">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          Loading readiness data...
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin: 30px 0 15px; color: #e0cd67;">Growth Agents (5)</h2>
+    <div class="agents-grid" id="agents-grid">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        Loading agent data...
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Elevated Movements AI • Growth Agent Orchestrator • v1.0.0</p>
+  </footer>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let autoRefreshInterval = null;
+
+    // Status emoji mapping
+    const statusEmoji = {
+      ready: '🟢',
+      running: '🟡',
+      error: '🔴',
+      idle: '⚪'
+    };
+
+    // Phase colors
+    const phaseColors = {
+      'Rooted': '#176161',
+      'Grounded': '#e0cd67',
+      'Radiant': '#c3b4b3'
+    };
+
+    async function fetchHealth() {
+      try {
+        const response = await fetch(`${API_BASE}/api/orchestrator/health`);
+        const data = await response.json();
+        return data.health;
+      } catch (error) {
+        console.error('Failed to fetch health:', error);
+        return null;
+      }
+    }
+
+    async function fetchReadiness() {
+      try {
+        const response = await fetch(`${API_BASE}/api/orchestrator/readiness`);
+        const data = await response.json();
+        return data.readiness;
+      } catch (error) {
+        console.error('Failed to fetch readiness:', error);
+        return null;
+      }
+    }
+
+    async function launchAgents() {
+      const btn = document.getElementById('launch-btn');
+      btn.disabled = true;
+      btn.textContent = '🚀 Launching...';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/orchestrator/launch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: 'dashboard-user',
+            email: 'user@elevatedmovements.com',
+            userName: 'Dashboard User'
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          alert(`✅ Launched ${data.summary.totalAgents} Growth Agents\n\nSuccessful: ${data.summary.successfulAgents}\nFailed: ${data.summary.failedAgents}`);
+        } else {
+          alert('❌ Failed to launch agents: ' + data.message);
+        }
+
+        await refreshData();
+      } catch (error) {
+        console.error('Launch error:', error);
+        alert('❌ Error launching agents: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Launch All Growth Agents';
+      }
+    }
+
+    function renderAgents(health) {
+      const grid = document.getElementById('agents-grid');
+
+      if (!health || !health.agents || health.agents.length === 0) {
+        grid.innerHTML = '<div class="loading">No agents found</div>';
+        return;
+      }
+
+      grid.innerHTML = health.agents.map(agent => {
+        const statusClass = `status-${agent.status}`;
+        const lastUpdated = agent.lastUpdated
+          ? new Date(agent.lastUpdated).toLocaleTimeString()
+          : 'Never';
+
+        return `
+          <div class="agent-card">
+            <div class="agent-header">
+              <div class="agent-name">${agent.displayName}</div>
+              <div class="agent-phase" style="background: ${phaseColors[agent.phase]}33; color: ${phaseColors[agent.phase]}">
+                ${agent.phase}
+              </div>
+            </div>
+
+            <div class="agent-status">
+              <div class="status-indicator ${statusClass}"></div>
+              <span style="text-transform: capitalize;">${agent.status}</span>
+              <span>${agent.ready ? '✓ Ready' : '⏳ Not Ready'}</span>
+            </div>
+
+            <div class="agent-meta">
+              Last Updated: ${lastUpdated}
+            </div>
+
+            <div class="agent-meta">
+              Runs: ${agent.runCount || 0}
+            </div>
+
+            ${agent.lastError ? `
+              <div class="agent-error">
+                ⚠️ ${agent.lastError}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderReadiness(readiness) {
+      const checksDiv = document.getElementById('readiness-checks');
+
+      if (!readiness) {
+        checksDiv.innerHTML = '<div class="loading">Failed to load readiness</div>';
+        return;
+      }
+
+      const agents = ['journal', 'niche', 'mindset', 'rhythm', 'purpose'];
+
+      checksDiv.innerHTML = agents.map(key => {
+        const ready = readiness[key];
+        const icon = ready ? '✅' : '⏳';
+        const label = key.charAt(0).toUpperCase() + key.slice(1);
+
+        return `
+          <div class="readiness-item">
+            <span class="check-icon">${icon}</span>
+            <span>${label}</span>
+          </div>
+        `;
+      }).join('') + `
+        <div class="readiness-item" style="grid-column: 1 / -1; background: ${readiness.allReady ? 'rgba(16, 185, 129, 0.1)' : 'rgba(251, 146, 60, 0.1)'};">
+          <span class="check-icon">${readiness.allReady ? '🎉' : '⏳'}</span>
+          <span style="font-weight: 600;">${readiness.allReady ? 'All Agents Ready!' : 'Not All Ready'}</span>
+        </div>
+      `;
+    }
+
+    async function refreshData() {
+      const [health, readiness] = await Promise.all([
+        fetchHealth(),
+        fetchReadiness()
+      ]);
+
+      if (health) {
+        renderAgents(health);
+
+        const statusBadge = document.getElementById('system-status');
+        statusBadge.textContent = health.redisConnected ? '● System Healthy' : '⚠ Redis Disconnected';
+        statusBadge.className = `status-badge ${health.redisConnected ? 'badge-success' : 'badge-warning'}`;
+      }
+
+      if (readiness) {
+        renderReadiness(readiness);
+      }
+
+      document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+    }
+
+    function toggleAutoRefresh() {
+      const checkbox = document.getElementById('auto-refresh');
+
+      if (checkbox.checked) {
+        autoRefreshInterval = setInterval(refreshData, 5000);
+      } else {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+      }
+    }
+
+    // Initial load
+    refreshData();
+
+    // Start auto-refresh
+    toggleAutoRefresh();
+  </script>
+</body>
+</html>

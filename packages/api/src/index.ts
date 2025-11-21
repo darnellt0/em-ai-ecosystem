@@ -11,6 +11,7 @@ import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
+import orchestratorRouter from './routes/orchestrator.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
@@ -228,6 +229,15 @@ app.use('/api/voice', voiceRouter);
 app.use('/api/voice', voiceAudioRouter);
 
 // ============================================================================
+// ROUTES - GROWTH AGENT ORCHESTRATOR
+// ============================================================================
+
+/**
+ * Growth Agent Orchestrator endpoints
+ */
+app.use('/api/orchestrator', orchestratorRouter);
+
+// ============================================================================
 // ROUTES - DASHBOARD HTML
 // ============================================================================
 
@@ -406,6 +416,11 @@ app.use((req: Request, res: Response) => {
       '/api/voice/business/content',
       '/api/voice/business/brand-story',
       '/api/voice/hybrid',
+      '/api/orchestrator/launch',
+      '/api/orchestrator/health',
+      '/api/orchestrator/readiness',
+      '/api/orchestrator/progress',
+      '/api/orchestrator/agents',
     ],
   });
 });
@@ -443,7 +458,13 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
   console.log(`   POST /api/voice/coach/pause             - Start meditation`);
   console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
-  console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
+  console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
+  console.log(`🌱 GROWTH AGENT ORCHESTRATOR:`);
+  console.log(`   POST /api/orchestrator/launch           - Launch all Growth Agents`);
+  console.log(`   GET  /api/orchestrator/health           - Orchestrator health`);
+  console.log(`   GET  /api/orchestrator/readiness        - Agent readiness`);
+  console.log(`   GET  /api/orchestrator/progress         - Progress snapshot`);
+  console.log(`   GET  /api/orchestrator/agents           - List agents`);
 });
 
 if (!(global as any).__VOICE_WSS_INITIALIZED__) {
