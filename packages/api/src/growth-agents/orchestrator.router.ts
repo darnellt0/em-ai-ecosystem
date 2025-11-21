@@ -1,0 +1,128 @@
+/**
+ * Express Router for Growth Agents Orchestrator
+ * Provides endpoints for launching, monitoring, and checking agent status
+ */
+
+import express, { Request, Response } from 'express';
+import { orchestrator } from './orchestrator';
+
+const router = express.Router();
+
+/**
+ * POST /api/orchestrator/launch
+ * Launch all growth agents
+ */
+router.post('/launch', async (req: Request, res: Response) => {
+  try {
+    const result = await orchestrator.launchAllAgents();
+
+    res.json({
+      success: true,
+      message: `Launched ${result.count} growth agents`,
+      jobIds: result.jobIds,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Launch failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /api/orchestrator/health
+ * Check orchestrator and worker health
+ */
+router.get('/health', async (req: Request, res: Response) => {
+  try {
+    const health = await orchestrator.getHealth();
+
+    res.json({
+      success: true,
+      ...health,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Health check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /api/orchestrator/monitor
+ * Stream recent progress and events
+ */
+router.get('/monitor', async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 200;
+    const data = await orchestrator.getMonitorData(limit);
+
+    res.json({
+      success: true,
+      ...data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Monitor failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /api/orchestrator/readiness
+ * Check readiness status of all agents
+ */
+router.get('/readiness', async (req: Request, res: Response) => {
+  try {
+    const status = await orchestrator.getReadinessStatus();
+
+    // If all agents are ready, generate verification summary
+    if (status.all_ready) {
+      const monitorData = await orchestrator.getMonitorData(50);
+
+      // Extract key metrics
+      const summary = {
+        all_ready: true,
+        agents: ['journal', 'niche', 'mindset', 'rhythm', 'purpose'],
+        completion_time: new Date().toISOString(),
+        progress_events: monitorData.progress.length,
+        verification: 'All 5 growth agents completed successfully',
+      };
+
+      console.log('\n' + '='.repeat(80));
+      console.log('VERIFICATION SUMMARY - Phase 6 Growth Agents');
+      console.log('='.repeat(80));
+      console.log(JSON.stringify(summary, null, 2));
+      console.log('='.repeat(80) + '\n');
+
+      res.json({
+        success: true,
+        ...status,
+        summary,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.json({
+        success: true,
+        ...status,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error('[Orchestrator API] Readiness check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+export default router;
