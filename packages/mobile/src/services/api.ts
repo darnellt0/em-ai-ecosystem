@@ -184,6 +184,38 @@ class ApiService {
     const response = await this.client.get('/health');
     return response.data;
   }
+
+  // HeyGen Interactive Avatar endpoints
+  async startHeygenSession(params: {
+    avatarId: string;
+    voiceId?: string;
+    userId?: string;
+    language?: string;
+    quality?: 'low' | 'medium' | 'high';
+  }) {
+    const response = await this.client.post('/heygen/session', params);
+    return response.data;
+  }
+
+  async sendHeygenMessage(params: {
+    sessionId: string;
+    text: string;
+    userId?: string;
+    metadata?: Record<string, any>;
+  }) {
+    const response = await this.client.post('/heygen/message', params);
+    return response.data;
+  }
+
+  async endHeygenSession(sessionId: string) {
+    const response = await this.client.post('/heygen/session/end', { sessionId });
+    return response.data;
+  }
+
+  async getHeygenStatus() {
+    const response = await this.client.get('/heygen/status');
+    return response.data;
+  }
 }
 
 export default new ApiService();
