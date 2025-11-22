@@ -11,6 +11,7 @@ import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
+import heygenRouter from './heygen/heygen.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 
 const app = express();
@@ -228,6 +229,15 @@ app.use('/api/voice', voiceRouter);
 app.use('/api/voice', voiceAudioRouter);
 
 // ============================================================================
+// ROUTES - HEYGEN INTERACTIVE AVATAR
+// ============================================================================
+
+/**
+ * HeyGen Interactive Avatar endpoints for avatar sessions and messaging
+ */
+app.use('/api/heygen', heygenRouter);
+
+// ============================================================================
 // ROUTES - DASHBOARD HTML
 // ============================================================================
 
@@ -406,6 +416,10 @@ app.use((req: Request, res: Response) => {
       '/api/voice/business/content',
       '/api/voice/business/brand-story',
       '/api/voice/hybrid',
+      '/api/heygen/session',
+      '/api/heygen/message',
+      '/api/heygen/session/end',
+      '/api/heygen/status',
     ],
   });
 });
@@ -443,7 +457,12 @@ const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
   console.log(`   POST /api/voice/coach/pause             - Start meditation`);
   console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
-  console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
+  console.log(`   POST /api/voice/support/follow-up       - Create reminder\n`);
+  console.log(`🎭 HEYGEN INTERACTIVE AVATAR ENDPOINTS:`);
+  console.log(`   POST /api/heygen/session                - Start avatar session`);
+  console.log(`   POST /api/heygen/message                - Send message to avatar`);
+  console.log(`   POST /api/heygen/session/end            - End avatar session`);
+  console.log(`   GET  /api/heygen/status                 - Get HeyGen status`);
 });
 
 if (!(global as any).__VOICE_WSS_INITIALIZED__) {
