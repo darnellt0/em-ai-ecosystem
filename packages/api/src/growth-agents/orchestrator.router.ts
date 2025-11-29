@@ -6,6 +6,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { orchestrator } from './orchestrator';
 import { checkAllAgentsHealth, validateAgentRegistry, getAllAgentIds, getAgentMetadata } from './agent-registry';
+import { runPhase6QA } from './integration-qa-agent';
 
 const router = express.Router();
 
@@ -141,6 +142,30 @@ router.get('/agents/health', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('[Orchestrator API] Agent health check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * POST /api/orchestrator/qa/phase6
+ * Run Phase 6 integration QA tests on all agents
+ */
+router.post('/qa/phase6', async (req: Request, res: Response) => {
+  try {
+    const report = await runPhase6QA();
+
+    const statusCode = report.overall_status === 'PASS' ? 200 : 500;
+
+    res.status(statusCode).json({
+      success: report.overall_status === 'PASS',
+      report,
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Phase 6 QA failed:', error);
     res.status(500).json({
       success: false,
       error: (error as Error).message,

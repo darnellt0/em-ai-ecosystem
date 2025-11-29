@@ -21,6 +21,7 @@
     "clean": "lerna run clean && rm -rf node_modules",
     "setup": "bash scripts/setup.sh",
     "health-check": "bash scripts/health-check.sh",
+    "check-agent-integrity": "ts-node scripts/check-agent-integrity.ts",
     "backup": "bash scripts/backup.sh",
     "kill-switch": "bash scripts/kill-switch.sh",
     "docker:up": "docker-compose -f infrastructure/docker/docker-compose.yml up -d",
