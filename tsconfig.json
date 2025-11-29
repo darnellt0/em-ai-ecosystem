@@ -20,8 +20,7 @@
       "@orchestrator/*": ["packages/orchestrator/src/*"],
       "@em/orchestrator": ["packages/orchestrator/src/index"],
       "@em/orchestrator/*": ["packages/orchestrator/src/*"],
-      "@api/*": ["packages/api/src/*"],
-      "@agents/*": ["packages/agents/*/src/*"]
+      "@api/*": ["packages/api/src/*"]
     }
   },
   "include": ["packages/*/src/**/*", "packages/*/tests/**/*"],

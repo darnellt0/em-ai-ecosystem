@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "commonjs",
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "allowJs": true,
     "jsx": "react-native",
     "noEmit": true,
