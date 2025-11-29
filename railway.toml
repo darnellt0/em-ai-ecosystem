@@ -1,0 +1,32 @@
+# Railway Deployment Configuration
+# Elevated Movements AI Ecosystem
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.production"
+
+[deploy]
+startCommand = "node packages/api/dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Environment variables
+[env]
+NODE_ENV = "production"
+PORT = "3000"
+LOG_LEVEL = "info"
+
+# Services configuration
+[[services]]
+name = "api"
+dockerfile = "Dockerfile.production"
+
+[[services]]
+name = "postgres"
+image = "postgres:15-alpine"
+
+[[services]]
+name = "redis"
+image = "redis:7-alpine"
