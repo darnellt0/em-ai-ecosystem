@@ -5,6 +5,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import { orchestrator } from './orchestrator';
+import { checkAllAgentsHealth, validateAgentRegistry, getAllAgentIds, getAgentMetadata } from './agent-registry';
 
 const router = express.Router();
 
@@ -92,6 +93,58 @@ router.get('/monitor', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /api/orchestrator/agents/health
+ * Registry healthcheck - validates all agents and their dependencies
+ */
+router.get('/agents/health', async (req: Request, res: Response) => {
+  try {
+    // Validate registry structure
+    const validation = validateAgentRegistry();
+
+    if (!validation.valid) {
+      return res.status(500).json({
+        success: false,
+        error: 'Agent registry validation failed',
+        errors: validation.errors,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Run healthchecks for all agents
+    const healthStatuses = await checkAllAgentsHealth();
+
+    // Determine overall health
+    const allHealthy = Object.values(healthStatuses).every(
+      (status) => status.status === 'healthy'
+    );
+
+    // Get all agent metadata
+    const agentIds = getAllAgentIds();
+    const agents = agentIds.map((id) => ({
+      id,
+      metadata: getAgentMetadata(id),
+      health: healthStatuses[id],
+    }));
+
+    res.json({
+      success: true,
+      overall_status: allHealthy ? 'healthy' : 'degraded',
+      agent_count: agentIds.length,
+      agents,
+      validation,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Agent health check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      timestamp: new Date().toISOString(),
     });
   }
 });
