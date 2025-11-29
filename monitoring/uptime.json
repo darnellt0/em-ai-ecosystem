@@ -1,0 +1,117 @@
+{
+  "monitors": [
+    {
+      "name": "EM AI Ecosystem - API Health",
+      "url": "https://your-production-url.com/health",
+      "type": "HTTP",
+      "interval": 300,
+      "timeout": 30,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "keyword": "running",
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "EM AI Ecosystem - Orchestrator Health",
+      "url": "https://your-production-url.com/api/orchestrator/health",
+      "type": "HTTP",
+      "interval": 300,
+      "timeout": 30,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "keyword": "success",
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "EM AI Ecosystem - Agent Registry Health",
+      "url": "https://your-production-url.com/api/orchestrator/agents/health",
+      "type": "HTTP",
+      "interval": 600,
+      "timeout": 60,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "keyword": "healthy",
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "EM AI Ecosystem - Mobile App",
+      "url": "https://your-mobile-app-url.com",
+      "type": "HTTP",
+      "interval": 300,
+      "timeout": 30,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "EM AI Ecosystem - Database",
+      "url": "https://your-production-url.com/api/health/db",
+      "type": "HTTP",
+      "interval": 300,
+      "timeout": 30,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "keyword": "connected",
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "EM AI Ecosystem - Redis",
+      "url": "https://your-production-url.com/api/health/redis",
+      "type": "HTTP",
+      "interval": 300,
+      "timeout": 30,
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "keyword": "connected",
+      "alertContacts": [
+        "default"
+      ],
+      "httpAuth": {
+        "enabled": false
+      }
+    }
+  ],
+  "alertContacts": [
+    {
+      "id": "default",
+      "type": "email",
+      "value": "alerts@elevatedmovements.com"
+    }
+  ],
+  "instructions": {
+    "uptimeRobot": "Import this file at: https://uptimerobot.com/import",
+    "betterUptime": "Import this file at: https://betteruptime.com/monitors/import",
+    "customSetup": "Use this JSON structure to configure your monitoring service of choice",
+    "notes": [
+      "Replace 'your-production-url.com' with your actual production URL",
+      "Replace 'your-mobile-app-url.com' with your actual mobile app URL",
+      "Adjust intervals and timeouts based on your SLA requirements",
+      "Configure alert contacts with actual email addresses or Slack webhooks"
+    ]
+  }
+}

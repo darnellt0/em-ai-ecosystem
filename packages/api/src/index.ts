@@ -15,6 +15,10 @@ import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
+import { initSentry, captureException, flushSentry } from './services/sentry';
+
+// Initialize Sentry first (before other imports)
+initSentry();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -436,10 +440,19 @@ app.use((req: Request, res: Response) => {
 });
 
 /**
- * Global error handler
+ * Global error handler with Sentry integration
  */
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
+
+  // Capture error with Sentry
+  captureException(err, {
+    path: _req.path,
+    method: _req.method,
+    query: _req.query,
+    body: _req.body,
+  });
+
   res.status(500).json({
     error: 'Internal Server Error',
     message: err.message,
@@ -487,18 +500,20 @@ if (!(global as any).__VOICE_WSS_INITIALIZED__) {
   (global as any).__VOICE_WSS_INITIALIZED__ = true;
 }
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
+// Graceful shutdown with Sentry flush
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
+  server.close(async () => {
+    await flushSentry();
     console.log('Server closed');
     process.exit(0);
   });
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
+  server.close(async () => {
+    await flushSentry();
     console.log('Server closed');
     process.exit(0);
   });
