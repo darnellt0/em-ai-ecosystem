@@ -104,8 +104,10 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Theme</Text>
               <Text style={styles.infoValue}>
-                {user?.preferences.theme.charAt(0).toUpperCase() +
-                  user?.preferences.theme.slice(1)}
+                {user?.preferences?.theme ? (
+                  user.preferences.theme.charAt(0).toUpperCase() +
+                  user.preferences.theme.slice(1)
+                ) : 'Dark'}
               </Text>
             </View>
           </View>

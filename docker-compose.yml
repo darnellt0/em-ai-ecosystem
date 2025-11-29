@@ -84,6 +84,40 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # Growth Agents Worker - BullMQ Job Processor
+  worker:
+    image: node:18-alpine
+    container_name: em-worker
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgresql://elevated_movements:T0ml!ns0n@database:5432/em_ecosystem
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_SERVICE_ACCOUNT_JSON_B64=${GOOGLE_SERVICE_ACCOUNT_JSON_B64}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
+      - GMAIL_SENDER_ADDRESS=${GMAIL_SENDER_ADDRESS}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    depends_on:
+      - database
+      - redis
+    volumes:
+      - ./packages/api/dist:/app/dist:ro
+      - ./packages/api/package.json:/app/package.json:ro
+      - ./packages/api/node_modules:/app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+    working_dir: /app
+    command: sh -c "npm install --production && node dist/growth-agents/worker.js"
+    networks:
+      - em-network
+    restart: unless-stopped
+
   # n8n Workflow Automation
   n8n:
     image: n8nio/n8n:latest
