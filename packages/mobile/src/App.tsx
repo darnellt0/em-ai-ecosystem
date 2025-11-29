@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 
 // Providers
 import { AuthProvider, useAuth } from './store/AuthContext';
@@ -109,7 +109,7 @@ const MainNavigator = () => {
 
 // Simple Tab Icon Component
 const TabIcon: React.FC<{ icon: string; color: string }> = ({ icon }) => {
-  return <View style={styles.tabIcon}>{icon}</View>;
+  return <Text style={styles.tabIcon}>{icon}</Text>;
 };
 
 // Root Navigator
@@ -173,5 +173,6 @@ const styles = StyleSheet.create({
   },
   tabIcon: {
     fontSize: 24,
+    color: colors.text,
   },
 });
