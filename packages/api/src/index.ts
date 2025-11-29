@@ -13,6 +13,8 @@ import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
+import emAiAgentsRouter from './routes/emAiAgents.router';
+import { validateAgentRegistry } from './growth-agents/agent-registry';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +43,9 @@ app.use(cors(corsOptions));
 
 // JSON body parsing
 app.use(express.json());
+
+// EM AI agent catalog + execution
+app.use('/em-ai/agents', emAiAgentsRouter);
 
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -444,6 +449,17 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // ============================================================================
 // SERVER START
 // ============================================================================
+
+// Validate agent registry on startup
+const registryValidation = validateAgentRegistry();
+if (!registryValidation.valid) {
+  console.error('❌ Agent registry validation failed:');
+  registryValidation.errors.forEach((error) => console.error(`   - ${error}`));
+  console.error('\nPlease fix agent registry errors before starting the server.\n');
+  process.exit(1);
+} else {
+  console.log('✅ Agent registry validation passed');
+}
 
 const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log('\n✅ Elevated Movements AI Ecosystem API Server');
