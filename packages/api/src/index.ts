@@ -12,6 +12,13 @@ import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
+import orchestratorRouter from './growth-agents/orchestrator.router';
+import emAiAgentsRouter from './routes/emAiAgents.router';
+import { validateAgentRegistry } from './growth-agents/agent-registry';
+import { initSentry, captureException, flushSentry } from './services/sentry';
+
+// Initialize Sentry first (before other imports)
+initSentry();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +47,9 @@ app.use(cors(corsOptions));
 
 // JSON body parsing
 app.use(express.json());
+
+// EM AI agent catalog + execution
+app.use('/em-ai/agents', emAiAgentsRouter);
 
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -228,6 +238,25 @@ app.use('/api/voice', voiceRouter);
 app.use('/api/voice', voiceAudioRouter);
 
 // ============================================================================
+// ROUTES - GROWTH AGENTS ORCHESTRATOR (PHASE 6)
+// ============================================================================
+
+/**
+ * Growth agents orchestrator endpoints (protected by feature flag)
+ */
+app.use('/api/orchestrator', orchestratorRouter);
+
+/**
+ * Serve growth agents monitoring UI (only if dashboard is enabled)
+ */
+if (process.env.ENABLE_GROWTH_DASHBOARD === 'true') {
+  app.use('/agents', express.static('src/public'));
+  console.log('🔓 Growth Agents Dashboard: Enabled at /agents');
+} else {
+  console.log('🔒 Growth Agents Dashboard: Disabled (set ENABLE_GROWTH_DASHBOARD=true to enable)');
+}
+
+// ============================================================================
 // ROUTES - DASHBOARD HTML
 // ============================================================================
 
@@ -411,10 +440,19 @@ app.use((req: Request, res: Response) => {
 });
 
 /**
- * Global error handler
+ * Global error handler with Sentry integration
  */
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
+
+  // Capture error with Sentry
+  captureException(err, {
+    path: _req.path,
+    method: _req.method,
+    query: _req.query,
+    body: _req.body,
+  });
+
   res.status(500).json({
     error: 'Internal Server Error',
     message: err.message,
@@ -424,6 +462,17 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // ============================================================================
 // SERVER START
 // ============================================================================
+
+// Validate agent registry on startup
+const registryValidation = validateAgentRegistry();
+if (!registryValidation.valid) {
+  console.error('❌ Agent registry validation failed:');
+  registryValidation.errors.forEach((error) => console.error(`   - ${error}`));
+  console.error('\nPlease fix agent registry errors before starting the server.\n');
+  process.exit(1);
+} else {
+  console.log('✅ Agent registry validation passed');
+}
 
 const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
   console.log('\n✅ Elevated Movements AI Ecosystem API Server');
@@ -451,18 +500,20 @@ if (!(global as any).__VOICE_WSS_INITIALIZED__) {
   (global as any).__VOICE_WSS_INITIALIZED__ = true;
 }
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
+// Graceful shutdown with Sentry flush
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
+  server.close(async () => {
+    await flushSentry();
     console.log('Server closed');
     process.exit(0);
   });
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
+  server.close(async () => {
+    await flushSentry();
     console.log('Server closed');
     process.exit(0);
   });
