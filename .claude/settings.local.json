@@ -56,7 +56,12 @@
       "Bash(rm:*)",
       "Bash(bash:*)",
       "Bash(C:/dev/_migration_logs/inventory.json)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm run check-agent-integrity:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm run integrity:*)",
+      "Bash(npm exec:*)"
     ],
     "deny": [],
     "ask": []
