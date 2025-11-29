@@ -1,3 +1,5 @@
+import { AGENT_CONFIG } from '../growth-agents/orchestrator';
+
 export type EmAiAgentInputFieldType = 'text' | 'textarea' | 'select' | 'multi-select' | 'number' | 'boolean';
 
 export interface EmAiAgentInputFieldOption {
@@ -16,6 +18,15 @@ export interface EmAiAgentInputField {
   defaultValue?: any;
 }
 
+export type EmAiAgentId =
+  | 'journal'
+  | 'niche'
+  | 'mindset'
+  | 'rhythm'
+  | 'purpose'
+  | 'calendar-optimizer'
+  | 'grant-researcher';
+
 export interface EmAiAgentConfig {
   id: string;
   name: string;
@@ -27,6 +38,29 @@ export interface EmAiAgentConfig {
   orchestratorKey: string;
   mode?: 'single' | 'orchestrated';
   tags?: string[];
+}
+
+const STATIC_AGENT_KEYS: Record<Extract<EmAiAgentId, 'calendar-optimizer' | 'grant-researcher'>, string> = {
+  'calendar-optimizer': 'calendar-optimizer',
+  'grant-researcher': 'grant-researcher',
+};
+
+const growthAgentOrchestratorMap = Object.keys(AGENT_CONFIG).reduce<Record<string, string>>((acc, key) => {
+  acc[key] = key;
+  return acc;
+}, {});
+
+export const ORCHESTRATOR_KEY_BY_ID = {
+  ...growthAgentOrchestratorMap,
+  ...STATIC_AGENT_KEYS,
+} as Record<EmAiAgentId, string>;
+
+function resolveOrchestratorKey(agentId: EmAiAgentId): string {
+  const key = ORCHESTRATOR_KEY_BY_ID[agentId];
+  if (!key) {
+    throw new Error(`Missing orchestrator key mapping for agent "${agentId}"`);
+  }
+  return key;
 }
 
 export const emAiAgentsCatalog: EmAiAgentConfig[] = [
@@ -74,7 +108,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         defaultValue: 15,
       },
     ],
-    orchestratorKey: 'journal',
+    orchestratorKey: resolveOrchestratorKey('journal'),
     mode: 'single',
     tags: ['reflection', 'mindfulness'],
   },
@@ -119,7 +153,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         placeholder: 'Budget, timeline, capacity, or other bounds.',
       },
     ],
-    orchestratorKey: 'niche',
+    orchestratorKey: resolveOrchestratorKey('niche'),
     mode: 'single',
     tags: ['gtm', 'strategy'],
   },
@@ -169,7 +203,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         helperText: 'Select any rituals that resonate today.',
       },
     ],
-    orchestratorKey: 'mindset',
+    orchestratorKey: resolveOrchestratorKey('mindset'),
     mode: 'single',
     tags: ['resilience', 'coaching'],
   },
@@ -215,7 +249,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         placeholder: 'Meetings, childcare windows, travel, etc.',
       },
     ],
-    orchestratorKey: 'rhythm',
+    orchestratorKey: resolveOrchestratorKey('rhythm'),
     mode: 'single',
     tags: ['cadence', 'capacity-planning'],
   },
@@ -265,7 +299,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         ],
       },
     ],
-    orchestratorKey: 'purpose',
+    orchestratorKey: resolveOrchestratorKey('purpose'),
     mode: 'single',
     tags: ['alignment', 'strategy'],
   },
@@ -310,7 +344,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         placeholder: 'Attendees, purpose, or conflicts to consider.',
       },
     ],
-    orchestratorKey: 'calendar-optimizer',
+    orchestratorKey: resolveOrchestratorKey('calendar-optimizer'),
     mode: 'single',
     tags: ['calendar', 'automation'],
   },
@@ -366,7 +400,7 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
         defaultValue: false,
       },
     ],
-    orchestratorKey: 'grant-researcher',
+    orchestratorKey: resolveOrchestratorKey('grant-researcher'),
     mode: 'single',
     tags: ['funding', 'research'],
   },
