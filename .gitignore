@@ -53,6 +53,8 @@ backups/
 
 # Credentials and secrets
 credentials.json
+google-credentials.json
+*-credentials.json
 token.json
 oauth.json
 *.pem
