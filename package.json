@@ -22,6 +22,7 @@
     "setup": "bash scripts/setup.sh",
     "health-check": "bash scripts/health-check.sh",
     "check-agent-integrity": "echo 'Agent integrity check requires manual execution: cd to repo root and run: npx tsx --tsconfig tsconfig.json scripts/check-agent-integrity.ts' && exit 1",
+    "test:calendar": "npx tsx scripts/test-google-calendar.ts",
     "backup": "bash scripts/backup.sh",
     "kill-switch": "bash scripts/kill-switch.sh",
     "docker:up": "docker-compose -f infrastructure/docker/docker-compose.yml up -d",
