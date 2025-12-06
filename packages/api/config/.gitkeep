@@ -1,0 +1,3 @@
+# This directory holds Google Cloud credentials
+# Place your google-credentials.json file here
+# NEVER commit actual credential files!

@@ -73,7 +73,61 @@ async blockFocusTime(
 # - Your calendar settings
 # - Share calendar with service account email
 # - Grant "Make changes to events" permission
+
+# 7. Set environment variable for calendar ID
+# Add to .env:
+#   GOOGLE_CALENDAR_ID=your-email@gmail.com  # or 'primary'
 ```
+
+#### Step 1b: Verify Calendar Credentials (Issue 1 Completion)
+
+After setting up credentials, verify the integration works by running the test script:
+
+```bash
+# Run the calendar test script
+npm run test:calendar
+```
+
+This script will:
+- Check that google-credentials.json exists at `packages/api/config/`
+- Validate the credentials file structure
+- Initialize the Google Calendar client
+- List the next 5-10 upcoming events from your calendar
+
+**Expected output on success:**
+```
+=======================================================================
+GOOGLE CALENDAR INTEGRATION TEST
+Phase 2B - Issue 1: Setup Google Calendar Credentials
+=======================================================================
+
+1. Checking credentials file...
+   OK: Credentials file exists
+
+2. Validating credentials structure...
+   OK: Valid service account credentials
+
+3. Initializing Google Calendar client...
+   OK: Calendar client initialized
+
+4. Fetching upcoming events...
+   OK: Retrieved X events
+
+5. Upcoming Events:
+----------------------------------------------------------------------
+   1. Meeting Title
+      Date: Mon, Dec 9 at 10:00 AM
+      ...
+
+=======================================================================
+TEST RESULT: SUCCESS
+=======================================================================
+```
+
+**Troubleshooting:**
+- If "Credentials file not found": Place google-credentials.json in packages/api/config/
+- If "Access denied": Share the calendar with the service account email
+- If "Calendar not found": Check GOOGLE_CALENDAR_ID in your .env file
 
 #### Step 2: Install Google Calendar Package
 
