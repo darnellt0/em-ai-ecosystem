@@ -1,9 +1,9 @@
 /**
- * Tests for Calendar Service - Phase 2B Issue 2
- * Tests listUpcomingEvents, insertEvent, deleteEvent functionality
+ * Tests for Calendar Service - Phase 2B Issues 2 & 3
+ * Tests listUpcomingEvents, insertEvent, deleteEvent, and conflict detection
  */
 
-import { CalendarService, CalendarError } from '../../src/services/calendar.service';
+import { CalendarService, CalendarError, CalendarEvent } from '../../src/services/calendar.service';
 
 // Mock googleapis
 jest.mock('googleapis', () => ({
@@ -301,6 +301,241 @@ describe('CalendarService', () => {
       const error = new CalendarError('Wrapped error', 'API_ERROR', originalError);
 
       expect(error.originalError).toBe(originalError);
+    });
+  });
+
+  // ============================================================================
+  // CONFLICT DETECTION TESTS (Phase 2B Issue 3)
+  // ============================================================================
+
+  describe('hasConflict', () => {
+    // Helper to create mock CalendarEvent objects
+    const createMockEvent = (
+      id: string,
+      summary: string,
+      start: string,
+      end: string,
+      status: 'confirmed' | 'tentative' | 'cancelled' = 'confirmed'
+    ): CalendarEvent => ({
+      id,
+      summary,
+      start,
+      end,
+      status,
+      description: null,
+      timeZone: 'America/Los_Angeles',
+      isAllDay: false,
+      htmlLink: '',
+      attendees: [],
+      location: null,
+      created: null,
+      updated: null,
+    });
+
+    it('should detect overlapping events as conflicts', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting 1', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+      ];
+
+      const proposedEvent = {
+        start: new Date('2025-12-10T10:30:00Z'),
+        end: new Date('2025-12-10T11:30:00Z'),
+        summary: 'New Meeting',
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflictingEvents).toHaveLength(1);
+      expect(result.conflictingEvents[0].summary).toBe('Meeting 1');
+    });
+
+    it('should NOT treat back-to-back events as conflicts by default', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting 1', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+      ];
+
+      // Proposed event starts exactly when Meeting 1 ends
+      const proposedEvent = {
+        start: new Date('2025-12-10T11:00:00Z'),
+        end: new Date('2025-12-10T12:00:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(false);
+      expect(result.conflictingEvents).toHaveLength(0);
+    });
+
+    it('should treat back-to-back as conflict when option is set', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting 1', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+      ];
+
+      const proposedEvent = {
+        start: new Date('2025-12-10T11:00:00Z'),
+        end: new Date('2025-12-10T12:00:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent, {
+        treatBackToBackAsConflict: true,
+      });
+
+      expect(result.hasConflict).toBe(true);
+    });
+
+    it('should return no conflict for non-overlapping events', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Morning Meeting', '2025-12-10T09:00:00Z', '2025-12-10T10:00:00Z'),
+        createMockEvent('2', 'Afternoon Meeting', '2025-12-10T14:00:00Z', '2025-12-10T15:00:00Z'),
+      ];
+
+      // Proposed event is in the gap
+      const proposedEvent = {
+        start: new Date('2025-12-10T11:00:00Z'),
+        end: new Date('2025-12-10T12:00:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(false);
+      expect(result.summary).toBe('No conflicts detected');
+    });
+
+    it('should detect multiple conflicts', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting 1', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+        createMockEvent('2', 'Meeting 2', '2025-12-10T10:30:00Z', '2025-12-10T11:30:00Z'),
+      ];
+
+      // Proposed event overlaps both
+      const proposedEvent = {
+        start: new Date('2025-12-10T10:15:00Z'),
+        end: new Date('2025-12-10T11:15:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflictingEvents).toHaveLength(2);
+      expect(result.summary).toContain('2 events');
+    });
+
+    it('should ignore cancelled events by default', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Cancelled Meeting', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z', 'cancelled'),
+      ];
+
+      const proposedEvent = {
+        start: new Date('2025-12-10T10:30:00Z'),
+        end: new Date('2025-12-10T11:30:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(false);
+    });
+
+    it('should respect buffer time', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting 1', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+      ];
+
+      // Proposed event starts 30 min after Meeting 1 ends
+      const proposedEvent = {
+        start: new Date('2025-12-10T11:30:00Z'),
+        end: new Date('2025-12-10T12:30:00Z'),
+      };
+
+      // Without buffer - no conflict
+      const resultNoBuffer = service.hasConflict(existingEvents, proposedEvent);
+      expect(resultNoBuffer.hasConflict).toBe(false);
+
+      // With 30-minute buffer - conflict (buffer extends proposed event to 11:00)
+      const resultWithBuffer = service.hasConflict(existingEvents, proposedEvent, {
+        bufferMinutes: 30,
+      });
+      expect(resultWithBuffer.hasConflict).toBe(true);
+    });
+
+    it('should handle events spanning proposed event', () => {
+      const existingEvents = [
+        createMockEvent('1', 'All Day Block', '2025-12-10T08:00:00Z', '2025-12-10T18:00:00Z'),
+      ];
+
+      // Proposed event is within the existing event
+      const proposedEvent = {
+        start: new Date('2025-12-10T10:00:00Z'),
+        end: new Date('2025-12-10T11:00:00Z'),
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(true);
+    });
+
+    it('should handle ISO string times', () => {
+      const existingEvents = [
+        createMockEvent('1', 'Meeting', '2025-12-10T10:00:00Z', '2025-12-10T11:00:00Z'),
+      ];
+
+      // Use ISO strings instead of Date objects
+      const proposedEvent = {
+        start: '2025-12-10T10:30:00Z',
+        end: '2025-12-10T11:30:00Z',
+      };
+
+      const result = service.hasConflict(existingEvents, proposedEvent);
+
+      expect(result.hasConflict).toBe(true);
+    });
+
+    it('should return empty array for empty existing events', () => {
+      const proposedEvent = {
+        start: new Date('2025-12-10T10:00:00Z'),
+        end: new Date('2025-12-10T11:00:00Z'),
+      };
+
+      const result = service.hasConflict([], proposedEvent);
+
+      expect(result.hasConflict).toBe(false);
+      expect(result.conflictingEvents).toHaveLength(0);
+    });
+  });
+
+  describe('findAvailableSlots', () => {
+    it('should find gaps between events', async () => {
+      const mockEvents = [
+        {
+          id: '1',
+          summary: 'Morning Meeting',
+          start: { dateTime: '2025-12-10T09:00:00Z' },
+          end: { dateTime: '2025-12-10T10:00:00Z' },
+          status: 'confirmed',
+        },
+        {
+          id: '2',
+          summary: 'Lunch Meeting',
+          start: { dateTime: '2025-12-10T12:00:00Z' },
+          end: { dateTime: '2025-12-10T13:00:00Z' },
+          status: 'confirmed',
+        },
+      ];
+
+      const { google } = require('googleapis');
+      google.calendar().events.list.mockResolvedValue({
+        data: { items: mockEvents },
+      });
+
+      const slots = await service.findAvailableSlots(
+        'primary',
+        new Date('2025-12-10T08:00:00Z'),
+        new Date('2025-12-10T17:00:00Z'),
+        60 // 60-minute slots
+      );
+
+      // Should find slots: 8-9, 10-12, 13-17
+      expect(slots.length).toBeGreaterThan(0);
     });
   });
 });

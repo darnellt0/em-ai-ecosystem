@@ -44,6 +44,10 @@ import {
   CreateEventResult,
   DeleteEventResult,
   ListEventsOptions,
+  ProposedEvent,
+  ConflictResult,
+  ConflictCheckOptions,
+  TimeWindow,
 } from '../types/calendar.types';
 
 // Re-export types for convenience
@@ -53,6 +57,10 @@ export type {
   CreateEventResult,
   DeleteEventResult,
   ListEventsOptions,
+  ProposedEvent,
+  ConflictResult,
+  ConflictCheckOptions,
+  TimeWindow,
 };
 export { CalendarError };
 
@@ -558,6 +566,277 @@ export class CalendarService {
     } catch (error) {
       this.logger.error('[Calendar Service] Free/busy check error:', error);
       return { busy: false };
+    }
+  }
+
+  // ============================================================================
+  // CONFLICT DETECTION (Phase 2B Issue 3)
+  // ============================================================================
+
+  /**
+   * Parse a time value (Date or ISO string) to milliseconds
+   */
+  private parseTime(time: Date | string): number {
+    if (time instanceof Date) {
+      return time.getTime();
+    }
+    return new Date(time).getTime();
+  }
+
+  /**
+   * Check if two time windows overlap
+   * Back-to-back events (end === start) are NOT considered overlapping by default
+   *
+   * @param window1 - First time window
+   * @param window2 - Second time window
+   * @param treatBackToBackAsConflict - If true, back-to-back is also a conflict
+   * @returns true if windows overlap
+   */
+  private doTimeWindowsOverlap(
+    window1: TimeWindow,
+    window2: TimeWindow,
+    treatBackToBackAsConflict = false
+  ): boolean {
+    const start1 = this.parseTime(window1.start);
+    const end1 = this.parseTime(window1.end);
+    const start2 = this.parseTime(window2.start);
+    const end2 = this.parseTime(window2.end);
+
+    // Two intervals overlap if: start1 < end2 AND start2 < end1
+    // For back-to-back (end1 === start2 or end2 === start1), we use <= or < based on option
+    if (treatBackToBackAsConflict) {
+      return start1 <= end2 && start2 <= end1;
+    }
+
+    // Default: back-to-back is allowed (strict inequality)
+    return start1 < end2 && start2 < end1;
+  }
+
+  /**
+   * Check if a proposed event conflicts with a list of existing events.
+   * This is a pure function that works on normalized CalendarEvent objects.
+   *
+   * @param existingEvents - Array of existing calendar events
+   * @param proposedEvent - The event being proposed
+   * @param options - Conflict detection options
+   * @returns ConflictResult with hasConflict boolean and details
+   *
+   * @example
+   * ```typescript
+   * const existingEvents = await calendarService.listUpcomingEvents();
+   * const proposed = {
+   *   start: new Date('2025-12-10T14:00:00'),
+   *   end: new Date('2025-12-10T15:00:00'),
+   *   summary: 'New Meeting'
+   * };
+   *
+   * const result = calendarService.hasConflict(existingEvents, proposed);
+   * if (result.hasConflict) {
+   *   console.log(`Conflicts with: ${result.summary}`);
+   * }
+   * ```
+   */
+  hasConflict(
+    existingEvents: CalendarEvent[],
+    proposedEvent: ProposedEvent,
+    options: ConflictCheckOptions = {}
+  ): ConflictResult {
+    const {
+      bufferMinutes = 0,
+      treatBackToBackAsConflict = false,
+      ignoreStatuses = ['cancelled'],
+    } = options;
+
+    // Apply buffer to proposed event
+    const proposedStart = this.parseTime(proposedEvent.start);
+    const proposedEnd = this.parseTime(proposedEvent.end);
+    const bufferMs = bufferMinutes * 60 * 1000;
+
+    const bufferedProposed: TimeWindow = {
+      start: new Date(proposedStart - bufferMs),
+      end: new Date(proposedEnd + bufferMs),
+    };
+
+    // Filter out ignored statuses and find conflicts
+    const conflictingEvents = existingEvents.filter(event => {
+      // Skip events with ignored statuses
+      if (ignoreStatuses.includes(event.status)) {
+        return false;
+      }
+
+      // Skip events that are marked as 'transparent' (free time)
+      // These don't block the calendar
+      // Note: We don't have transparency in CalendarEvent, but we could add it
+
+      const eventWindow: TimeWindow = {
+        start: event.start,
+        end: event.end,
+      };
+
+      return this.doTimeWindowsOverlap(bufferedProposed, eventWindow, treatBackToBackAsConflict);
+    });
+
+    const hasConflict = conflictingEvents.length > 0;
+
+    // Build summary
+    let summary: string;
+    if (!hasConflict) {
+      summary = 'No conflicts detected';
+    } else if (conflictingEvents.length === 1) {
+      summary = `Conflicts with: "${conflictingEvents[0].summary}"`;
+    } else {
+      const names = conflictingEvents.map(e => `"${e.summary}"`).join(', ');
+      summary = `Conflicts with ${conflictingEvents.length} events: ${names}`;
+    }
+
+    if (hasConflict) {
+      this.logger.info(`[Calendar Service] ${summary}`);
+    }
+
+    return {
+      hasConflict,
+      conflictingEvents,
+      summary,
+    };
+  }
+
+  /**
+   * Convenience method: Check if a proposed event conflicts with the calendar.
+   * Fetches events from the calendar and checks for conflicts in one call.
+   *
+   * @param calendarId - Calendar ID to check against
+   * @param proposedEvent - The event being proposed
+   * @param options - Conflict detection options
+   * @returns ConflictResult with hasConflict boolean and details
+   *
+   * @example
+   * ```typescript
+   * const result = await calendarService.checkEventConflicts('primary', {
+   *   start: new Date('2025-12-10T14:00:00'),
+   *   end: new Date('2025-12-10T15:00:00'),
+   *   summary: 'New Meeting'
+   * });
+   *
+   * if (result.hasConflict) {
+   *   console.log('Cannot schedule - conflicts exist');
+   * }
+   * ```
+   */
+  async checkEventConflicts(
+    calendarId: string,
+    proposedEvent: ProposedEvent,
+    options: ConflictCheckOptions = {}
+  ): Promise<ConflictResult> {
+    // Expand the time window for fetching events to include buffer
+    const bufferMs = (options.bufferMinutes || 0) * 60 * 1000;
+    const proposedStart = this.parseTime(proposedEvent.start);
+    const proposedEnd = this.parseTime(proposedEvent.end);
+
+    // Fetch events in the relevant time window (with some padding)
+    const fetchStart = new Date(proposedStart - bufferMs - 24 * 60 * 60 * 1000); // 1 day before
+    const fetchEnd = new Date(proposedEnd + bufferMs + 24 * 60 * 60 * 1000); // 1 day after
+
+    try {
+      const existingEvents = await this.listUpcomingEvents({
+        calendarId,
+        timeMin: fetchStart,
+        timeMax: fetchEnd,
+        maxResults: 100, // Fetch more events for conflict checking
+      });
+
+      return this.hasConflict(existingEvents, proposedEvent, options);
+    } catch (error) {
+      this.logger.error('[Calendar Service] Check event conflicts error:', error);
+      // Return safe default - assume no conflict but log warning
+      return {
+        hasConflict: false,
+        conflictingEvents: [],
+        summary: 'Could not check conflicts - calendar unavailable',
+      };
+    }
+  }
+
+  /**
+   * Find available time slots in a given range
+   *
+   * @param calendarId - Calendar ID to check
+   * @param startTime - Start of the search window
+   * @param endTime - End of the search window
+   * @param durationMinutes - Required duration for the slot
+   * @returns Array of available time windows
+   *
+   * @example
+   * ```typescript
+   * const slots = await calendarService.findAvailableSlots(
+   *   'primary',
+   *   new Date('2025-12-10T09:00:00'),
+   *   new Date('2025-12-10T17:00:00'),
+   *   60 // 60-minute slots
+   * );
+   * ```
+   */
+  async findAvailableSlots(
+    calendarId: string,
+    startTime: Date,
+    endTime: Date,
+    durationMinutes: number
+  ): Promise<TimeWindow[]> {
+    try {
+      const events = await this.listUpcomingEvents({
+        calendarId,
+        timeMin: startTime,
+        timeMax: endTime,
+        maxResults: 100,
+      });
+
+      const durationMs = durationMinutes * 60 * 1000;
+      const slots: TimeWindow[] = [];
+
+      // Sort events by start time
+      const sortedEvents = [...events]
+        .filter(e => e.status !== 'cancelled')
+        .sort((a, b) => this.parseTime(a.start) - this.parseTime(b.start));
+
+      let currentStart = startTime.getTime();
+      const rangeEnd = endTime.getTime();
+
+      for (const event of sortedEvents) {
+        const eventStart = this.parseTime(event.start);
+        const eventEnd = this.parseTime(event.end);
+
+        // Check gap before this event
+        if (eventStart > currentStart) {
+          const gapDuration = eventStart - currentStart;
+          if (gapDuration >= durationMs) {
+            slots.push({
+              start: new Date(currentStart),
+              end: new Date(eventStart),
+            });
+          }
+        }
+
+        // Move current pointer past this event
+        if (eventEnd > currentStart) {
+          currentStart = eventEnd;
+        }
+      }
+
+      // Check remaining time after last event
+      if (rangeEnd > currentStart) {
+        const remainingDuration = rangeEnd - currentStart;
+        if (remainingDuration >= durationMs) {
+          slots.push({
+            start: new Date(currentStart),
+            end: new Date(rangeEnd),
+          });
+        }
+      }
+
+      this.logger.info(`[Calendar Service] Found ${slots.length} available slots`);
+      return slots;
+    } catch (error) {
+      this.logger.error('[Calendar Service] Find available slots error:', error);
+      return [];
     }
   }
 

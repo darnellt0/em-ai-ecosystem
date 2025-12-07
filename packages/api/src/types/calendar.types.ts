@@ -127,3 +127,58 @@ export type CalendarErrorCode =
   | 'INVALID_INPUT'
   | 'API_ERROR'
   | 'UNKNOWN';
+
+// ============================================================================
+// CONFLICT DETECTION TYPES (Phase 2B Issue 3)
+// ============================================================================
+
+/**
+ * Time window for conflict detection
+ */
+export interface TimeWindow {
+  /** Start time as Date or ISO string */
+  start: Date | string;
+  /** End time as Date or ISO string */
+  end: Date | string;
+}
+
+/**
+ * A proposed event for conflict checking
+ */
+export interface ProposedEvent extends TimeWindow {
+  /** Optional event summary for logging */
+  summary?: string;
+}
+
+/**
+ * Result of conflict detection
+ */
+export interface ConflictResult {
+  /** Whether there is a conflict */
+  hasConflict: boolean;
+  /** List of conflicting events (if any) */
+  conflictingEvents: CalendarEvent[];
+  /** Human-readable summary of conflicts */
+  summary: string;
+}
+
+/**
+ * Options for conflict detection
+ */
+export interface ConflictCheckOptions {
+  /**
+   * Buffer time in minutes to add before/after the proposed event.
+   * Default: 0 (no buffer)
+   */
+  bufferMinutes?: number;
+  /**
+   * Whether to treat back-to-back events (end === start) as conflicts.
+   * Default: false (back-to-back is allowed)
+   */
+  treatBackToBackAsConflict?: boolean;
+  /**
+   * Ignore events with these statuses (e.g., 'cancelled', 'tentative')
+   * Default: ['cancelled']
+   */
+  ignoreStatuses?: Array<'confirmed' | 'tentative' | 'cancelled'>;
+}
