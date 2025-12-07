@@ -10,6 +10,7 @@
     "test": "jest",
     "test:voice": "jest --testPathPattern=voice.router.spec.ts --verbose",
     "test:calendar": "jest --testPathPattern=calendar.service.spec.ts --verbose",
+    "test:email": "tsx scripts/test-email.ts",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts tests/**/*.ts"
