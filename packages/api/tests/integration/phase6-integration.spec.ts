@@ -9,6 +9,9 @@ import request from 'supertest';
 process.env.ENABLE_GROWTH_AGENTS = 'true';
 process.env.ENABLE_GROWTH_DASHBOARD = 'true';
 
+const CORE_GROWTH_AGENTS = ['journal', 'niche', 'mindset', 'rhythm', 'purpose'];
+const EXPECTED_TOTAL_GROWTH_AGENTS = 10;
+
 describe('Phase 6 Integration Tests', () => {
   let app: any;
 
@@ -49,7 +52,17 @@ describe('Phase 6 Integration Tests', () => {
       expect(response.body).toHaveProperty('redis');
       expect(response.body).toHaveProperty('queue');
       expect(response.body).toHaveProperty('agentRegistry');
-      expect(response.body.agentRegistry).toHaveLength(5);
+
+      const registry = response.body.agentRegistry;
+      expect(Array.isArray(registry)).toBe(true);
+
+      // Total count: core + growth.* variants
+      expect(registry).toHaveLength(EXPECTED_TOTAL_GROWTH_AGENTS);
+
+      // Ensure the 5 core agents are present
+      CORE_GROWTH_AGENTS.forEach((agentKey) => {
+        expect(registry).toContain(agentKey);
+      });
     });
 
     it('GET /api/orchestrator/readiness should return agent readiness', async () => {
@@ -72,7 +85,18 @@ describe('Phase 6 Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body).toHaveProperty('jobIds');
-      expect(response.body.jobIds).toHaveLength(5);
+
+      const jobIds = response.body.jobIds;
+      expect(Array.isArray(jobIds)).toBe(true);
+
+      // One job per registered growth agent (core + growth.*)
+      expect(jobIds).toHaveLength(EXPECTED_TOTAL_GROWTH_AGENTS);
+
+      // Optional sanity check: job IDs look like "agent-<something>"
+      jobIds.forEach((id: string) => {
+        expect(typeof id).toBe('string');
+        expect(id.startsWith('agent-')).toBe(true);
+      });
     });
 
     it('GET /api/orchestrator/monitor should return monitor data', async () => {
@@ -81,6 +105,17 @@ describe('Phase 6 Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('progress');
+      expect(response.body).toHaveProperty('events');
+    });
+
+    it('GET /api/orchestrator/monitor/latest filters by agent', async () => {
+      const response = await request(app)
+        .get('/api/orchestrator/monitor/latest?agent=journal&limit=5&eventsLimit=5')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent === 'journal' || response.body.agent === 'growth.journal').toBe(true);
       expect(response.body).toHaveProperty('progress');
       expect(response.body).toHaveProperty('events');
     });

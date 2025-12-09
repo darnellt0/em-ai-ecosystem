@@ -47,7 +47,22 @@ const STATIC_AGENT_KEYS: Record<Extract<EmAiAgentId, 'calendar-optimizer' | 'gra
   'daily-brief': 'productivity.dailyBrief',
 };
 
-const growthAgentOrchestratorMap = Object.keys(AGENT_CONFIG).reduce<Record<string, string>>((acc, key) => {
+const FALLBACK_AGENT_KEYS = [
+  'journal',
+  'niche',
+  'mindset',
+  'rhythm',
+  'purpose',
+  'growth.journal',
+  'growth.niche',
+  'growth.mindset',
+  'growth.rhythm',
+  'growth.purpose',
+];
+
+const growthAgentOrchestratorMap = (AGENT_CONFIG ? Object.keys(AGENT_CONFIG) : FALLBACK_AGENT_KEYS).reduce<
+  Record<string, string>
+>((acc, key) => {
   acc[key] = key;
   return acc;
 }, {});

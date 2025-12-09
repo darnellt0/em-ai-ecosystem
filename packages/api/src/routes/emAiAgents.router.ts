@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { emAiAgentsCatalog, getEmAiAgentConfig } from '../config/emAiAgents.catalog';
 import { callEmAgent } from '../services/emAi.service';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
+import { orchestrator } from '../growth-agents/orchestrator';
 
 const emAiAgentsRouter = Router();
 
@@ -47,6 +48,31 @@ emAiAgentsRouter.post('/:id/run', async (req: Request, res: Response) => {
   const input = (req.body && typeof req.body.input === 'object' ? req.body.input : {}) as Record<string, any>;
 
   try {
+    if (agent.id === 'journal' && agent.orchestratorKey === 'growth.journal') {
+      const { founderEmail, prompt, timeHorizon } = input;
+
+      if (!founderEmail || !prompt) {
+        return res.status(400).json({
+          success: false,
+          error: 'founderEmail and prompt are required.',
+        });
+      }
+
+      const { jobId } = await orchestrator.launchAgent(agent.orchestratorKey, {
+        founderEmail,
+        prompt,
+        timeHorizon,
+      });
+
+      return res.json({
+        success: true,
+        agent: agent.orchestratorKey,
+        jobId,
+        message: 'Journal entry accepted and growth agent launched.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     if (agent.orchestratorKey === 'productivity.dailyBrief') {
       const result = await runDailyBriefAgent({
         userId: input.userId || 'founder',

@@ -17,6 +17,8 @@ services:
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/config/google-credentials.json
+      - GOOGLE_CALENDAR_ID=primary
+      - GOOGLE_CREDENTIALS_PATH=/app/config/google-credentials.json
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USER=${SMTP_USER}
@@ -24,6 +26,8 @@ services:
       - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
       - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
       - VOICE_API_TOKEN=${VOICE_API_TOKEN}
+      
+
     depends_on:
       - database
       - redis

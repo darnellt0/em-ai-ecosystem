@@ -6,6 +6,14 @@
  * Integrated Voice API endpoints + existing dashboard/agent endpoints
  */
 
+import path from 'path';
+import dotenv from 'dotenv';
+
+// Load env vars from packages/api/.env (Option B)
+dotenv.config({
+  path: path.resolve(__dirname, '../.env'),
+});
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
@@ -14,12 +22,13 @@ import intentRouter from './voice/intent.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
+import emotionalSessionRouter from './routes/emotional-session.router';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
 import { scheduleDailyBriefCron } from './schedules/daily-brief.schedule';
 
-// Initialize Sentry first (before other imports)
+// Initialize Sentry after env is loaded
 initSentry();
 
 const app = express();
@@ -52,6 +61,7 @@ app.use(express.json());
 
 // EM AI agent catalog + execution
 app.use('/em-ai/agents', emAiAgentsRouter);
+app.use('/', emotionalSessionRouter);
 
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {

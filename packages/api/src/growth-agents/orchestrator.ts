@@ -139,6 +139,35 @@ export class GrowthOrchestrator {
   }
 
   /**
+   * Launch a single growth agent with optional input payload
+   */
+  async launchAgent(agentName: string, input: Record<string, unknown> = {}): Promise<{ jobId: string }> {
+    const config = AGENT_CONFIG[agentName];
+    if (!config) {
+      throw new Error(`Unknown agent: ${agentName}`);
+    }
+
+    const job = await this.queue.add(
+      'execute-agent',
+      {
+        agentName,
+        config: {
+          name: agentName,
+          ...config,
+          input,
+        },
+      },
+      {
+        priority: config.priority,
+        jobId: `agent-${agentName}-${Date.now()}`,
+      }
+    );
+
+    this.logger.info(`[Orchestrator] Enqueued ${agentName} agent (job: ${job.id})`);
+    return { jobId: job.id as string };
+  }
+
+  /**
    * Get health status of orchestrator
    */
   async getHealth(): Promise<{

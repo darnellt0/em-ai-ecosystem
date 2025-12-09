@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-11-29T21:20:00.172Z",
+  "total_agents": 5,
+  "real_count": 5,
+  "mock_count": 0,
+  "broken_count": 0,
+  "overall_status": "PASS",
+  "agents": [
+    {
+      "agent_id": "journal",
+      "status": "real",
+      "latency_ms": 20,
+      "dependencies_ok": true,
+      "env_vars_ok": true,
+      "has_todos": false,
+      "has_mocks": false,
+      "healthcheck_passed": true,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "agent_id": "niche",
+      "status": "real",
+      "latency_ms": 8,
+      "dependencies_ok": true,
+      "env_vars_ok": true,
+      "has_todos": false,
+      "has_mocks": false,
+      "healthcheck_passed": true,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "agent_id": "mindset",
+      "status": "real",
+      "latency_ms": 5,
+      "dependencies_ok": true,
+      "env_vars_ok": true,
+      "has_todos": false,
+      "has_mocks": false,
+      "healthcheck_passed": true,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "agent_id": "rhythm",
+      "status": "real",
+      "latency_ms": 7,
+      "dependencies_ok": true,
+      "env_vars_ok": true,
+      "has_todos": false,
+      "has_mocks": false,
+      "healthcheck_passed": true,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "agent_id": "purpose",
+      "status": "real",
+      "latency_ms": 5,
+      "dependencies_ok": true,
+      "env_vars_ok": true,
+      "has_todos": false,
+      "has_mocks": false,
+      "healthcheck_passed": true,
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

@@ -1,4 +1,5 @@
-import { Server as HTTPServer } from 'http';
+import { createServer, Server as HTTPServer } from 'http';
+import type { AddressInfo } from 'net';
 import { WebSocket, WebSocketServer } from 'ws';
 
 let wss: WebSocketServer | null = null;
@@ -16,15 +17,36 @@ const heartbeat = (socket: WebSocket) => {
   }
 };
 
-export const initVoiceRealtimeWSS = (server: HTTPServer): WebSocketServer => {
+export const initVoiceRealtimeWSS = (httpServer?: HTTPServer): WebSocketServer => {
   if (wss) {
+    console.log('[WS] Voice realtime WebSocket server already initialized');
     return wss;
   }
 
-  wss = new WebSocketServer({
-    server,
-    path: '/realtime',
-  });
+  if (httpServer) {
+    // Attach to existing HTTP server (shared in src/index.ts)
+    wss = new WebSocketServer({ server: httpServer, path: '/realtime' });
+    console.log('[WS] Voice realtime WebSocket server initialized at /realtime (shared HTTP server)');
+  } else {
+    // Fallback mode (tests/QA) – use ephemeral port (or VOICE_WS_PORT if provided)
+    const internalServer = createServer();
+    wss = new WebSocketServer({ server: internalServer, path: '/realtime' });
+
+    const wsPort = process.env.VOICE_WS_PORT && process.env.VOICE_WS_PORT.trim() !== ''
+      ? parseInt(process.env.VOICE_WS_PORT, 10)
+      : 0;
+
+    internalServer.listen(wsPort, () => {
+      const address = internalServer.address() as AddressInfo;
+      console.log(
+        `[WS] Voice realtime WebSocket server initialized on port ${address?.port ?? wsPort} at /realtime (internal HTTP server)`,
+      );
+    });
+
+    internalServer.on('error', (error) => {
+      console.error('[WS] Server error (internal HTTP server):', error);
+    });
+  }
 
   wss.on('connection', (socket, req) => {
     const clientAddress = req.socket.remoteAddress ?? 'unknown';
@@ -81,8 +103,6 @@ export const initVoiceRealtimeWSS = (server: HTTPServer): WebSocketServer => {
   wss.on('error', (error) => {
     console.error('[WS] Server error:', error);
   });
-
-  console.log('[WS] Voice realtime WebSocket server initialized at /realtime');
 
   return wss;
 };

@@ -61,7 +61,8 @@
       "Bash(npx ts-node:*)",
       "Bash(npx tsx:*)",
       "Bash(npm run integrity:*)",
-      "Bash(npm exec:*)"
+      "Bash(npm exec:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

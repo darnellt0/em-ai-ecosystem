@@ -99,6 +99,51 @@ router.get('/monitor', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/orchestrator/monitor/latest
+ * Return recent progress/events filtered by agent
+ */
+router.get('/monitor/latest', async (req: Request, res: Response) => {
+  const agent = (req.query.agent as string) || '';
+  const limit = parseInt(req.query.limit as string) || 10;
+  const eventsLimit = parseInt(req.query.eventsLimit as string) || 10;
+
+  if (!agent) {
+    return res.status(400).json({
+      success: false,
+      error: 'agent query parameter is required.',
+    });
+  }
+
+  try {
+    const data = await orchestrator.getMonitorData(Math.max(limit, eventsLimit));
+
+    const progress = (data.progress || [])
+      .filter((p) => p.agent === agent)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+
+    const events = (data.events || [])
+      .filter((e) => e.agent === agent)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, eventsLimit);
+
+    res.json({
+      success: true,
+      agent,
+      progress,
+      events,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Orchestrator API] Monitor latest failed:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
  * GET /api/orchestrator/agents/health
  * Registry healthcheck - validates all agents and their dependencies
  */
