@@ -47,6 +47,36 @@ export const AGENT_CONFIG: Record<string, AgentRegistration> = {
     phase: 'Radiant',
     priority: 5,
   },
+  'growth.journal': {
+    module: './journal-agent',
+    className: 'JournalAgent',
+    phase: 'Rooted',
+    priority: 1,
+  },
+  'growth.niche': {
+    module: './niche-agent',
+    className: 'NicheAgent',
+    phase: 'Grounded',
+    priority: 2,
+  },
+  'growth.mindset': {
+    module: './mindset-agent',
+    className: 'MindsetAgent',
+    phase: 'Grounded',
+    priority: 3,
+  },
+  'growth.rhythm': {
+    module: './rhythm-agent',
+    className: 'RhythmAgent',
+    phase: 'Rooted',
+    priority: 4,
+  },
+  'growth.purpose': {
+    module: './purpose-agent',
+    className: 'PurposeAgent',
+    phase: 'Radiant',
+    priority: 5,
+  },
 };
 
 /**

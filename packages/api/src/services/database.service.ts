@@ -433,6 +433,13 @@ export class DatabaseService {
   }
 
   /**
+   * Expose pool for shared services (read-only)
+   */
+  getPool(): Pool | null {
+    return this.isConnected ? this.pool : null;
+  }
+
+  /**
    * Health check
    */
   async healthCheck(): Promise<boolean> {

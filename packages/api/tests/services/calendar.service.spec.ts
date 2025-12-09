@@ -3,7 +3,11 @@
  * Tests listUpcomingEvents, insertEvent, deleteEvent functionality
  */
 
-import { CalendarService, CalendarError } from '../../src/services/calendar.service';
+import {
+  CalendarService,
+  CalendarError,
+  ConflictResult,
+} from '../../src/services/calendar.service';
 
 // Mock googleapis
 jest.mock('googleapis', () => ({
@@ -248,11 +252,80 @@ describe('CalendarService', () => {
     });
   });
 
-  describe('checkConflicts', () => {
-    it('should detect conflicting events', async () => {
+  describe('hasConflict (pure)', () => {
+    const baseEvent = {
+      id: 'evt1',
+      summary: 'Existing',
+      description: null,
+      start: '2025-12-10T10:00:00Z',
+      end: '2025-12-10T11:00:00Z',
+      timeZone: 'UTC',
+      isAllDay: false,
+      status: 'confirmed' as const,
+      htmlLink: '',
+      attendees: [],
+      location: null,
+      created: null,
+      updated: null,
+    };
+
+    it('no overlap => no conflict', () => {
+      const result: ConflictResult = service.hasConflict(
+        [baseEvent],
+        { summary: 'Proposed', start: '2025-12-10T11:00:00Z', end: '2025-12-10T12:00:00Z' }
+      );
+      expect(result.hasConflict).toBe(false);
+    });
+
+    it('partial overlap => conflict', () => {
+      const result: ConflictResult = service.hasConflict(
+        [baseEvent],
+        { summary: 'Proposed', start: '2025-12-10T10:30:00Z', end: '2025-12-10T11:30:00Z' }
+      );
+      expect(result.hasConflict).toBe(true);
+    });
+
+    it('full overlap => conflict', () => {
+      const result: ConflictResult = service.hasConflict(
+        [baseEvent],
+        { summary: 'Proposed', start: '2025-12-10T10:05:00Z', end: '2025-12-10T10:55:00Z' }
+      );
+      expect(result.hasConflict).toBe(true);
+    });
+
+    it('back-to-back not conflict by default', () => {
+      const result: ConflictResult = service.hasConflict(
+        [baseEvent],
+        { summary: 'Proposed', start: '2025-12-10T09:00:00Z', end: '2025-12-10T10:00:00Z' }
+      );
+      expect(result.hasConflict).toBe(false);
+    });
+
+    it('back-to-back conflicts when option enabled', () => {
+      const result: ConflictResult = service.hasConflict(
+        [baseEvent],
+        {
+          summary: 'Proposed',
+          start: '2025-12-10T09:00:00Z',
+          end: '2025-12-10T10:00:00Z',
+        },
+        { treatBackToBackAsConflict: true }
+      );
+      expect(result.hasConflict).toBe(true);
+    });
+  });
+
+  describe('checkEventConflicts (integration)', () => {
+    it('detects conflicts from calendar data', async () => {
       const mockEvents = [
-        { summary: 'Existing Meeting 1' },
-        { summary: 'Existing Meeting 2' },
+        {
+          id: 'existing',
+          summary: 'Existing Meeting',
+          start: { dateTime: '2025-12-10T10:00:00Z' },
+          end: { dateTime: '2025-12-10T11:00:00Z' },
+          status: 'confirmed',
+          htmlLink: '',
+        },
       ];
 
       const { google } = require('googleapis');
@@ -260,30 +333,29 @@ describe('CalendarService', () => {
         data: { items: mockEvents },
       });
 
-      const conflicts = await service.checkConflicts(
-        'primary',
-        new Date('2025-12-10T10:00:00Z'),
-        new Date('2025-12-10T11:00:00Z')
-      );
+      const result = await service.checkEventConflicts('primary', {
+        summary: 'Proposed',
+        start: '2025-12-10T10:30:00Z',
+        end: '2025-12-10T11:30:00Z',
+      });
 
-      expect(conflicts).toHaveLength(2);
-      expect(conflicts).toContain('Existing Meeting 1');
-      expect(conflicts).toContain('Existing Meeting 2');
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflictingEvents).toHaveLength(1);
     });
 
-    it('should return empty array when no conflicts', async () => {
+    it('returns no conflict when window is free', async () => {
       const { google } = require('googleapis');
       google.calendar().events.list.mockResolvedValue({
         data: { items: [] },
       });
 
-      const conflicts = await service.checkConflicts(
-        'primary',
-        new Date('2025-12-10T10:00:00Z'),
-        new Date('2025-12-10T11:00:00Z')
-      );
+      const result = await service.checkEventConflicts('primary', {
+        summary: 'Proposed',
+        start: '2025-12-10T12:00:00Z',
+        end: '2025-12-10T13:00:00Z',
+      });
 
-      expect(conflicts).toHaveLength(0);
+      expect(result.hasConflict).toBe(false);
     });
   });
 

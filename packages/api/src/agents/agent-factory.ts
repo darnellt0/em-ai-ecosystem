@@ -5,11 +5,21 @@
  */
 
 import { VoiceResponse } from '../voice/voice.types';
-import { calendarService } from '../services/calendar.service';
+import {
+  calendarService,
+  CalendarEvent,
+  CalendarEventInput,
+  ConflictResult,
+  ProposedEvent,
+  AvailableSlot,
+} from '../services/calendar.service';
+import { activityLogService } from '../services/activity-log.service';
 import { emailService } from '../services/email.service';
 import { slackService } from '../services/slack.service';
 import { databaseService } from '../services/database.service';
 import { insightsService } from '../services/insights.service';
+import type { BriefSection } from '../services/insights.service';
+import { renderDailyBriefEmail, type DailyBriefEmailTemplateInput } from '../templates/email/dailyBrief.template';
 
 // ============================================================================
 // AGENT RESPONSE TYPES
@@ -23,6 +33,15 @@ export interface CalendarBlockResult {
   title: string;
   notifications: string[];
   conflicts: string[];
+  /** Detailed conflict information */
+  conflictDetails?: ConflictResult;
+  /** Stats from the operation */
+  stats?: {
+    eventsScanned: number;
+    conflictsFound: number;
+    blockCreated: boolean;
+    slotUsed?: { start: Date; end: Date };
+  };
 }
 
 export interface CalendarEventResult {
@@ -91,39 +110,146 @@ class AgentFactory {
   ): Promise<CalendarBlockResult> {
     this.logger.info(`[Calendar Optimizer] Blocking ${durationMinutes}min focus time for ${founderEmail}`);
 
+    const timeZone = 'America/Los_Angeles';
+
     try {
-      // Phase 2B: Use real Google Calendar API
-      const now = startTime || new Date();
-      const end = new Date(now.getTime() + durationMinutes * 60000);
+      const proposedStart = startTime || new Date();
+      const proposedEnd = new Date(proposedStart.getTime() + durationMinutes * 60000);
 
-      // Check for conflicts
-      const conflicts = await calendarService.checkConflicts(founderEmail, now, end);
-
-      // Create calendar event
-      const eventResult = await calendarService.createEvent(founderEmail, {
+      const proposedEvent: ProposedEvent = {
         summary: `Deep Focus: ${reason}`,
+        start: proposedStart,
+        end: proposedEnd,
+        timeZone,
+      };
+
+      // Conflict detection
+      const conflictDetails = await calendarService.checkEventConflicts(founderEmail, proposedEvent, {
+        bufferMinutes,
+      });
+      this.logger.info(
+        `[Calendar Optimizer] Events scanned: ${conflictDetails.eventsScanned}, conflicts found: ${conflictDetails.conflictingEvents.length}`
+      );
+
+      let finalStart = proposedStart;
+      let finalEnd = proposedEnd;
+      let slotUsed: AvailableSlot | undefined;
+
+      if (conflictDetails.hasConflict) {
+        this.logger.warn(
+          `[Calendar Optimizer] Conflict detected for focus block (${conflictDetails.conflictingEvents.length} event(s)). Searching for alternative slots...`
+        );
+
+        const alternativeSlots = await calendarService.findAvailableSlots(
+          founderEmail,
+          proposedStart,
+          new Date(proposedStart.getTime() + 4 * 60 * 60 * 1000), // look ahead 4 hours
+          durationMinutes,
+          { bufferMinutes }
+        );
+
+        slotUsed = alternativeSlots[0];
+
+        if (!slotUsed) {
+          this.logger.warn('[Calendar Optimizer] No available slot found without conflicts.');
+          await activityLogService.logAgentRun({
+            agentName: 'CalendarOptimizer',
+            founderEmail,
+            status: 'error',
+            metadata: {
+              eventsScanned: conflictDetails.eventsScanned,
+              focusBlocksProposed: 1,
+              focusBlocksCreated: 0,
+              conflictsFound: conflictDetails.conflictingEvents.length,
+              reason: 'no_available_slot',
+            },
+          });
+          return {
+            success: false,
+            eventId: '',
+            startTime: proposedStart,
+            endTime: proposedEnd,
+            title: proposedEvent.summary,
+            notifications: ['No available slot found without conflicts'],
+            conflicts: conflictDetails.conflictingEvents.map(e => e.summary),
+            conflictDetails,
+            stats: {
+              eventsScanned: conflictDetails.eventsScanned,
+              conflictsFound: conflictDetails.conflictingEvents.length,
+              blockCreated: false,
+            },
+          };
+        }
+
+        finalStart = slotUsed.start instanceof Date ? slotUsed.start : new Date(slotUsed.start);
+        finalEnd = slotUsed.end instanceof Date ? slotUsed.end : new Date(slotUsed.end);
+        this.logger.info(
+          `[Calendar Optimizer] Using alternative slot starting ${finalStart.toISOString()}`
+        );
+      }
+
+      const eventInput: CalendarEventInput = {
+        summary: proposedEvent.summary,
         description: `Focus time block created via Voice API. Duration: ${durationMinutes} minutes.`,
-        start: { dateTime: now.toISOString(), timeZone: 'America/Los_Angeles' },
-        end: { dateTime: end.toISOString(), timeZone: 'America/Los_Angeles' },
-        transparency: 'opaque', // Mark as busy
+        startTime: finalStart,
+        endTime: finalEnd,
+        timeZone,
+        transparency: 'opaque',
+      };
+
+      const eventResult = await calendarService.insertEvent(founderEmail, eventInput);
+      this.logger.info('[Calendar Optimizer] Focus block created via Google Calendar API');
+
+      await activityLogService.logAgentRun({
+        agentName: 'CalendarOptimizer',
+        founderEmail,
+        status: 'success',
+        metadata: {
+          eventsScanned: conflictDetails.eventsScanned,
+          focusBlocksProposed: 1,
+          focusBlocksCreated: 1,
+          conflictsFound: conflictDetails.conflictingEvents.length,
+        },
       });
 
       return {
         success: true,
-        eventId: eventResult.id,
-        startTime: now,
-        endTime: end,
-        title: `Deep Focus: ${reason}`,
+        eventId: eventResult.eventId,
+        startTime: finalStart,
+        endTime: finalEnd,
+        title: proposedEvent.summary,
         notifications: [
           'Silenced all notifications',
           'Set status to Do Not Disturb',
           `Blocked ${durationMinutes} minutes on calendar`,
-          `Calendar event created: ${eventResult.id}`,
+          `Calendar event created: ${eventResult.eventId}`,
         ],
-        conflicts: conflicts,
+        conflicts: conflictDetails.conflictingEvents.map(e => e.summary),
+        conflictDetails,
+        stats: {
+          eventsScanned: conflictDetails.eventsScanned,
+          conflictsFound: conflictDetails.conflictingEvents.length,
+          blockCreated: true,
+          slotUsed: slotUsed
+            ? {
+                start: finalStart,
+                end: finalEnd,
+              }
+            : undefined,
+        },
       };
     } catch (error) {
       this.logger.error('[Calendar Optimizer] Block focus error:', error);
+      await activityLogService.logAgentRun({
+        agentName: 'CalendarOptimizer',
+        founderEmail,
+        status: 'error',
+        metadata: {
+          focusBlocksProposed: 1,
+          focusBlocksCreated: 0,
+          errorMessage: (error as Error).message,
+        },
+      });
       throw error;
     }
   }
@@ -139,18 +265,54 @@ class AgentFactory {
     this.logger.info(`[Calendar Optimizer] Confirming meeting: ${title} for ${founderEmail}`);
 
     try {
-      // Phase 2: Connect to Google Calendar API
-      // calendar.events.insert() with attendees and notifications
       const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+
+      const proposedEvent: ProposedEvent = {
+        summary: title,
+        start: startTime,
+        end: endTime,
+        timeZone: 'America/Los_Angeles',
+      };
+
+      const conflictDetails = await calendarService.checkEventConflicts(founderEmail, proposedEvent, {
+        bufferMinutes: 5,
+        treatBackToBackAsConflict: false,
+      });
+
+      if (conflictDetails.hasConflict) {
+        this.logger.warn(
+          `[Calendar Optimizer] Cannot confirm meeting "${title}" due to ${conflictDetails.conflictingEvents.length} conflict(s).`
+        );
+        return {
+          success: false,
+          eventId: '',
+          title,
+          startTime,
+          endTime,
+          attendees: attendees || [founderEmail],
+          description: `Conflict: ${conflictDetails.summary}`,
+        };
+      }
+
+      const createResult = await calendarService.insertEvent(founderEmail, {
+        summary: title,
+        description: `Added via Voice API - ${new Date().toISOString()}`,
+        startTime,
+        endTime,
+        timeZone: proposedEvent.timeZone,
+        attendees,
+        transparency: 'opaque',
+        location,
+      });
 
       return {
         success: true,
-        eventId: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        title: title,
-        startTime: startTime,
-        endTime: endTime,
-        attendees: attendees || [founderEmail],
-        description: `Added via Voice API - ${new Date().toISOString()}`,
+        eventId: createResult.eventId,
+        title,
+        startTime,
+        endTime,
+        attendees: createResult.event.attendees,
+        description: createResult.event.description || '',
       };
     } catch (error) {
       this.logger.error('[Calendar Optimizer] Confirm meeting error:', error);
@@ -167,17 +329,59 @@ class AgentFactory {
     this.logger.info(`[Calendar Optimizer] Rescheduling event ${eventId} for ${founderEmail}`);
 
     try {
-      // Phase 2: Fetch event, check availability, update via Google Calendar API
+      const timeZone = 'America/Los_Angeles';
+      const existingEvent = await calendarService.getEvent(founderEmail, eventId);
       const endTime = new Date(newStartTime.getTime() + newDurationMinutes * 60000);
+
+      // Fetch events and ignore the one being rescheduled
+      const events = await calendarService.listUpcomingEvents({
+        calendarId: founderEmail,
+        timeMin: new Date(newStartTime.getTime() - 60 * 60 * 1000),
+        timeMax: new Date(endTime.getTime() + 60 * 60 * 1000),
+        maxResults: 50,
+      });
+
+      const filteredEvents = events.filter(event => event.id !== eventId);
+
+      const conflictDetails = calendarService.hasConflict(filteredEvents, {
+        summary: existingEvent.summary,
+        start: newStartTime,
+        end: endTime,
+        timeZone,
+      });
+
+      if (conflictDetails.hasConflict) {
+        this.logger.warn(
+          `[Calendar Optimizer] Cannot reschedule event ${eventId} due to ${conflictDetails.conflictingEvents.length} conflict(s).`
+        );
+        return {
+          success: false,
+          eventId,
+          title: existingEvent.summary,
+          startTime: newStartTime,
+          endTime,
+          attendees: existingEvent.attendees,
+          description: `Conflict: ${conflictDetails.summary}`,
+        };
+      }
+
+      const updateResult = await calendarService.updateEvent(founderEmail, eventId, {
+        summary: existingEvent.summary,
+        startTime: newStartTime,
+        endTime,
+        timeZone,
+        attendees: existingEvent.attendees,
+        description: `${existingEvent.description || ''}\nRescheduled via Voice API - ${new Date().toISOString()}`,
+      });
 
       return {
         success: true,
-        eventId: eventId,
-        title: 'Rescheduled Meeting',
+        eventId: updateResult.eventId,
+        title: updateResult.event.summary,
         startTime: newStartTime,
-        endTime: endTime,
-        attendees: [founderEmail],
-        description: `Rescheduled via Voice API - ${new Date().toISOString()}`,
+        endTime,
+        attendees: updateResult.event.attendees,
+        description: updateResult.event.description || '',
       };
     } catch (error) {
       this.logger.error('[Calendar Optimizer] Reschedule error:', error);
@@ -445,7 +649,7 @@ class AgentFactory {
   // DAILY BRIEF AGENT - Phase 2C
   // ============================================================================
 
-  async getDailyBrief(founderEmail: string): Promise<string> {
+  async getDailyBrief(founderEmail: string, options?: { recipients?: string[] }): Promise<string> {
     this.logger.info(`[Daily Brief] Generating brief for ${founderEmail}`);
 
     try {
@@ -453,11 +657,96 @@ class AgentFactory {
       const sectionsText = brief.sections
         .map((s) => `${s.title}\n${s.content}${s.actionItems ? '\nActions: ' + s.actionItems.join(', ') : ''}`)
         .join('\n\n');
+
+      const emailData = this.buildDailyBriefEmailData(brief.sections, brief.summary);
+      await this.sendDailyBriefEmail(founderEmail, emailData, options?.recipients);
+
       return `${brief.title}\n\n${sectionsText}\n\nSummary: ${brief.summary}`;
     } catch (error) {
       this.logger.error('[Daily Brief] Error:', error);
       return 'Daily brief: You\'re on track today. Keep up the good work!';
     }
+  }
+
+  private buildDailyBriefEmailData(sections: BriefSection[], summary: string): DailyBriefEmailTemplateInput {
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+
+    const focusSection = sections.find((section) => section.title.toLowerCase().includes('focus'));
+    const tasksSection = sections.find((section) => section.title.toLowerCase().includes('task'));
+    const meetingSection = sections.find((section) => section.title.toLowerCase().includes('meeting'));
+
+    const notesSections = sections.filter(
+      (section) => section !== focusSection && section !== tasksSection && section !== meetingSection
+    );
+
+    return {
+      date: formattedDate,
+      focusSummary: focusSection ? `${focusSection.title}: ${focusSection.content}` : summary,
+      upcomingEvents: meetingSection
+        ? [
+            {
+              title: meetingSection.title.replace(/^[^A-Za-z0-9]+/, ''),
+              description: meetingSection.content,
+            },
+          ]
+        : [],
+      importantTasks: [
+        ...(tasksSection?.actionItems || []),
+        ...(tasksSection && (!tasksSection.actionItems || tasksSection.actionItems.length === 0)
+          ? [tasksSection.content]
+          : []),
+      ].filter(Boolean),
+      notes: [summary, ...notesSections.map((section) => `${section.title}: ${section.content}`)].filter(Boolean),
+      highlights: sections
+        .filter((section) => section.actionItems && section !== tasksSection)
+        .flatMap((section) => section.actionItems || []),
+      summary,
+    };
+  }
+
+  private async sendDailyBriefEmail(
+    founderEmail: string,
+    data: DailyBriefEmailTemplateInput,
+    additionalRecipients?: string[]
+  ): Promise<void> {
+    const recipients = this.getFounderRecipients(founderEmail, additionalRecipients);
+
+    if (!recipients.length) {
+      this.logger.warn('[Daily Brief] No recipients configured for email delivery');
+      return;
+    }
+
+    const subject = `Your Daily Brief ${data.date}`;
+    const html = renderDailyBriefEmail(data);
+
+    this.logger.info(`[Daily Brief] Attempting email to ${recipients.join(', ')} for ${data.date}`);
+
+    try {
+      const result = await emailService.sendEmail(recipients, subject, html);
+      if (result.success) {
+        this.logger.info(`[Daily Brief] Email sent successfully: ${result.messageId || 'no-id'}`);
+      } else {
+        this.logger.error(`[Daily Brief] Email failed to send: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      this.logger.error('[Daily Brief] Email send error:', error);
+    }
+  }
+
+  private getFounderRecipients(founderEmail: string, additionalRecipients: string[] = []): string[] {
+    const recipients = [
+      founderEmail,
+      process.env.FOUNDER_DARNELL_EMAIL,
+      process.env.FOUNDER_SHRIA_EMAIL,
+      ...additionalRecipients,
+    ].filter((email): email is string => Boolean(email));
+    return Array.from(new Set(recipients));
   }
 
   // ============================================================================

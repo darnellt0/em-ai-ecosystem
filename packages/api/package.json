@@ -12,7 +12,9 @@
     "test:calendar": "jest --testPathPattern=calendar.service.spec.ts --verbose",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts tests/**/*.ts"
+    "format": "prettier --write src/**/*.ts tests/**/*.ts",
+    "qa:phase6-growth": "ts-node src/qa/phase6-growth-agents.qa.ts",
+    "qa:phase6-integration": "ts-node src/qa/phase6-integration.qa.ts"
   },
   "keywords": [
     "api",
@@ -24,6 +26,7 @@
   "author": "Elevated Movements",
   "license": "ISC",
   "dependencies": {
+    "@em/daily-brief": "workspace:*",
     "@em/orchestrator": "file:../orchestrator",
     "@sentry/node": "^10.27.0",
     "@sentry/profiling-node": "^10.27.0",

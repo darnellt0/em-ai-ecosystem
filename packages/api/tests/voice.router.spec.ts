@@ -9,6 +9,44 @@ import voiceRouter from '../src/voice/voice.router';
 import { clearAllRateLimits, resetRateLimitForIP } from '../src/middleware/rateLimitSimple';
 import { clearAllIdempotency } from '../src/middleware/idempotency';
 
+// Stub agent factory to avoid real calendar/oauth calls during tests
+jest.mock('../src/agents/agent-factory', () => {
+  const original = jest.requireActual('../src/agents/agent-factory');
+  return {
+    ...original,
+    agentFactory: {
+      ...original.agentFactory,
+      blockFocusTime: jest.fn().mockResolvedValue({
+        success: true,
+        eventId: 'evt_block',
+        startTime: new Date(),
+        endTime: new Date(),
+        title: 'Blocked focus time',
+        notifications: [],
+        conflicts: [],
+      }),
+      confirmMeeting: jest.fn().mockResolvedValue({
+        success: true,
+        eventId: 'evt_confirm',
+        title: 'Confirmed meeting',
+        startTime: new Date(),
+        endTime: new Date(),
+        attendees: [],
+        description: 'ok',
+      }),
+      rescheduleMeeting: jest.fn().mockResolvedValue({
+        success: true,
+        eventId: 'evt_reschedule',
+        title: 'Rescheduled meeting',
+        startTime: new Date(),
+        endTime: new Date(),
+        attendees: [],
+        description: 'rescheduled',
+      }),
+    },
+  };
+});
+
 const app: Express = express();
 app.use(express.json());
 app.use('/api/voice', voiceRouter);

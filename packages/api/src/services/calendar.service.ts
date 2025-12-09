@@ -43,6 +43,11 @@ import {
   CalendarErrorCode,
   CreateEventResult,
   DeleteEventResult,
+  ProposedEvent,
+  ConflictResult,
+  ConflictCheckOptions,
+  AvailableSlot,
+  TimeWindow,
   ListEventsOptions,
 } from '../types/calendar.types';
 
@@ -52,6 +57,11 @@ export type {
   CalendarEventInput,
   CreateEventResult,
   DeleteEventResult,
+  ProposedEvent,
+  ConflictResult,
+  ConflictCheckOptions,
+  AvailableSlot,
+  TimeWindow,
   ListEventsOptions,
 };
 export { CalendarError };
@@ -72,6 +82,13 @@ interface LegacyCalendarEvent {
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_MAX_RESULTS = 10;
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+const DEFAULT_CONFLICT_OPTIONS: ConflictCheckOptions = {
+  bufferMinutes: 0,
+  treatBackToBackAsConflict: false,
+  ignoreStatuses: ['cancelled'],
+};
+
+const toDate = (value: Date | string): Date => (value instanceof Date ? value : new Date(value));
 
 export class CalendarService {
   private calendar: calendar_v3.Calendar | null = null;
@@ -497,28 +514,163 @@ export class CalendarService {
   }
 
   /**
-   * Check for conflicts in a time range
+   * Pure conflict detection helper (Phase 2B Issue 3)
    */
-  async checkConflicts(
-    calendarId: string,
-    startTime: Date,
-    endTime: Date
-  ): Promise<string[]> {
-    try {
-      const events = await this.listEvents(calendarId, startTime, endTime);
-      const conflicts = events
-        .filter(event => event.summary)
-        .map(event => event.summary as string);
+  hasConflict(
+    existingEvents: CalendarEvent[],
+    proposedEvent: ProposedEvent,
+    options: ConflictCheckOptions = {}
+  ): ConflictResult {
+    const opts = { ...DEFAULT_CONFLICT_OPTIONS, ...options };
+    const bufferMs = (opts.bufferMinutes || 0) * 60 * 1000;
 
-      if (conflicts.length > 0) {
-        this.logger.info(`[Calendar Service] Found ${conflicts.length} conflicts: ${conflicts.join(', ')}`);
+    const proposedStart = toDate(proposedEvent.start).getTime() - bufferMs;
+    const proposedEnd = toDate(proposedEvent.end).getTime() + bufferMs;
+
+    const conflicts: CalendarEvent[] = [];
+
+    for (const event of existingEvents) {
+      if (opts.ignoreStatuses?.includes(event.status)) continue;
+
+      const eventStart = toDate(event.start).getTime();
+      const eventEnd = toDate(event.end).getTime();
+
+      const isBackToBack = proposedEnd === eventStart || proposedStart === eventEnd;
+
+      if (isBackToBack) {
+        if (!opts.treatBackToBackAsConflict) {
+          continue;
+        }
+        conflicts.push(event);
+        continue;
       }
 
-      return conflicts;
-    } catch (error) {
-      this.logger.error('[Calendar Service] Check conflicts error:', error);
-      return [];
+      const overlaps = proposedStart < eventEnd && proposedEnd > eventStart;
+      if (overlaps) {
+        conflicts.push(event);
+      }
     }
+
+    return {
+      hasConflict: conflicts.length > 0,
+      conflictingEvents: conflicts,
+      summary: conflicts.length
+        ? `Found ${conflicts.length} conflicting event(s)`
+        : 'No conflicts detected',
+      eventsScanned: existingEvents.length,
+      options: opts,
+    };
+  }
+
+  /**
+   * Check for conflicts by fetching events from Google Calendar
+   */
+  async checkEventConflicts(
+    calendarId: string,
+    proposedEvent: ProposedEvent,
+    options: ConflictCheckOptions = {}
+  ): Promise<ConflictResult> {
+    const opts = { ...DEFAULT_CONFLICT_OPTIONS, ...options };
+    const bufferMs = (opts.bufferMinutes || 0) * 60 * 1000;
+
+    const windowStart = new Date(toDate(proposedEvent.start).getTime() - bufferMs);
+    const windowEnd = new Date(toDate(proposedEvent.end).getTime() + bufferMs);
+
+    const events = await this.listUpcomingEvents({
+      calendarId,
+      timeMin: windowStart,
+      timeMax: windowEnd,
+      maxResults: 50,
+    });
+
+    const result = this.hasConflict(events, proposedEvent, opts);
+    if (result.hasConflict) {
+      this.logger.info(
+        `[Calendar Service] Conflicts detected for "${proposedEvent.summary}": ${result.conflictingEvents.length} event(s)`
+      );
+    } else {
+      this.logger.info('[Calendar Service] No conflicts detected');
+    }
+    return result;
+  }
+
+  /**
+   * Backwards-compatible conflict check (returns summaries only)
+   * @deprecated Use checkEventConflicts for structured results
+   */
+  async checkConflicts(calendarId: string, startTime: Date, endTime: Date): Promise<string[]> {
+    const result = await this.checkEventConflicts(calendarId, {
+      summary: 'proposed',
+      start: startTime,
+      end: endTime,
+    });
+    return result.conflictingEvents.map(e => e.summary);
+  }
+
+  /**
+   * Find available slots within a window
+   */
+  async findAvailableSlots(
+    calendarId: string,
+    windowStart: Date,
+    windowEnd: Date,
+    durationMinutes: number,
+    options: ConflictCheckOptions = {}
+  ): Promise<AvailableSlot[]> {
+    const opts = { ...DEFAULT_CONFLICT_OPTIONS, ...options };
+    const bufferMs = (opts.bufferMinutes || 0) * 60 * 1000;
+    const durationMs = durationMinutes * 60 * 1000;
+
+    const start = toDate(windowStart);
+    const end = toDate(windowEnd);
+    if (end <= start) return [];
+
+    const events = await this.listUpcomingEvents({
+      calendarId,
+      timeMin: start,
+      timeMax: end,
+      maxResults: 100,
+    });
+
+    const sorted = [...events].sort(
+      (a, b) => toDate(a.start).getTime() - toDate(b.start).getTime()
+    );
+
+    const slots: AvailableSlot[] = [];
+    let cursor = start;
+
+    for (const event of sorted) {
+      if (opts.ignoreStatuses?.includes(event.status)) continue;
+
+      const eventStart = new Date(toDate(event.start).getTime() - bufferMs);
+      const eventEnd = new Date(toDate(event.end).getTime() + bufferMs);
+
+      const gapStart = new Date(cursor.getTime() + bufferMs);
+      const gapEnd = new Date(eventStart.getTime());
+
+      if (gapEnd.getTime() - gapStart.getTime() >= durationMs) {
+        slots.push({
+          start: gapStart,
+          end: new Date(gapStart.getTime() + durationMs),
+        });
+      }
+
+      if (eventEnd > cursor) {
+        cursor = eventEnd;
+      }
+    }
+
+    const finalGapStart = new Date(cursor.getTime() + bufferMs);
+    const finalGapEnd = new Date(end.getTime());
+
+    if (finalGapEnd.getTime() - finalGapStart.getTime() >= durationMs) {
+      slots.push({
+        start: finalGapStart,
+        end: new Date(finalGapStart.getTime() + durationMs),
+      });
+    }
+
+    return slots;
   }
 
   /**

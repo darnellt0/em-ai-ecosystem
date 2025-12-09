@@ -25,7 +25,8 @@ export type EmAiAgentId =
   | 'rhythm'
   | 'purpose'
   | 'calendar-optimizer'
-  | 'grant-researcher';
+  | 'grant-researcher'
+  | 'daily-brief';
 
 export interface EmAiAgentConfig {
   id: string;
@@ -40,9 +41,10 @@ export interface EmAiAgentConfig {
   tags?: string[];
 }
 
-const STATIC_AGENT_KEYS: Record<Extract<EmAiAgentId, 'calendar-optimizer' | 'grant-researcher'>, string> = {
+const STATIC_AGENT_KEYS: Record<Extract<EmAiAgentId, 'calendar-optimizer' | 'grant-researcher' | 'daily-brief'>, string> = {
   'calendar-optimizer': 'calendar-optimizer',
   'grant-researcher': 'grant-researcher',
+  'daily-brief': 'productivity.dailyBrief',
 };
 
 const growthAgentOrchestratorMap = Object.keys(AGENT_CONFIG).reduce<Record<string, string>>((acc, key) => {
@@ -50,9 +52,18 @@ const growthAgentOrchestratorMap = Object.keys(AGENT_CONFIG).reduce<Record<strin
   return acc;
 }, {});
 
+const GROWTH_KEY_OVERRIDES: Partial<Record<EmAiAgentId, string>> = {
+  journal: 'growth.journal',
+  niche: 'growth.niche',
+  mindset: 'growth.mindset',
+  rhythm: 'growth.rhythm',
+  purpose: 'growth.purpose',
+};
+
 export const ORCHESTRATOR_KEY_BY_ID = {
   ...growthAgentOrchestratorMap,
   ...STATIC_AGENT_KEYS,
+  ...GROWTH_KEY_OVERRIDES,
 } as Record<EmAiAgentId, string>;
 
 function resolveOrchestratorKey(agentId: EmAiAgentId): string {
@@ -111,6 +122,112 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
     orchestratorKey: resolveOrchestratorKey('journal'),
     mode: 'single',
     tags: ['reflection', 'mindfulness'],
+  },
+  {
+    id: 'daily-brief',
+    name: 'Daily Brief Agent',
+    category: 'Ops',
+    icon: '🌅',
+    tagline: 'Morning executive brief with optional voice narration.',
+    description:
+      'Generates a structured morning briefing using calendar/tasks/email highlights. Optional ElevenLabs MP3 attachment. Sends via email.',
+    inputSchema: [
+      {
+        id: 'userId',
+        label: 'User ID',
+        type: 'select',
+        options: [
+          { value: 'darnell', label: 'Darnell' },
+          { value: 'shria', label: 'Shria' },
+          { value: 'founder', label: 'Founder' },
+        ],
+        required: true,
+      },
+      {
+        id: 'date',
+        label: 'Date (ISO, optional)',
+        type: 'text',
+        placeholder: '2025-05-15',
+      },
+    ],
+    orchestratorKey: resolveOrchestratorKey('daily-brief'),
+    mode: 'single',
+    tags: ['productivity', 'briefing'],
+  },
+  {
+    id: 'journal',
+    name: 'Journal Growth Agent',
+    category: 'Growth',
+    icon: '📝',
+    tagline: 'Daily reflection and alignment prompts.',
+    description: 'Guides founders through reflective prompts and summarizes key themes.',
+    inputSchema: [
+      { id: 'founderEmail', label: 'Founder Email', type: 'text', placeholder: 'founder@example.com', required: true },
+      { id: 'context', label: 'Context', type: 'textarea', placeholder: 'What do you want to reflect on?' },
+    ],
+    orchestratorKey: 'growth.journal',
+    mode: 'single',
+    tags: ['growth', 'reflection'],
+  },
+  {
+    id: 'niche',
+    name: 'Niche Growth Agent',
+    category: 'Growth',
+    icon: '🎯',
+    tagline: 'Clarifies your niche and GTM focus.',
+    description: 'Analyzes audience, offer, and constraints to sharpen your niche.',
+    inputSchema: [
+      { id: 'founderEmail', label: 'Founder Email', type: 'text', placeholder: 'founder@example.com', required: true },
+      { id: 'context', label: 'Context', type: 'textarea', placeholder: 'Audience, offer, constraints' },
+    ],
+    orchestratorKey: 'growth.niche',
+    mode: 'single',
+    tags: ['growth', 'gtm'],
+  },
+  {
+    id: 'mindset',
+    name: 'Mindset Growth Agent',
+    category: 'Growth',
+    icon: '🧠',
+    tagline: 'Keeps founders in a resilient mental state.',
+    description: 'Provides mindset reframes and rituals based on your current challenge.',
+    inputSchema: [
+      { id: 'founderEmail', label: 'Founder Email', type: 'text', required: true },
+      { id: 'context', label: 'Challenge', type: 'textarea', placeholder: 'Describe the friction you are feeling.' },
+    ],
+    orchestratorKey: 'growth.mindset',
+    mode: 'single',
+    tags: ['growth', 'resilience'],
+  },
+  {
+    id: 'rhythm',
+    name: 'Rhythm Growth Agent',
+    category: 'Growth',
+    icon: '📅',
+    tagline: 'Designs the ideal operating cadence for today.',
+    description: 'Balances deep work, meetings, and recovery for the day/week.',
+    inputSchema: [
+      { id: 'founderEmail', label: 'Founder Email', type: 'text', required: true },
+      { id: 'context', label: 'Goals/constraints', type: 'textarea' },
+    ],
+    orchestratorKey: 'growth.rhythm',
+    mode: 'single',
+    tags: ['growth', 'ops'],
+  },
+  {
+    id: 'purpose',
+    name: 'Purpose Growth Agent',
+    category: 'Growth',
+    icon: '🌟',
+    tagline: 'Aligns today’s work with your long-term purpose.',
+    description: 'Surfaces purpose alignment gaps and actionable steps.',
+    inputSchema: [
+      { id: 'founderEmail', label: 'Founder Email', type: 'text', required: true },
+      { id: 'context', label: 'Vision/goals', type: 'textarea' },
+    ],
+    orchestratorKey: 'growth.purpose',
+    mode: 'single',
+    tags: ['growth', 'purpose'],
   },
   {
     id: 'niche',

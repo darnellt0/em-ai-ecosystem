@@ -1,9 +1,22 @@
 /**
- * Email Notification Service - Phase 2B Integration
- * Handles email notifications via Gmail or SMTP
+ * Email Delivery Service - Phase 2B Issue 5
+ * Handles outbound email via SMTP (HTML-first, with plain text fallback)
  */
 
 import nodemailer, { Transporter } from 'nodemailer';
+
+export interface SendEmailOptions {
+  cc?: string | string[];
+  bcc?: string | string[];
+  from?: string;
+  text?: string;
+}
+
+export interface SendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
 
 interface EmailTemplate {
   taskTitle?: string;
@@ -18,6 +31,7 @@ export class EmailService {
   private transporter: Transporter | null = null;
   private logger = console;
   private isConfigured = false;
+  private provider?: string;
 
   constructor() {
     this.initializeTransporter();
@@ -25,47 +39,31 @@ export class EmailService {
 
   private initializeTransporter(): void {
     try {
-      const gmailUser = process.env.GMAIL_USER;
-      const gmailPassword = process.env.GMAIL_APP_PASSWORD;
       const smtpHost = process.env.SMTP_HOST;
       const smtpPort = process.env.SMTP_PORT;
       const smtpUser = process.env.SMTP_USER;
       const smtpPass = process.env.SMTP_PASS;
-
-      // Try Gmail first
-      if (gmailUser && gmailPassword) {
-        this.transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: gmailUser,
-            pass: gmailPassword,
-          },
-        });
-
-        this.isConfigured = true;
-        this.logger.info('[Email Service] Configured with Gmail account');
+      if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+        this.isConfigured = false;
+        this.logger.error(
+          '[Email Service] Missing SMTP configuration. Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS'
+        );
         return;
       }
 
-      // Fall back to SMTP
-      if (smtpHost && smtpPort && smtpUser && smtpPass) {
-        this.transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: parseInt(smtpPort, 10),
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: {
-            user: smtpUser,
-            pass: smtpPass,
-          },
-        });
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(smtpPort, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
 
-        this.isConfigured = true;
-        this.logger.info('[Email Service] Configured with SMTP server');
-        return;
-      }
-
-      this.logger.warn('[Email Service] No email configuration found in environment variables');
-      this.logger.info('[Email Service] Email notifications will be logged but not sent');
+      this.isConfigured = true;
+      this.provider = smtpHost;
+      this.logger.info('[Email Service] Configured with SMTP server');
     } catch (error) {
       this.logger.error('[Email Service] Initialization error:', error);
       this.isConfigured = false;
@@ -73,30 +71,36 @@ export class EmailService {
   }
 
   /**
-   * Send email notification
+   * Send email (HTML first, with optional cc/bcc)
+   * @example
+   * await emailService.sendEmail('user@example.com', 'Subject', '<p>Hello</p>', { cc: ['team@example.com'] });
    */
-  async sendNotification(
-    to: string,
+  async sendEmail(
+    to: string | string[],
     subject: string,
     html: string,
-    text?: string
-  ): Promise<{ messageId: string; success: boolean }> {
+    options: SendEmailOptions = {}
+  ): Promise<SendResult> {
     if (!this.isConfigured || !this.transporter) {
-      this.logger.warn(`[Email Service] Email not configured. Would send to ${to}: ${subject}`);
-      return {
-        messageId: `msg_mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        success: true,
-      };
+      const errorMessage =
+        '[Email Service] Email not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS';
+      this.logger.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
 
     try {
-      this.logger.info(`[Email Service] Sending email to ${to}: ${subject}`);
+      this.logger.info(`[Email Service] Sending email to ${Array.isArray(to) ? to.join(', ') : to}: ${subject}`);
 
       const info = await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.GMAIL_USER || 'noreply@elevatedmovements.com',
+        from:
+          options.from ||
+          process.env.EMAIL_FROM ||
+          `noreply@${(process.env.SMTP_HOST || 'elevatedmovements.com').replace(/:.*/, '')}`,
         to,
+        cc: options.cc,
+        bcc: options.bcc,
         subject,
-        text: text || this.stripHtml(html),
+        text: options.text || this.stripHtml(html),
         html,
       });
 
@@ -109,10 +113,22 @@ export class EmailService {
     } catch (error) {
       this.logger.error('[Email Service] Send error:', error);
       return {
-        messageId: '',
         success: false,
+        error: (error as Error).message,
       };
     }
+  }
+
+  /**
+   * Backwards-compatible helper used by agents (delegates to sendEmail)
+   */
+  async sendNotification(
+    to: string,
+    subject: string,
+    html: string,
+    text?: string
+  ): Promise<SendResult> {
+    return this.sendEmail(to, subject, html, { text });
   }
 
   /**
@@ -330,9 +346,9 @@ export class EmailService {
   } {
     return {
       configured: this.isConfigured,
-      provider: process.env.GMAIL_USER ? 'Gmail' : process.env.SMTP_HOST ? 'SMTP' : undefined,
+      provider: this.provider,
       warning: !this.isConfigured
-        ? 'Email service not configured. Add GMAIL_USER/GMAIL_APP_PASSWORD or SMTP credentials to .env'
+        ? 'Email service not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS to .env'
         : undefined,
     };
   }

@@ -16,6 +16,8 @@ import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
+import { runDailyBriefAgent } from './services/dailyBrief.service';
+import { scheduleDailyBriefCron } from './schedules/daily-brief.schedule';
 
 // Initialize Sentry first (before other imports)
 initSentry();
@@ -216,6 +218,25 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
     ],
     timestamp: new Date().toISOString(),
   });
+});
+
+// ============================================================================
+// ROUTES - DAILY BRIEF
+// ============================================================================
+
+app.post('/api/agents/daily-brief/run', async (req: Request, res: Response) => {
+  try {
+    const { userId, date } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+    const result = await runDailyBriefAgent({ userId, date });
+    return res.json({ success: true, result });
+  } catch (error) {
+    console.error('[DailyBrief] Failed to run', error);
+    captureException(error as Error);
+    return res.status(500).json({ success: false, error: (error as Error).message });
+  }
 });
 
 // ============================================================================
@@ -499,6 +520,9 @@ if (!(global as any).__VOICE_WSS_INITIALIZED__) {
   initVoiceRealtimeWSS(server);
   (global as any).__VOICE_WSS_INITIALIZED__ = true;
 }
+
+// Start Daily Brief cron schedules (PT)
+scheduleDailyBriefCron();
 
 // Graceful shutdown with Sentry flush
 process.on('SIGTERM', async () => {

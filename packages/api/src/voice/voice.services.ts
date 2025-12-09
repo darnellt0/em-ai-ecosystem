@@ -17,6 +17,7 @@ import {
   FollowUpInput,
 } from './voice.types';
 import { agentFactory } from '../agents/agent-factory';
+import { runDailyBriefAgent } from '../services/dailyBrief.service';
 
 // Helper function to get founder email from ID
 function getFounderEmail(founderIdId: string): string {
@@ -333,19 +334,17 @@ export async function createFollowUp(input: FollowUpInput): Promise<VoiceRespons
  */
 export async function getDailyBrief(founder: string): Promise<VoiceResponse> {
   try {
-    const founderEmail = getFounderEmail(founder);
-
-    // PHASE 2C: Call Daily Brief agent
-    const brief = await agentFactory.getDailyBrief(founderEmail);
-
-    const briefText = typeof brief === 'string' ? brief : Array.isArray(brief) ? (brief as unknown[]).join('\n\n') : String(brief);
+    const brief = await runDailyBriefAgent({ userId: founder });
+    const briefText =
+      brief.rendered.text ||
+      [brief.priorities.join(', '), brief.agenda.join(', '), brief.tasks.join(', ')].join('\n');
 
     return {
       status: 'ok',
       humanSummary: briefText,
       nextBestAction: 'Review the brief and prioritize your next actions.',
       data: {
-        founderEmail: founder,
+        founderEmail: getFounderEmail(founder),
         timestamp: new Date().toISOString(),
         type: 'daily-brief',
       },

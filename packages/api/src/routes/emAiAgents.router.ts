@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { emAiAgentsCatalog, getEmAiAgentConfig } from '../config/emAiAgents.catalog';
 import { callEmAgent } from '../services/emAi.service';
+import { runDailyBriefAgent } from '../services/dailyBrief.service';
 
 const emAiAgentsRouter = Router();
 
@@ -46,6 +47,18 @@ emAiAgentsRouter.post('/:id/run', async (req: Request, res: Response) => {
   const input = (req.body && typeof req.body.input === 'object' ? req.body.input : {}) as Record<string, any>;
 
   try {
+    if (agent.orchestratorKey === 'productivity.dailyBrief') {
+      const result = await runDailyBriefAgent({
+        userId: input.userId || 'founder',
+        date: input.date,
+      });
+
+      return res.json({
+        agentId: agent.id,
+        result,
+      });
+    }
+
     const result = await callEmAgent({
       agentId: agent.id,
       orchestratorKey: agent.orchestratorKey,

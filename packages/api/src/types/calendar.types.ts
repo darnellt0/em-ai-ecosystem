@@ -127,3 +127,41 @@ export type CalendarErrorCode =
   | 'INVALID_INPUT'
   | 'API_ERROR'
   | 'UNKNOWN';
+
+// ======================================================================
+// Conflict detection helpers (Phase 2B Issue 3)
+// ======================================================================
+
+export interface TimeWindow {
+  start: Date | string;
+  end: Date | string;
+  timeZone?: string;
+}
+
+export interface ProposedEvent extends TimeWindow {
+  summary: string;
+  status?: CalendarEvent['status'];
+}
+
+export interface ConflictCheckOptions {
+  /** Minutes to pad before/after proposed event when checking conflicts */
+  bufferMinutes?: number;
+  /** Treat back-to-back (end === start) as conflict */
+  treatBackToBackAsConflict?: boolean;
+  /** Ignore events with these statuses */
+  ignoreStatuses?: Array<CalendarEvent['status']>;
+}
+
+export interface ConflictResult {
+  hasConflict: boolean;
+  /** Conflicting events (normalized) */
+  conflictingEvents: CalendarEvent[];
+  /** Human readable summary */
+  summary: string;
+  /** Number of events scanned during the check */
+  eventsScanned: number;
+  /** Options used for the check */
+  options: ConflictCheckOptions;
+}
+
+export interface AvailableSlot extends TimeWindow {}
