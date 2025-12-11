@@ -1,9 +1,11 @@
 import express, { Request, Response } from 'express';
+import { handleGrowthCheckInIntent } from './voice.services';
 
 const router = express.Router();
 
 interface IntentRequestBody {
-  text: string;
+  text?: string;
+  intent?: string;
   sessionId?: string;
   metadata?: Record<string, unknown>;
 }
@@ -73,9 +75,18 @@ const classifyIntent = (text: string): IntentMatch | null => {
   return null;
 };
 
-router.post('/intent', (req: Request, res: Response) => {
-  const { text, sessionId, metadata } = req.body as IntentRequestBody;
+router.post('/intent', async (req: Request, res: Response) => {
+  const { text, sessionId, metadata, intent } = req.body as IntentRequestBody;
 
+  // Explicit intent flow (e.g., from clients calling directly with intent name)
+  if (intent === 'growth_check_in') {
+    const founderEmail = (metadata as any)?.founderEmail as string | undefined;
+    const mode = (metadata as any)?.mode as 'full' | undefined;
+    const result = await handleGrowthCheckInIntent({ founderEmail, mode });
+    return res.status(200).json(result);
+  }
+
+  // Existing text classification flow
   if (!text || typeof text !== 'string') {
     return res.status(400).json({
       success: false,

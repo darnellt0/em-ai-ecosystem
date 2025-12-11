@@ -23,6 +23,8 @@ import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
 import emotionalSessionRouter from './routes/emotional-session.router';
+import leadershipSessionRouter from './routes/leadership-session.router';
+import emAiExecAdminRouter from './routes/emAiExecAdmin.router';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
@@ -62,6 +64,7 @@ app.use(express.json());
 // EM AI agent catalog + execution
 app.use('/em-ai/agents', emAiAgentsRouter);
 app.use('/', emotionalSessionRouter);
+app.use('/', leadershipSessionRouter);
 
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -276,6 +279,11 @@ app.use('/api/voice', voiceAudioRouter);
  * Growth agents orchestrator endpoints (protected by feature flag)
  */
 app.use('/api/orchestrator', orchestratorRouter);
+
+/**
+ * Executive Admin growth pack endpoints (Phase 6)
+ */
+app.use('/', emAiExecAdminRouter);
 
 /**
  * Serve growth agents monitoring UI (only if dashboard is enabled)

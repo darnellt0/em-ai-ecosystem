@@ -18,6 +18,7 @@ import {
 } from './voice.types';
 import { agentFactory } from '../agents/agent-factory';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
+import { launchGrowthPack } from '../services/emAi.service';
 
 // Helper function to get founder email from ID
 function getFounderEmail(founderIdId: string): string {
@@ -570,6 +571,48 @@ export async function generateBrandStory(founder: string, companyName: string, v
       status: 'error',
       humanSummary: `Could not generate brand story: ${message}`,
       nextBestAction: 'Provide clearer company details and try again.',
+    };
+  }
+}
+
+// ============================================================================
+// VOICE INTENT: GROWTH CHECK-IN (Phase 6 Exec Admin Growth Pack)
+// ============================================================================
+
+interface GrowthCheckInInput {
+  founderEmail?: string;
+  mode?: 'full';
+}
+
+export async function handleGrowthCheckInIntent(input: GrowthCheckInInput) {
+  const defaultFounder = process.env.FOUNDER_SHRIA_EMAIL || 'shria@elevatedmovements.com';
+  const founderEmail = input.founderEmail || defaultFounder;
+  const mode: 'full' = input.mode || 'full';
+
+  try {
+    const result = await launchGrowthPack({ founderEmail, mode });
+
+    return {
+      success: true,
+      intent: 'growth_check_in',
+      message:
+        'I have launched your full Growth Pack. I will analyze your journal, niche, mindset, rhythm, and purpose agents and update your dashboard with the latest insights.',
+      data: {
+        mode: result.mode,
+        launchedAgents: result.launchedAgents,
+        jobIds: result.jobIds,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    console.error('[Voice Intent] growth_check_in failed:', error);
+    return {
+      success: false,
+      intent: 'growth_check_in',
+      message:
+        'I couldn’t start your Growth Pack just now. Please check the server logs or try again in a moment.',
+      error: error?.message || 'Unknown error',
+      timestamp: new Date().toISOString(),
     };
   }
 }

@@ -10,6 +10,8 @@ const customJestConfig = {
   testMatch: ['**/__tests__/**/*.test.(ts|tsx)'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^react$': '<rootDir>/../../node_modules/react',
+    '^react-dom$': '<rootDir>/../../node_modules/react-dom',
   },
 };
 

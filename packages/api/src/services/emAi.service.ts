@@ -1,5 +1,6 @@
 import { callEmExecutiveAdmin, ExecAdminRequest } from './executiveAdmin.service';
 import { createTraceContext } from '../utils/tracing';
+import { orchestrator, AGENT_CONFIG } from '../growth-agents/orchestrator';
 
 export interface CallEmAgentRequest {
   agentId: string;
@@ -11,6 +12,29 @@ export interface CallEmAgentRequest {
 export interface CallEmAgentResponse {
   outputText: string;
   meta?: Record<string, any>;
+}
+
+export interface GrowthPackRequest {
+  founderEmail: string;
+  mode?: 'full';
+}
+
+export interface GrowthPackResult {
+  success: boolean;
+  mode: string;
+  launchedAgents: string[];
+  jobIds: string[];
+  timestamp: string;
+}
+
+export interface GrowthPackStatus {
+  success: boolean;
+  environment: string;
+  agentRegistryCount: number;
+  agents: string[];
+  recentProgress: any[];
+  recentEvents: any[];
+  timestamp: string;
 }
 
 /**
@@ -82,4 +106,35 @@ export async function callEmAgent(request: CallEmAgentRequest): Promise<CallEmAg
     );
     throw err;
   }
+}
+
+export async function launchGrowthPack(req: GrowthPackRequest): Promise<GrowthPackResult> {
+  const mode = req.mode || 'full';
+  const registry = Object.keys(AGENT_CONFIG);
+
+  const { jobIds, count } = await orchestrator.launchAllAgents();
+
+  return {
+    success: true,
+    mode,
+    launchedAgents: registry,
+    jobIds,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function getGrowthStatus(): Promise<GrowthPackStatus> {
+  const health = await orchestrator.getHealth();
+  const monitor = await orchestrator.getMonitorData(20);
+  const agents = health.agentRegistry || Object.keys(AGENT_CONFIG);
+
+  return {
+    success: true,
+    environment: process.env.NODE_ENV || 'development',
+    agentRegistryCount: agents.length,
+    agents,
+    recentProgress: monitor.progress || [],
+    recentEvents: monitor.events || [],
+    timestamp: new Date().toISOString(),
+  };
 }

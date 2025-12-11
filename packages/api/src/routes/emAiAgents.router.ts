@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { emAiAgentsCatalog, getEmAiAgentConfig } from '../config/emAiAgents.catalog';
-import { callEmAgent } from '../services/emAi.service';
+import { callEmAgent, launchGrowthPack, getGrowthStatus } from '../services/emAi.service';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
 import { orchestrator } from '../growth-agents/orchestrator';
 
@@ -12,6 +12,49 @@ const emAiAgentsRouter = Router();
  */
 emAiAgentsRouter.get('/', (_req: Request, res: Response) => {
   res.json({ agents: emAiAgentsCatalog });
+});
+
+/**
+ * POST /em-ai/exec-admin/growth/run
+ * Launch Growth Pack (exec admin)
+ */
+emAiAgentsRouter.post('/exec-admin/growth/run', async (req: Request, res: Response) => {
+  const { founderEmail, mode } = req.body || {};
+
+  if (!founderEmail) {
+    return res.status(400).json({
+      success: false,
+      error: 'founderEmail is required.',
+    });
+  }
+
+  try {
+    const result = await launchGrowthPack({ founderEmail, mode });
+    return res.json(result);
+  } catch (error) {
+    console.error('[Exec Admin] Growth run failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /em-ai/exec-admin/growth/status
+ * Retrieve orchestrator health + latest monitor for exec admin
+ */
+emAiAgentsRouter.get('/exec-admin/growth/status', async (_req: Request, res: Response) => {
+  try {
+    const status = await getGrowthStatus();
+    return res.json(status);
+  } catch (error) {
+    console.error('[Exec Admin] Growth status failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
 });
 
 /**
