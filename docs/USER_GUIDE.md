@@ -1,0 +1,16 @@
+# User Guide (Darnell & Shria)
+- Daily Focus: POST `/api/exec-admin/p0/daily-focus` with `{ "userId": "darnell" | "shria" | "founder" }`. Returns focus, insights, actions, ActionPack, QA status.
+- Growth Pack: POST `/em-ai/exec-admin/growth/run` with `{ "founderEmail": "<email>" }`. Plans actions into Action Layer.
+- Actions Console: Visit dashboard `/tools/actions` to approve/execute (PLAN) pending actions.
+- Action APIs:
+  - GET `/api/actions/pending`
+  - POST `/api/actions/:id/approve`
+  - POST `/api/actions/:id/execute` (`mode`: PLAN|EXECUTE; EXECUTE gated by flags/approvals)
+- P1 agent run (example): POST `/api/exec-admin/p1/run` with `{ "userId": "darnell", "agentKey": "brand.storyteller.generate", "input": { "topic": "..." } }`
+- PLAN-only content pack helper:
+  - `pwsh ./scripts/generate-content-pack.ps1`
+  - Optional `-ApproveFirstOne` approves and executes the first pending action in PLAN mode (no external side effects).
+- System status:
+  - `/api/system/health`
+  - `/api/agents/registry`
+- Voice growth intent: `growth_check_in` (voice) maps to Exec Admin growth pack.
