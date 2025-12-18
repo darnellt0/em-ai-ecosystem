@@ -590,7 +590,7 @@ export async function handleGrowthCheckInIntent(input: GrowthCheckInInput) {
   const mode: 'full' = input.mode || 'full';
 
   try {
-    const result = await launchGrowthPack({ founderEmail, mode });
+    const result = await launchGrowthPack({ founderEmail, mode: (mode as 'full') || 'full' });
 
     return {
       success: true,
@@ -601,6 +601,7 @@ export async function handleGrowthCheckInIntent(input: GrowthCheckInInput) {
         mode: result.mode,
         launchedAgents: result.launchedAgents,
         jobIds: result.jobIds,
+        runId: (result as any).runId,
       },
       timestamp: new Date().toISOString(),
     };

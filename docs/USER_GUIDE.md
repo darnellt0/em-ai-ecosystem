@@ -14,3 +14,11 @@
   - `/api/system/health`
   - `/api/agents/registry`
 - Voice growth intent: `growth_check_in` (voice) maps to Exec Admin growth pack.
+
+Content Pipeline (PLAN-only)
+- Generate/view packs: dashboard `/tools/content-pipeline`
+- API:
+  - POST `/api/content/packs/generate` `{ "userId": "...", "topic": "...", "includeP0": true }`
+  - GET `/api/content/packs`
+  - GET `/api/content/packs/:packId`
+- Script helper: `pwsh ./scripts/generate-content-pack.ps1` (optional `-ApproveFirstOne` to approve+execute first action in PLAN mode)

@@ -26,7 +26,8 @@ export type EmAiAgentId =
   | 'purpose'
   | 'calendar-optimizer'
   | 'grant-researcher'
-  | 'daily-brief';
+  | 'daily-brief'
+  | 'content-week';
 
 export interface EmAiAgentConfig {
   id: string;
@@ -58,6 +59,7 @@ const FALLBACK_AGENT_KEYS = [
   'growth.mindset',
   'growth.rhythm',
   'growth.purpose',
+  'content.weeklyPack',
 ];
 
 const growthAgentOrchestratorMap = (AGENT_CONFIG ? Object.keys(AGENT_CONFIG) : FALLBACK_AGENT_KEYS).reduce<
@@ -73,6 +75,7 @@ const GROWTH_KEY_OVERRIDES: Partial<Record<EmAiAgentId, string>> = {
   mindset: 'growth.mindset',
   rhythm: 'growth.rhythm',
   purpose: 'growth.purpose',
+  'content-week': 'content.weeklyPack',
 };
 
 export const ORCHESTRATOR_KEY_BY_ID = {
@@ -168,6 +171,28 @@ export const emAiAgentsCatalog: EmAiAgentConfig[] = [
     orchestratorKey: resolveOrchestratorKey('daily-brief'),
     mode: 'single',
     tags: ['productivity', 'briefing'],
+  },
+  {
+    id: 'content-week',
+    name: 'Weekly Content Pack',
+    category: 'Growth',
+    icon: '🌀',
+    tagline: 'Generates a full weekly content pack across LinkedIn, IG, newsletter, and video.',
+    description: 'Orchestrates Content Synthesizer, Brand Storyteller, and Creative Director to produce a weekly content bundle.',
+    inputSchema: [
+      { id: 'scope', label: 'Scope', type: 'text', placeholder: 'elevated_movements', required: true, defaultValue: 'elevated_movements' },
+      { id: 'channels', label: 'Channels', type: 'multi-select', options: [
+        { value: 'linkedin', label: 'LinkedIn' },
+        { value: 'instagram', label: 'Instagram' },
+        { value: 'newsletter', label: 'Newsletter' },
+        { value: 'video', label: 'Short video' },
+      ], defaultValue: ['linkedin','instagram','newsletter'] },
+      { id: 'focus', label: 'Focus', type: 'text', placeholder: 'leadership, rest, community', required: false },
+      { id: 'tone', label: 'Tone', type: 'text', placeholder: 'standard_week', required: false },
+    ],
+    orchestratorKey: resolveOrchestratorKey('content-week'),
+    mode: 'single',
+    tags: ['content', 'brand'],
   },
   {
     id: 'journal',

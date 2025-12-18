@@ -18,6 +18,11 @@ const heartbeat = (socket: WebSocket) => {
 };
 
 export const initVoiceRealtimeWSS = (httpServer?: HTTPServer): WebSocketServer => {
+  if (process.env.NODE_ENV === 'test' && process.env.ENABLE_VOICE_WSS_IN_TEST !== 'true') {
+    console.log('[WS] Skipping voice realtime WSS initialization in test mode');
+    return wss as WebSocketServer | null;
+  }
+
   if (wss) {
     console.log('[WS] Voice realtime WebSocket server already initialized');
     return wss;
@@ -61,6 +66,7 @@ export const initVoiceRealtimeWSS = (httpServer?: HTTPServer): WebSocketServer =
     );
 
     const interval = setInterval(() => heartbeat(socket), 25000);
+    interval.unref?.();
 
     socket.on('message', (raw) => {
       try {

@@ -1,8 +1,9 @@
-$ErrorActionPreference = "Stop"
-
+#Requires -Version 7.0
 param(
     [switch]$ApproveFirstOne
 )
+
+$ErrorActionPreference = "Stop"
 
 $BaseUrl = $env:API_BASE_URL
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
@@ -68,5 +69,20 @@ if ($ApproveFirstOne -and $pending.actions -and $pending.actions.Count -gt 0) {
     $receipt | ConvertTo-Json -Depth 10
 }
 
+# Save latest pack response if present
+if ($runs.Count -gt 0) {
+    $lastPack = $runs[$runs.Count - 1]
+    if ($lastPack.pack) {
+        $path = Join-Path $outputDir "$($lastPack.pack.packId).json"
+        $lastPack.pack | ConvertTo-Json -Depth 10 | Out-File -FilePath $path -Encoding utf8
+        Write-Host ""
+        Write-Host "Saved latest pack to $path"
+    }
+}
+
 Write-Host ""
 Write-Host "Done. All actions remain PLAN-only unless explicitly approved."
+$outputDir = Join-Path (Get-Location) ".outputs/content-packs"
+if (-not (Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}

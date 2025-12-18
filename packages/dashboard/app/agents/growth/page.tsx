@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
+import { API_BASE } from '@/lib/apiClient';
 
 type GrowthRunMode = 'full';
 
@@ -21,6 +22,8 @@ type GrowthStatusResponse = {
   environment?: string;
   agentRegistryCount?: number;
   agents?: string[];
+  latestRun?: any;
+  recentRuns?: any[];
   recentProgress?: Array<{
     agent?: string;
     phase?: string;
@@ -38,10 +41,8 @@ type GrowthStatusResponse = {
   error?: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-
 const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -56,6 +57,19 @@ const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
   return res.json() as Promise<T>;
 };
 
+const postJson = async <T,>(path: string, body: any): Promise<T> => {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error((data as any)?.error || (data as any)?.message || `Request failed (${res.status})`);
+  }
+  return data as T;
+};
+
 export default function GrowthDashboardPage() {
   const [founderEmail, setFounderEmail] = useState('shria@elevatedmovements.com');
   const [mode] = useState<GrowthRunMode>('full');
@@ -66,6 +80,21 @@ export default function GrowthDashboardPage() {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [status, setStatus] = useState<GrowthStatusResponse | null>(null);
+  const [runs, setRuns] = useState<any[]>([]);
+  const [runsError, setRunsError] = useState<string | null>(null);
+
+  const [summaryRunId, setSummaryRunId] = useState('');
+  const [summary, setSummary] = useState<any | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const [retryResult, setRetryResult] = useState<any | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [retryLoading, setRetryLoading] = useState(false);
+
+  const [finalizeResult, setFinalizeResult] = useState<any | null>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  const [finalizeLoading, setFinalizeLoading] = useState(false);
 
   const pollIntervalMs = 10000;
 
@@ -83,10 +112,22 @@ export default function GrowthDashboardPage() {
     }
   };
 
+  const loadRuns = async () => {
+    try {
+      setRunsError(null);
+      const data = await fetchJson<{ runs: any[] }>('/em-ai/exec-admin/growth/runs');
+      setRuns(data.runs || []);
+    } catch (err) {
+      setRunsError((err as Error).message);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
+    loadRuns();
     const id = setInterval(() => {
       loadStatus();
+      loadRuns();
     }, pollIntervalMs);
     return () => clearInterval(id);
   }, []);
@@ -106,6 +147,71 @@ export default function GrowthDashboardPage() {
       setRunError((err as Error).message);
     } finally {
       setRunLoading(false);
+    }
+  };
+
+  const effectiveRunId = () => summaryRunId || status?.latestRun?.runId || '';
+
+  const loadSummary = async () => {
+    const runId = effectiveRunId();
+    if (!runId) {
+      setSummaryError('No runId available. Trigger a run first.');
+      return;
+    }
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const data = await fetchJson<{ summary: any }>(`/em-ai/exec-admin/growth/runs/${runId}/summary`);
+      setSummary(data.summary || null);
+    } catch (err) {
+      setSummaryError((err as Error).message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const retryFailed = async () => {
+    const runId = effectiveRunId();
+    if (!runId) {
+      setRetryError('No runId available. Trigger a run first.');
+      return;
+    }
+    setRetryLoading(true);
+    setRetryError(null);
+    try {
+      const data = await postJson<{ success?: boolean; retriedAgents?: string[]; message?: string; error?: string }>(
+        `/em-ai/exec-admin/growth/runs/${runId}/retry`,
+        {}
+      );
+      setRetryResult(data);
+      await loadSummary();
+    } catch (err) {
+      setRetryError((err as Error).message);
+    } finally {
+      setRetryLoading(false);
+    }
+  };
+
+  const finalizeRun = async () => {
+    const runId = effectiveRunId();
+    if (!runId) {
+      setFinalizeError('No runId available. Trigger a run first.');
+      return;
+    }
+    setFinalizeLoading(true);
+    setFinalizeError(null);
+    try {
+      const data = await postJson<{ success?: boolean; run?: any; summary?: any }>(
+        `/em-ai/exec-admin/growth/runs/${runId}/finalize`,
+        {}
+      );
+      setFinalizeResult(data);
+      if (data.summary) setSummary(data.summary);
+      await loadRuns();
+    } catch (err) {
+      setFinalizeError((err as Error).message);
+    } finally {
+      setFinalizeLoading(false);
     }
   };
 
@@ -302,6 +408,150 @@ export default function GrowthDashboardPage() {
           )}
         </section>
       </div>
+
+      {/* Recent Runs */}
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Recent Runs</h2>
+            <p className="text-sm text-white/70">Newest first</p>
+          </div>
+          <button
+            onClick={loadRuns}
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:bg-white/10"
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
+        {runsError && <p className="mt-2 text-sm text-amber-200">Error: {runsError}</p>}
+        <div className="mt-4 space-y-2 text-sm text-white/80">
+          {runs.length === 0 ? (
+            <p className="text-white/70">No runs yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-white/80">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="px-2 py-2">Run ID</th>
+                    <th className="px-2 py-2">Status</th>
+                    <th className="px-2 py-2">Started</th>
+                    <th className="px-2 py-2">Finished</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runs.map((r) => (
+                    <tr key={r.runId} className="border-b border-white/5">
+                      <td className="px-2 py-2 break-all">{r.runId}</td>
+                      <td className="px-2 py-2">{r.status}</td>
+                      <td className="px-2 py-2">{r.startedAt}</td>
+                      <td className="px-2 py-2">{r.finishedAt || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-white">Run Summary & Retry</h2>
+            <p className="text-sm text-white/70">Load summary for a run and retry failed agents (if enabled).</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadSummary}
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:bg-white/10"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {summaryLoading ? 'Loading…' : 'Load Summary'}
+            </button>
+            <button
+              onClick={finalizeRun}
+              disabled={finalizeLoading}
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs text-white hover:bg-white/10 disabled:opacity-60"
+            >
+              {finalizeLoading ? 'Finalizing…' : 'Finalize Now'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm text-white/80">Run ID</label>
+            <input
+              className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-white placeholder:text-white/50 focus:border-emerald-300 focus:outline-none"
+              value={summaryRunId}
+              onChange={(e) => setSummaryRunId(e.target.value)}
+              placeholder={status?.latestRun?.runId || 'latest runId'}
+            />
+            <p className="text-xs text-white/60">Latest runId: {status?.latestRun?.runId || 'n/a'}</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-white/80">Retry Failed Agents</label>
+            <button
+              onClick={retryFailed}
+              disabled={retryLoading}
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {retryLoading ? 'Retrying…' : 'Retry Failed Agents'}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            {retryError && <p className="text-sm text-amber-200">{retryError}</p>}
+            {retryResult && (
+              <pre className="whitespace-pre-wrap break-words text-[11px] text-white/90">
+{JSON.stringify(retryResult, null, 2)}
+              </pre>
+            )}
+            {finalizeError && <p className="text-sm text-amber-200">{finalizeError}</p>}
+            {finalizeResult && (
+              <pre className="whitespace-pre-wrap break-words text-[11px] text-white/90">
+{JSON.stringify(finalizeResult, null, 2)}
+              </pre>
+            )}
+          </div>
+        </div>
+
+        {summaryError && <p className="text-sm text-amber-200">Error: {summaryError}</p>}
+        {summary ? (
+          <div className="grid gap-4 md:grid-cols-3 text-sm text-white/80">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="font-semibold text-white">Agents</p>
+              <p>Total: {summary.agents?.total ?? 0}</p>
+              <p>Completed: {(summary.agents?.completed || []).join(', ') || '—'}</p>
+              <p>Failed: {(summary.agents?.failed || []).join(', ') || '—'}</p>
+              <p>Running: {(summary.agents?.running || []).join(', ') || '—'}</p>
+              <p>Queued: {(summary.agents?.queued || []).join(', ') || '—'}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="font-semibold text-white">Latest Progress</p>
+              <ul className="space-y-1">
+                {(summary.progress?.latest || []).map((p: any, idx: number) => (
+                  <li key={idx}>
+                    [{p.agent}] {p.percent ?? '?'}% {p.note || ''}
+                  </li>
+                ))}
+                {(!summary.progress?.latest || summary.progress.latest.length === 0) && <li className="text-white/60">No progress yet.</li>}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <p className="font-semibold text-white">Latest Events</p>
+              <ul className="space-y-1">
+                {(summary.events?.latest || []).map((e: any, idx: number) => (
+                  <li key={idx}>
+                    [{e.agent}] {e.kind || 'event'}
+                  </li>
+                ))}
+                {(!summary.events?.latest || summary.events.latest.length === 0) && <li className="text-white/60">No events yet.</li>}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <p className="text-white/60 text-sm">No summary loaded yet.</p>
+        )}
+      </section>
     </main>
   );
 }
