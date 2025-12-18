@@ -173,3 +173,53 @@ Before pushing, verify:
 - Change database schemas
 - Modify Docker configuration
 - Touch any `.env` files
+
+---
+
+## STATUS UPDATE (December 18, 2025)
+
+### ✅ Fixes Applied
+
+All 3 original fixes have been implemented and committed:
+
+1. **InteractionView.tsx** - JSX closing tag corrected
+2. **mobile/tsconfig.json** - Removed both `moduleResolution` and `module` overrides
+3. **api/tsconfig.json** - Removed entire `types` array (not just jest)
+
+Additional change:
+4. **root package.json** - Added tailwindcss, postcss, autoprefixer to devDependencies
+
+### ❌ Additional Issues Discovered
+
+The original fixes revealed deeper npm workspace configuration problems:
+
+#### Dashboard - tailwindcss not hoisted
+```
+Error: Cannot find module 'tailwindcss'
+```
+- npm workspaces is not properly hoisting tailwindcss to root node_modules
+- Manual installation workaround attempted but Next.js worker process can't find it
+- **Root cause:** npm workspace hoisting configuration issue
+
+#### Mobile - Missing @types/react
+```
+Could not find a declaration file for module 'react'
+```
+- The mobile package has its own node_modules with react but without @types/react
+- expo/tsconfig.base settings conflict with local workspace structure
+- Many implicit `any` type errors throughout mobile codebase
+
+#### API - rootDir conflict with daily-brief
+```
+File 'daily-brief/src/types.ts' is not under 'rootDir'
+```
+- The API package imports from `@em/daily-brief` which is a workspace symlink
+- TypeScript compilation fails because files outside rootDir are referenced
+- **Root cause:** Monorepo package boundary configuration issue
+
+### 🔧 Recommended Next Steps
+
+1. **Fix npm workspace hoisting** - Review `.npmrc` and workspace config
+2. **Install @types packages in workspaces** - Run `npm install @types/react -w @em-ai/mobile`
+3. **Fix API rootDirs** - Either expand rootDirs or use composite project references
+4. **Add .next to .gitignore** - Build artifacts should not be tracked
