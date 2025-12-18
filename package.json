@@ -19,7 +19,7 @@
     "test:unit": "npx jest --config jest.unit.config.js --runInBand",
     "test:integration": "lerna run test",
     "test:coverage": "lerna run test:coverage",
-    "lint": "npm -ws run lint --if-present --stream || echo \"lint skipped (no lint scripts)\"",
+    "lint": "npm -ws run lint --if-present --stream",
     "lint:strict": "lerna run lint",
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"packages/*/tests/**/*.ts\"",
     "clean": "lerna run clean && rm -rf node_modules",
