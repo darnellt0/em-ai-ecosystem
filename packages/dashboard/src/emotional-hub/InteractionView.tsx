@@ -130,7 +130,7 @@ export const InteractionView = ({ feature, onClose }: Props) => {
               </div>
             </form>
           </motion.div>
-        </AnimatePresence>
+        </motion.div>
       )}
     </AnimatePresence>
   );
