@@ -1,0 +1,14 @@
+# Execution Safety
+- PLAN vs EXECUTE enforced in Action Layer (`packages/api/src/actions/action.executor.ts`).
+- Approvals: actions with `requiresApproval` must be approved before EXECUTE; otherwise BLOCKED.
+- Feature flags (all default false) gate external writes:
+  - ENABLE_ACTION_EXECUTION
+  - ENABLE_CALENDAR_WRITES
+  - ENABLE_GMAIL_DRAFTS
+  - ENABLE_GMAIL_SEND
+  - ENABLE_SHEETS_WRITES
+- ActionPack webhook publisher is feature-flagged (ENABLE_ACTIONPACK_WEBHOOK + ACTIONPACK_WEBHOOK_URL + optional ACTIONPACK_WEBHOOK_SECRET). When disabled or misconfigured it is a no-op and never blocks the main flow.
+- Tool Layer is registry-based; unknown tools return NOT_IMPLEMENTED. MCP adapter is disabled by default (ENABLE_MCP=false) and returns clear errors if misconfigured.
+- Idempotency: actions honor `idempotencyKey` to prevent duplicate execution.
+- Audit: transitions recorded in `packages/api/src/actions/action.audit.ts`; exposed via `/api/actions/audit`.
+- QA: `qa.verify_run` fails if stub runtime used or registry bypassed.

@@ -324,6 +324,28 @@ npm run test
 npm run lint:fix
 ```
 
+### Option B: Docker-first dev (recommended)
+
+Run API in Docker on port 3000, and run the dashboard locally on a non-conflicting port (e.g., 3001):
+
+```bash
+# terminal 1 (API via docker compose)
+docker compose up em-api
+
+# terminal 2 (dashboard, choose a free port)
+cd packages/dashboard
+set PORT=3001 && npm run dev   # PowerShell / Cmd
+# or: PORT=3001 npm run dev    # bash
+
+# dashboard will call the API using NEXT_PUBLIC_API_BASE_URL
+# set it if API is not on http://localhost:3000
+set NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+Key endpoints for P0 Daily Focus (Exec Admin front door):
+- `POST /em-ai/exec-admin` with body: `{ "intent": "p0.daily_focus", "payload": { "userId": "darnell", "mode": "founder" } }`
+- Action Layer review: `GET /api/actions/pending`
+
 ### Project Structure
 
 ```

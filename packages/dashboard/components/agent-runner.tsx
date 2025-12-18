@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from 'react';
+import { API_BASE } from '@/lib/apiClient';
 import type { AgentConfig, AgentInputField } from '@/types/emAiAgents';
 
 interface AgentRunnerProps {
@@ -8,8 +9,6 @@ interface AgentRunnerProps {
 }
 
 type FormState = Record<string, any>;
-
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
 function getInitialValue(field: AgentInputField) {
   if (field.defaultValue !== undefined) {
@@ -39,10 +38,7 @@ export function AgentRunner({ agent }: AgentRunnerProps) {
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const runEndpoint = useMemo(() => {
-    const base = apiBaseUrl.length > 0 ? apiBaseUrl : '';
-    return `${base}/em-ai/agents/${agent.id}/run`;
-  }, [agent.id]);
+  const runEndpoint = useMemo(() => `${API_BASE}/em-ai/agents/${agent.id}/run`, [agent.id]);
 
   function handleFieldChange(field: AgentInputField, value: any) {
     setFormState((prev) => ({

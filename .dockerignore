@@ -1,3 +1,23 @@
+**/node_modules
+**/node_modules/**
+**/dist
+**/dist/**
+**/.next
+**/.next/**
+**/coverage
+**/coverage/**
+**/.turbo
+**/.turbo/**
+**/.nx
+**/.nx/**
+**/.cache
+**/.cache/**
+**/*.log
+.git
+.git/**
+Dockerfile*
+docker-desktop*
+**/.yalc
 # Node modules - CRITICAL for Windows workspace builds
 **/node_modules
 

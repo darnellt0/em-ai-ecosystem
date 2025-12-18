@@ -20,8 +20,8 @@ describe('GrowthOrchestrator', () => {
   });
 
   describe('Agent Configuration', () => {
-    it('should have 5 agents registered', () => {
-      expect(Object.keys(AGENT_CONFIG)).toHaveLength(5);
+    it('should have 10 agents registered (core + growth variants)', () => {
+      expect(Object.keys(AGENT_CONFIG)).toHaveLength(10);
     });
 
     it('should include all required agents', () => {
@@ -30,6 +30,12 @@ describe('GrowthOrchestrator', () => {
       expect(AGENT_CONFIG).toHaveProperty('mindset');
       expect(AGENT_CONFIG).toHaveProperty('rhythm');
       expect(AGENT_CONFIG).toHaveProperty('purpose');
+      const keys = Object.keys(AGENT_CONFIG);
+      expect(keys).toContain('growth.journal');
+      expect(keys).toContain('growth.niche');
+      expect(keys).toContain('growth.mindset');
+      expect(keys).toContain('growth.rhythm');
+      expect(keys).toContain('growth.purpose');
     });
 
     it('should have correct agent metadata', () => {
@@ -42,11 +48,11 @@ describe('GrowthOrchestrator', () => {
   });
 
   describe('launchAllAgents', () => {
-    it('should enqueue 5 agent jobs', async () => {
+    it('should enqueue 10 agent jobs', async () => {
       const result = await orchestrator.launchAllAgents();
 
-      expect(result.count).toBe(5);
-      expect(result.jobIds).toHaveLength(5);
+      expect(result.count).toBe(10);
+      expect(result.jobIds).toHaveLength(10);
     });
   });
 
@@ -57,7 +63,7 @@ describe('GrowthOrchestrator', () => {
       expect(health).toHaveProperty('redis');
       expect(health).toHaveProperty('queue');
       expect(health).toHaveProperty('agentRegistry');
-      expect(health.agentRegistry).toHaveLength(5);
+      expect(health.agentRegistry).toHaveLength(10);
     });
   });
 

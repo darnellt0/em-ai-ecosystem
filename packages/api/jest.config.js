@@ -1,6 +1,9 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json', diagnostics: false }],
+  },
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
@@ -13,14 +16,10 @@ module.exports = {
     '^@em/orchestrator$': '<rootDir>/../orchestrator/src/index',
     '^@em/orchestrator/(.*)$': '<rootDir>/../orchestrator/src/$1',
   },
+  setupFilesAfterEnv: ['<rootDir>/tests/setup-tests.ts'],
   coveragePathIgnorePatterns: [
     'node_modules',
     'dist',
   ],
-  globals: {
-    'ts-jest': {
-      tsconfig: '<rootDir>/tsconfig.json',
-    },
-  },
   testTimeout: 10000,
 };
