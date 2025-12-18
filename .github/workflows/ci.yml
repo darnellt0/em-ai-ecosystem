@@ -46,8 +46,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.19.4'
           cache: 'npm'
+
+      - name: Assert Node version
+        run: |
+          node -e "const [major] = process.versions.node.split('.'); if (Number(major) < 20) { console.error('Node 20+ required'); process.exit(1); }"
 
       - name: Install dependencies
         run: |
