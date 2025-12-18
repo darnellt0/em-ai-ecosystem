@@ -103,6 +103,13 @@ docker-compose ps
 docker-compose logs -f api
 ```
 
+### Database migrations
+
+- Migrations live in `packages/api/migrations` (filename ordering, e.g., `20250101000000_description.sql`).
+- Run manually: `npm run db:migrate` (uses `packages/api/scripts/migrate.mjs`, reads `DATABASE_URL`).
+- Optional startup: set `RUN_MIGRATIONS_ON_START=true` to run migrations when the API boots.
+- Tracking table: `schema_migrations` (filename PK, applied_at).
+
 ## ?? Deployment (Render + Vercel)
 
 ### Render API Service

@@ -14,6 +14,20 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env'),
 });
 
+// Optional: run DB migrations on start
+if (process.env.RUN_MIGRATIONS_ON_START === 'true') {
+  try {
+    const scriptsPath = path.resolve(__dirname, '../scripts/migrate.mjs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { execSync } = require('child_process');
+    console.log('[Startup] Running migrations...');
+    execSync(`node ${scriptsPath}`, { stdio: 'inherit' });
+    console.log('[Startup] Migrations complete');
+  } catch (err) {
+    console.error('[Startup] Migration run failed:', err?.message || err);
+  }
+}
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import voiceRouter from './voice/voice.router';
