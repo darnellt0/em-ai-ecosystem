@@ -71,3 +71,11 @@ docker-compose.override.yml
 # OS
 Thumbs.db
 .DS_Store
+
+# .next
+if (!(Test-Path .gitignore)) { New-Item .gitignore | Out-Null }
+Add-Content .gitignore "`n# Next.js build output`n.next/`npackages/**/.next/`n"
+
+# Next.js build output
+.next/
+packages/**/.next/
