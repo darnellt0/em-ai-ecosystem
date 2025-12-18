@@ -29,6 +29,7 @@ import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
 import { scheduleDailyBriefCron } from './schedules/daily-brief.schedule';
+import p0DailyBriefRouter from './routes/p0-daily-brief.routes';
 
 // Initialize Sentry after env is loaded
 initSentry();
@@ -239,11 +240,12 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
 
 app.post('/api/agents/daily-brief/run', async (req: Request, res: Response) => {
   try {
-    const { userId, date } = req.body || {};
-    if (!userId) {
-      return res.status(400).json({ success: false, error: 'userId is required' });
+    const { user, userId, date, runId } = req.body || {};
+    const targetUser = user || userId;
+    if (!targetUser) {
+      return res.status(400).json({ success: false, error: 'user is required' });
     }
-    const result = await runDailyBriefAgent({ userId, date });
+    const result = await runDailyBriefAgent({ user: targetUser, date, runId });
     return res.json({ success: true, result });
   } catch (error) {
     console.error('[DailyBrief] Failed to run', error);
@@ -284,6 +286,7 @@ app.use('/api/orchestrator', orchestratorRouter);
  * Executive Admin growth pack endpoints (Phase 6)
  */
 app.use('/', emAiExecAdminRouter);
+app.use('/', p0DailyBriefRouter);
 
 /**
  * Serve growth agents monitoring UI (only if dashboard is enabled)
