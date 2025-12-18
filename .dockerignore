@@ -18,3 +18,49 @@
 Dockerfile*
 docker-desktop*
 **/.yalc
+# Node modules - CRITICAL for Windows workspace builds
+**/node_modules
+
+# Build artifacts
+**/dist
+**/build
+**/.next
+**/out
+
+# Monorepo/build caches
+**/.turbo
+**/.nx
+**/.cache
+**/.tsbuildinfo
+
+# Logs
+**/*.log
+**/logs
+
+# Git
+.git
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files (security)
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+**/coverage
+**/.nyc_output
+
+# Docker files (avoid recursive copy)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
