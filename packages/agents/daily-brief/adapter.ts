@@ -1,6 +1,8 @@
 import { AgentOutput } from '../../shared/contracts';
-import logger from '../../core/src/utils/logger';
-import { runDailyBriefWorkflow, DailyBriefPayload } from './service';
+import { DailyBriefPayload } from './service';
+import { runDailyBriefWorkflow } from './workflows';
+
+const logger = console;
 
 export async function runDailyBriefAdapter(payload: DailyBriefPayload | (DailyBriefPayload & { userId?: string })): Promise<AgentOutput<any>> {
   const user = (payload as any).user || (payload as any).userId;

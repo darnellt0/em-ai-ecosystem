@@ -9,8 +9,8 @@ router.post('/exec-admin/p0/daily-brief', async (req: Request, res: Response) =>
     if (!user || !['darnell', 'shria'].includes(user)) {
       return res.status(400).json({ success: false, error: 'user must be one of darnell|shria' });
     }
-    const brief = await runP0DailyBriefExecAdmin({ user, date, runId });
-    return res.json(brief);
+    const result = await runP0DailyBriefExecAdmin({ user, date, runId });
+    return res.json({ success: true, runId: result.runId, brief: result.brief });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err?.message || 'daily brief failed' });
   }

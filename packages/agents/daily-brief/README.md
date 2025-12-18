@@ -20,3 +20,7 @@ Run the P0 Daily Brief end-to-end through the Exec Admin front door:
    }
    ```
 4. If calendar/inbox integrations are not configured, the agent still responds with empty arrays and logs warnings; pass `runId` to trace the request in logs.
+
+### Dashboard + Schedule
+- Dashboard page: `packages/dashboard/app/exec-admin/daily-brief/page.tsx` (served at `/exec-admin/daily-brief`). Click “Generate Daily Brief” to POST `/exec-admin/p0/daily-brief`, view the rendered brief, copy JSON, and browse run history (pulled from `/exec-admin/p0/daily-brief/runs`).
+- Scheduled run: controlled by `ENABLE_DAILY_BRIEF_CRON=true`, `DAILY_BRIEF_CRON` (default `5 7 * * *`), `DAILY_BRIEF_USERS` (comma list, default `darnell`). Scheduler reuses the Exec Admin flow, records run artifacts, and logs with runId.

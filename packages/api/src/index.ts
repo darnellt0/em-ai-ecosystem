@@ -25,6 +25,7 @@ import emAiAgentsRouter from './routes/emAiAgents.router';
 import emotionalSessionRouter from './routes/emotional-session.router';
 import leadershipSessionRouter from './routes/leadership-session.router';
 import emAiExecAdminRouter from './routes/emAiExecAdmin.router';
+import p0RunsRouter from './routes/p0-runs.routes';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
@@ -287,6 +288,7 @@ app.use('/api/orchestrator', orchestratorRouter);
  */
 app.use('/', emAiExecAdminRouter);
 app.use('/', p0DailyBriefRouter);
+app.use('/', p0RunsRouter);
 
 /**
  * Serve growth agents monitoring UI (only if dashboard is enabled)

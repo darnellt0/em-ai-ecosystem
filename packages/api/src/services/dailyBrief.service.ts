@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { runDailyBriefWorkflow, DailyBriefPayload, DailyBriefResult } from '../../../agents/daily-brief/service';
 import { calendarService } from './calendar.service';
 import { insightsService } from './insights.service';
-import logger from '../../core/src/utils/logger';
+import logger from '../utils/logger';
 
 const DEFAULT_TZ = 'America/Los_Angeles';
 
