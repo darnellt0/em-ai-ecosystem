@@ -13,6 +13,7 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts tests/**/*.ts",
+    "migrate": "node scripts/migrate.mjs",
     "qa:phase6-growth": "ts-node src/qa/phase6-growth-agents.qa.ts",
     "qa:phase6-integration": "ts-node src/qa/phase6-integration.qa.ts",
     "phase6:qa": "ts-node scripts/phase6-qa.ts"

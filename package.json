@@ -29,6 +29,7 @@
     "docker:up": "docker-compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f infrastructure/docker/docker-compose.yml down",
     "docker:logs": "docker-compose -f infrastructure/docker/docker-compose.yml logs -f",
+    "db:migrate": "npm -w packages/api run migrate",
     "mobile:start": "cd packages/mobile && npm start",
     "mobile:ios": "cd packages/mobile && npm run ios",
     "mobile:android": "cd packages/mobile && npm run android",
