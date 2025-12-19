@@ -101,8 +101,11 @@ function toDailyBriefArtifact(output: any, fallbackDate: string): DailyBriefArti
 
 emAiExecAdminRouter.post('/api/exec-admin/p0/daily-brief', async (req: Request, res: Response) => {
   const { user, date, runId } = req.body || {};
-  if (!user || !ALLOWED_USERS.has(user)) {
+  if (!user) {
     return res.status(400).json({ error: 'user is required' });
+  }
+  if (!ALLOWED_USERS.has(user)) {
+    return res.status(400).json({ error: 'user must be one of: darnell, shria' });
   }
 
   const kind = DAILY_BRIEF_KIND;
