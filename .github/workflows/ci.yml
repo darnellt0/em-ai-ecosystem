@@ -64,6 +64,11 @@ jobs:
           cd packages/api
           npm run lint || echo "Linting skipped (no lint script configured)"
 
+      - name: TypeCheck API
+        run: |
+          cd packages/api
+          npm run typecheck
+
       - name: Build API
         run: |
           cd packages/api
@@ -93,7 +98,7 @@ jobs:
 
       - name: Build API image
         run: |
-          docker build -f Dockerfile.api -t em-api:test .
+          docker build -f Dockerfile -t em-api:test .
 
       - name: Test docker-compose
         run: |

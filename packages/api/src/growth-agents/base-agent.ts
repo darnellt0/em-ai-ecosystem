@@ -4,6 +4,7 @@
  */
 
 import Redis from 'ioredis';
+import { createRedisClient } from '../config/redis.config';
 
 export interface AgentConfig {
   name: string;
@@ -46,7 +47,7 @@ export abstract class BaseAgent {
   constructor(config: AgentConfig) {
     this.name = config.name;
     this.phase = config.phase;
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    this.redis = createRedisClient();
     this.logger = this.createLogger();
   }
 

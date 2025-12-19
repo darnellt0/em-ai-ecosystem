@@ -9,6 +9,7 @@ import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { BaseAgent, AgentResult } from './base-agent';
 import { AGENT_CONFIG } from './orchestrator';
+import { getRedisUrl, createRedisClient } from '../config/redis.config';
 
 const logger = console;
 
@@ -47,10 +48,10 @@ async function processAgentJob(job: Job): Promise<AgentResult> {
  * Start the worker
  */
 function startWorker() {
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = getRedisUrl();
 
   const worker = new Worker('growth-agents', processAgentJob, {
-    connection: new Redis(redisUrl),
+    connection: createRedisClient({ maxRetriesPerRequest: null }),
     concurrency: 5, // Run up to 5 agents concurrently
     limiter: {
       max: 10,

@@ -6,7 +6,8 @@ yarn.lock
 .env
 .env.local
 .env.*.local
-.env.*.example
+!.env.example
+!.env.production
 
 # Build output
 dist/
@@ -45,6 +46,8 @@ temp/
 *.sqlite
 *.sqlite3
 data/
+.data/
+*.sql.gz
 
 # Backups
 backups/

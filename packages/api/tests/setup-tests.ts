@@ -26,18 +26,35 @@ jest.mock('ioredis', () => {
     const instance: any = {
       ping: jest.fn().mockResolvedValue('PONG'),
       duplicate: jest.fn(() => instance),
-      connect: jest.fn(),
-      disconnect: jest.fn(),
+      connect: jest.fn().mockResolvedValue(undefined),
+      disconnect: jest.fn().mockResolvedValue(undefined),
       on: jest.fn(),
-      quit: jest.fn(),
+      quit: jest.fn().mockResolvedValue(undefined),
       quitAll: jest.fn(),
       end: jest.fn(),
       get: jest.fn().mockResolvedValue('true'),
+      set: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+      lpush: jest.fn().mockResolvedValue(1),
+      lrange: jest.fn().mockResolvedValue([]),
+      ltrim: jest.fn().mockResolvedValue('OK'),
+      xadd: jest.fn().mockResolvedValue('1-0'),
       xrevrange: jest.fn().mockResolvedValue([]),
     };
     return instance;
   });
   return { __esModule: true, default: Redis };
+});
+
+// Mock the centralized Redis config module
+jest.mock('../src/config/redis.config', () => {
+  const mockRedis = require('ioredis');
+  return {
+    __esModule: true,
+    getRedisUrl: jest.fn(() => 'redis://localhost:6379'),
+    createRedisClient: jest.fn(() => new mockRedis.default()),
+    createLazyRedisClient: jest.fn(() => new mockRedis.default()),
+  };
 });
 
 jest.mock('pg', () => {

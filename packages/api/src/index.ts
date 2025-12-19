@@ -31,6 +31,7 @@ import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
 import { scheduleDailyBriefCron } from './schedules/daily-brief.schedule';
 import p0DailyBriefRouter from './routes/p0-daily-brief.routes';
+import { performHealthCheck } from './services/health.service';
 
 // Initialize Sentry after env is loaded
 initSentry();
@@ -102,17 +103,23 @@ const agents = {
 // ============================================================================
 
 /**
- * Health check endpoint
+ * Health check endpoint with connectivity checks
  */
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'running',
-    environment: NODE_ENV,
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: '1.0.0',
-    message: 'Elevated Movements AI Ecosystem API',
-  });
+app.get('/health', async (_req: Request, res: Response) => {
+  try {
+    const healthCheck = await performHealthCheck();
+
+    // Return 503 if unhealthy, 200 if healthy or degraded
+    const statusCode = healthCheck.status === 'unhealthy' ? 503 : 200;
+
+    res.status(statusCode).json(healthCheck);
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: (error as Error).message,
+    });
+  }
 });
 
 // ============================================================================

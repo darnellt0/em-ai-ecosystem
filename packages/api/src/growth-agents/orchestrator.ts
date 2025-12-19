@@ -5,6 +5,7 @@
 
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
+import { getRedisUrl, createRedisClient } from '../config/redis.config';
 
 export interface AgentRegistration {
   module: string;
@@ -88,10 +89,10 @@ export class GrowthOrchestrator {
   private logger = console;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    this.redis = new Redis(redisUrl);
+    const redisUrl = getRedisUrl();
+    this.redis = createRedisClient();
     this.queue = new Queue('growth-agents', {
-      connection: new Redis(redisUrl),
+      connection: createRedisClient({ maxRetriesPerRequest: null }),
       defaultJobOptions: {
         attempts: 5,
         backoff: {

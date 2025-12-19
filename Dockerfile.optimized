@@ -1,0 +1,85 @@
+# ============================================================================
+# Stage 1: Dependencies
+# ============================================================================
+FROM node:20-alpine AS dependencies
+
+WORKDIR /app
+
+# Copy package files for all workspaces
+COPY package*.json ./
+COPY packages/api/package*.json ./packages/api/
+COPY packages/orchestrator/package*.json ./packages/orchestrator/
+COPY packages/agents/daily-brief/package*.json ./packages/agents/daily-brief/
+
+# Install ALL dependencies (including dev) for building
+RUN npm ci --workspaces --include-workspace-root
+
+# ============================================================================
+# Stage 2: Build
+# ============================================================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from previous stage
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/packages ./packages
+
+# Copy source code
+COPY package*.json ./
+COPY tsconfig*.json ./
+COPY packages ./packages
+
+# Build TypeScript
+WORKDIR /app/packages/api
+RUN npm run build
+
+# ============================================================================
+# Stage 3: Production
+# ============================================================================
+FROM node:20-alpine AS production
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY packages/api/package*.json ./packages/api/
+COPY packages/orchestrator/package*.json ./packages/orchestrator/
+COPY packages/agents/daily-brief/package*.json ./packages/agents/daily-brief/
+
+# Install ONLY production dependencies
+RUN npm ci --workspaces --include-workspace-root --omit=dev
+
+# Copy built artifacts from builder stage
+COPY --from=builder /app/packages/api/dist ./packages/api/dist
+COPY --from=builder /app/packages/api/src ./packages/api/src
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+# Create directories with proper permissions
+RUN mkdir -p /app/logs /app/data && \
+    chown -R nodejs:nodejs /app/logs /app/data
+
+# Switch to non-root user
+USER nodejs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); })"
+
+EXPOSE 3000
+ENV PORT=3000 \
+    NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=2048"
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Run compiled JavaScript (much faster than ts-node)
+CMD ["node", "packages/api/dist/index.js"]

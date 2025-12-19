@@ -2,8 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import fs from 'fs';
 import path from 'path';
-import fs from 'fs';
-import path from 'path';
+import { createLazyRedisClient } from '../config/redis.config';
 
 export type P0RunStatus = 'queued' | 'running' | 'complete' | 'failed' | 'blocked';
 
@@ -19,7 +18,8 @@ export interface P0RunRecord {
   qaBlocked?: boolean;
   actionPackSummary?: string;
   error?: string;
-  
+}
+
 export type P0ArtifactRunStatus = 'running' | 'success' | 'fail';
 
 export type P0ArtifactRunRecord = {
@@ -44,10 +44,9 @@ const artifactIndexPath = path.join(artifactDataDir, 'index.json');
 function ensureRedis() {
   if (redisInitTried) return redisClient;
   redisInitTried = true;
-  const url = process.env.REDIS_URL;
-  if (!url || process.env.NODE_ENV === 'test') return null;
+  if (process.env.NODE_ENV === 'test') return null;
   try {
-    redisClient = new Redis(url, { maxRetriesPerRequest: 1, lazyConnect: true });
+    redisClient = createLazyRedisClient({ maxRetriesPerRequest: 1 });
     redisClient.on('error', () => {});
   } catch {
     redisClient = null;
