@@ -5,7 +5,10 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit",
     "dev": "ts-node src/index.ts",
+    "dev:watch": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
     "test:voice": "jest --testPathPattern=voice.router.spec.ts --verbose",
