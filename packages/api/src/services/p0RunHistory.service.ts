@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import fs from 'fs';
 import path from 'path';
+import fs from 'fs';
+import path from 'path';
 
 export type P0RunStatus = 'queued' | 'running' | 'complete' | 'failed' | 'blocked';
 
@@ -293,6 +295,98 @@ export function listP0ArtifactRuns(input: { kind: string; limit: number }): P0Ar
 
 export function getP0ArtifactRun(runId: string): (P0ArtifactRunRecord & { artifact: unknown }) | null {
   const artifactPath = path.join(artifactDataDir, runId + '.json');
+  if (!fs.existsSync(artifactPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function ensureArtifactDir() {
+  if (!fs.existsSync(artifactDataDir)) {
+    fs.mkdirSync(artifactDataDir, { recursive: true });
+  }
+}
+
+function readArtifactIndex(): P0ArtifactRunRecord[] {
+  if (!fs.existsSync(artifactIndexPath)) return [];
+  try {
+    const raw = fs.readFileSync(artifactIndexPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeArtifactIndex(items: P0ArtifactRunRecord[]) {
+  ensureArtifactDir();
+  fs.writeFileSync(artifactIndexPath, JSON.stringify(items, null, 2));
+}
+
+export function startP0ArtifactRun(input: { kind: string; runId?: string }): P0ArtifactRunRecord {
+  ensureArtifactDir();
+  const runId = input.runId || uuidv4();
+  const record: P0ArtifactRunRecord = {
+    runId,
+    kind: input.kind,
+    status: 'running',
+    createdAt: new Date().toISOString(),
+  };
+  const items = readArtifactIndex();
+  writeArtifactIndex([record, ...items]);
+  return record;
+}
+
+export function finalizeP0ArtifactRun(
+  runId: string,
+  input: { status: P0ArtifactRunStatus; artifact: unknown; kind?: string }
+): P0ArtifactRunRecord {
+  ensureArtifactDir();
+  const items = readArtifactIndex();
+  const idx = items.findIndex((item) => item.runId === runId);
+  const now = new Date().toISOString();
+  const fallbackKind = input.kind || 'p0.journal';
+  const record: P0ArtifactRunRecord =
+    idx >= 0
+      ? { ...items[idx], status: input.status, finishedAt: now }
+      : {
+          runId,
+          kind: fallbackKind,
+          status: input.status,
+          createdAt: now,
+          finishedAt: now,
+        };
+
+  const artifactPath = path.join(artifactDataDir, `${runId}.json`);
+  const artifactPayload = {
+    runId: record.runId,
+    kind: record.kind,
+    status: record.status,
+    createdAt: record.createdAt,
+    finishedAt: record.finishedAt,
+    artifact: input.artifact,
+  };
+  fs.writeFileSync(artifactPath, JSON.stringify(artifactPayload, null, 2));
+  record.artifactPath = artifactPath;
+
+  if (idx >= 0) {
+    items[idx] = record;
+  } else {
+    items.unshift(record);
+  }
+  writeArtifactIndex(items);
+  return record;
+}
+
+export function listP0ArtifactRuns(input: { kind: string; limit: number }): P0ArtifactRunRecord[] {
+  const items = readArtifactIndex().filter((item) => item.kind === input.kind);
+  return items.slice(0, input.limit);
+}
+
+export function getP0ArtifactRun(runId: string): (P0ArtifactRunRecord & { artifact: unknown }) | null {
+  const artifactPath = path.join(artifactDataDir, `${runId}.json`);
   if (!fs.existsSync(artifactPath)) return null;
   try {
     return JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
