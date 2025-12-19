@@ -1,33 +1,42 @@
-import { AgentOutput } from '../../shared/contracts';
-import { runJournalAgent } from '../../api/src/services/growthAgents.service';
+import { JournalIntent } from './intents';
 
-interface JournalAdapterPayload {
-  userId?: string;
-  founderEmail?: string;
-  __skip?: boolean;
-  __forceFail?: boolean;
-}
+export type JournalResponse = {
+  question: string;
+  answer: string;
+};
 
-export async function runJournalPromptAdapter(payload: JournalAdapterPayload): Promise<AgentOutput<any>> {
-  if (payload.__skip) return { status: 'SKIPPED', warnings: ['Skipped by debug flag'] };
-  if (payload.__forceFail) return { status: 'FAILED', error: 'Forced failure (debug)' };
+export type JournalArtifact = {
+  intent: JournalIntent;
+  date: string;
+  user: 'darnell' | 'shria';
+  prompts: string[];
+  responses: JournalResponse[];
+  insights: string[];
+  nextSteps: string[];
+  mood: string | null;
+  values: string[] | null;
+};
 
-  const founderEmail = payload.founderEmail || payload.userId;
-  if (!founderEmail) return { status: 'FAILED', error: 'founderEmail or userId required' };
+export function buildJournalArtifact(input: {
+  intent: JournalIntent;
+  date: string;
+  user: 'darnell' | 'shria';
+  prompts: string[];
+}): JournalArtifact {
+  const responses = input.prompts.map((prompt) => ({
+    question: prompt,
+    answer: '',
+  }));
 
-  try {
-    const result = await runJournalAgent({ founderEmail });
-    const prompts = (result.insights || []).map((i) => i.detail || i.title).slice(0, 3);
-    return {
-      status: 'OK',
-      output: {
-        summary: result.summary,
-        prompts: prompts.length ? prompts : ['What matters most to you today?'],
-        recommendedNextStep: result.recommendations?.[0],
-        confidence: 0.6,
-      },
-    };
-  } catch (err: any) {
-    return { status: 'FAILED', error: err.message };
-  }
+  return {
+    intent: input.intent,
+    date: input.date,
+    user: input.user,
+    prompts: input.prompts,
+    responses,
+    insights: [],
+    nextSteps: [],
+    mood: null,
+    values: input.intent === 'journal.daily_reflection' ? [] : null,
+  };
 }
