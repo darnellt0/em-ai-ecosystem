@@ -92,7 +92,7 @@ export class GrowthOrchestrator {
     const redisUrl = getRedisUrl();
     this.redis = createRedisClient();
     this.queue = new Queue('growth-agents', {
-      connection: createRedisClient(),
+      connection: createRedisClient({ maxRetriesPerRequest: null }),
       defaultJobOptions: {
         attempts: 5,
         backoff: {

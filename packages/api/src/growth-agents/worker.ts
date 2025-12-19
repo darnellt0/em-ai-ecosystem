@@ -51,7 +51,7 @@ function startWorker() {
   const redisUrl = getRedisUrl();
 
   const worker = new Worker('growth-agents', processAgentJob, {
-    connection: createRedisClient(),
+    connection: createRedisClient({ maxRetriesPerRequest: null }),
     concurrency: 5, // Run up to 5 agents concurrently
     limiter: {
       max: 10,
