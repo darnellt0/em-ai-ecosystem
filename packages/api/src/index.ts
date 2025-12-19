@@ -477,6 +477,7 @@ app.use((req: Request, res: Response) => {
       '/api/exec-admin/p0/daily-brief',
       '/api/exec-admin/p0/daily-brief/runs',
       '/api/exec-admin/p0/daily-brief/runs/:runId',
+      '/api/exec-admin/p0/daily-brief/health',
       '/api/voice/scheduler/block',
       '/api/voice/scheduler/confirm',
       '/api/voice/scheduler/reschedule',

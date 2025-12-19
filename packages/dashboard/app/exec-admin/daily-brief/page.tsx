@@ -30,6 +30,8 @@ type RunItem = {
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const showApiWarning =
+  process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -115,6 +117,12 @@ export default function DailyBriefExecAdminPage() {
         <h1 className="text-3xl font-semibold text-white">Daily Brief</h1>
         <p className="text-sm text-white/70">Generate and review P0 Daily Brief runs</p>
       </header>
+
+      {showApiWarning && (
+        <section className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-200">
+          NEXT_PUBLIC_API_BASE_URL is not set; requests will use the current origin.
+        </section>
+      )}
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20 space-y-4">
         <div className="grid gap-4 md:grid-cols-3">

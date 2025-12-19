@@ -111,6 +111,12 @@ export function listP0Runs(input: ListInput): P0RunRecord[] {
   return items.slice(0, input.limit);
 }
 
+export function getP0RunStats(kind: string): { runsCount: number; lastRunAt?: string } {
+  const items = readIndex().filter((item) => item.kind === kind);
+  const lastRunAt = items[0]?.finishedAt || items[0]?.createdAt;
+  return { runsCount: items.length, ...(lastRunAt ? { lastRunAt } : {}) };
+}
+
 export function getP0Run(runId: string): (P0RunRecord & { artifact: unknown }) | null {
   const artifactPath = path.join(dataDir, `${runId}.json`);
   if (!fs.existsSync(artifactPath)) return null;

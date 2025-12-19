@@ -6,6 +6,7 @@ import {
   finalizeP0Run,
   listP0Runs,
   getP0Run,
+  getP0RunStats,
 } from '../services/p0RunHistory.service';
 
 const emAiExecAdminRouter = Router();
@@ -55,6 +56,9 @@ type DailyBriefArtifact = {
   suggestedActions: Array<{ type: 'task' | 'email_draft' | 'calendar_block'; title: string; details: string }>;
 };
 
+const DAILY_BRIEF_KIND = 'p0.daily_brief';
+const ALLOWED_USERS = new Set(['darnell', 'shria']);
+
 function toDailyBriefArtifact(output: any, fallbackDate: string): DailyBriefArtifact {
   const date = output?.date || fallbackDate;
   const priorities = Array.isArray(output?.priorities) ? output.priorities : [];
@@ -97,14 +101,16 @@ function toDailyBriefArtifact(output: any, fallbackDate: string): DailyBriefArti
 
 emAiExecAdminRouter.post('/api/exec-admin/p0/daily-brief', async (req: Request, res: Response) => {
   const { user, date, runId } = req.body || {};
-  if (!user) {
+  if (!user || !ALLOWED_USERS.has(user)) {
     return res.status(400).json({ error: 'user is required' });
   }
 
-  const kind = 'p0.daily_brief';
+  const kind = DAILY_BRIEF_KIND;
   const run = startP0Run({ kind, runId });
+  console.log(`[P0 Daily Brief] Run started ${run.runId} kind=${kind}`);
   const warnings: string[] = [];
   let artifact: DailyBriefArtifact;
+  let status: 'success' | 'fail' = 'success';
 
   try {
     const output = await runDailyBriefAgent({ userId: user, date });
@@ -114,12 +120,14 @@ emAiExecAdminRouter.post('/api/exec-admin/p0/daily-brief', async (req: Request, 
     warnings.push('Daily brief generation failed; returning placeholder output.');
     const resolvedDate = date || new Date().toISOString().slice(0, 10);
     artifact = toDailyBriefArtifact(null, resolvedDate);
+    status = 'fail';
   }
 
   const finalized = finalizeP0Run(run.runId, {
-    status: 'success',
+    status,
     artifact,
   });
+  console.log(`[P0 Daily Brief] Run finalized ${finalized.runId} status=${finalized.status}`);
 
   return res.json({
     runId: finalized.runId,
@@ -132,7 +140,7 @@ emAiExecAdminRouter.post('/api/exec-admin/p0/daily-brief', async (req: Request, 
 
 emAiExecAdminRouter.get('/api/exec-admin/p0/daily-brief/runs', async (req: Request, res: Response) => {
   const limit = Number(req.query.limit || 20);
-  const items = listP0Runs({ kind: 'p0.daily_brief', limit });
+  const items = listP0Runs({ kind: DAILY_BRIEF_KIND, limit });
   return res.json({ items, limit });
 });
 
@@ -142,6 +150,11 @@ emAiExecAdminRouter.get('/api/exec-admin/p0/daily-brief/runs/:runId', async (req
     return res.status(404).json({ error: 'Run not found' });
   }
   return res.json(run);
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/daily-brief/health', async (_req: Request, res: Response) => {
+  const stats = getP0RunStats(DAILY_BRIEF_KIND);
+  return res.json({ ok: true, ...stats });
 });
 
 export default emAiExecAdminRouter;
