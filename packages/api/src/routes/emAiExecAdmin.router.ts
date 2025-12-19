@@ -10,8 +10,19 @@ import { updateGrowthRun, getGrowthRun } from '../services/growthRunHistory.serv
 import { buildGrowthRunSummary } from '../services/growthRunSummary.service';
 import { orchestrator } from '../growth-agents/orchestrator';
 import { finalizeRunIfTerminal } from '../services/growthRunFinalize.service';
+import { runJournalAgent } from '../services/journal.service';
+import { buildJournalArtifact, getJournalPrompts, JournalArtifact, JournalIntent } from '../../../agents/journal';
+import { startP0ArtifactRun, finalizeP0ArtifactRun, listP0ArtifactRuns, getP0ArtifactRun } from '../services/p0RunHistory.service';
 
 const emAiExecAdminRouter = Router();
+
+const JOURNAL_KIND = 'p0.journal';
+const JOURNAL_ALLOWED_USERS = new Set(['darnell', 'shria']);
+const JOURNAL_INTENTS = new Set<JournalIntent>([
+  'journal.daily_reflection',
+  'journal.midday_check_in',
+  'journal.day_close',
+]);
 
 emAiExecAdminRouter.post('/em-ai/exec-admin/growth/run', async (req: Request, res: Response) => {
   const { founderEmail, mode } = req.body || {};
@@ -184,6 +195,66 @@ emAiExecAdminRouter.post('/em-ai/exec-admin/growth/runs/:runId/finalize', async 
   } catch (error) {
     return res.status(500).json({ success: false, error: (error as Error).message, timestamp: new Date().toISOString() });
   }
+});
+
+
+emAiExecAdminRouter.post('/api/exec-admin/p0/journal/run', async (req: Request, res: Response) => {
+  const { user, intent, date, runId } = req.body || {};
+  if (!user) {
+    return res.status(400).json({ error: 'user is required' });
+  }
+  if (!JOURNAL_ALLOWED_USERS.has(user)) {
+    return res.status(400).json({ error: 'user must be one of: darnell, shria' });
+  }
+  if (!intent || !JOURNAL_INTENTS.has(intent)) {
+    return res.status(400).json({
+      error: 'intent must be one of: journal.daily_reflection, journal.midday_check_in, journal.day_close',
+    });
+  }
+
+  const kind = JOURNAL_KIND;
+  const run = startP0ArtifactRun({ kind, runId });
+  const warnings: string[] = [];
+  let artifact: JournalArtifact;
+  let status: 'success' | 'fail' = 'success';
+  const resolvedDate = date || new Date().toISOString().slice(0, 10);
+
+  try {
+    artifact = await runJournalAgent({ user, intent, date });
+  } catch (err) {
+    warnings.push('Journal generation failed; returning placeholder output.');
+    artifact = buildJournalArtifact({
+      intent,
+      user,
+      date: resolvedDate,
+      prompts: getJournalPrompts(intent),
+    });
+    status = 'fail';
+  }
+
+  const finalized = finalizeP0ArtifactRun(run.runId, { status, artifact, kind });
+
+  return res.json({
+    runId: finalized.runId,
+    kind,
+    status: finalized.status,
+    artifact,
+    ...(warnings.length ? { warnings } : {}),
+  });
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/journal/runs', async (req: Request, res: Response) => {
+  const limit = Number(req.query.limit || 20);
+  const items = listP0ArtifactRuns({ kind: JOURNAL_KIND, limit });
+  return res.json({ items, limit });
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/journal/runs/:runId', async (req: Request, res: Response) => {
+  const run = getP0ArtifactRun(req.params.runId);
+  if (!run) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+  return res.json(run);
 });
 
 export default emAiExecAdminRouter;
