@@ -6,7 +6,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: em-api-v2
     image: em-api:latest
     container_name: em-api
     ports:
@@ -117,8 +116,6 @@ services:
       - ./data:/app/data
     working_dir: /app
     command: ["npx", "ts-node", "packages/api/src/growth-agents/worker.ts"]
-    working_dir: /app/packages/api
-    command: ["node", "dist/growth-agents/worker.js"]
     networks:
       - em-network
     restart: unless-stopped
