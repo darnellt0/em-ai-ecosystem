@@ -1,3 +1,0 @@
-module.exports=[68753,a=>{"use strict";var b=a.i(7997);function c(){return(0,b.jsxs)("main",{className:"flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center",children:[(0,b.jsx)("p",{className:"text-sm uppercase tracking-[0.3em] text-white/50",children:"Agent"}),(0,b.jsx)("h1",{className:"text-4xl font-semibold text-white",children:"We could not find that agent."}),(0,b.jsx)("a",{href:"/agents",className:"text-emerald-200 underline-offset-4 hover:underline",children:"Return to the gallery"})]})}a.s(["default",()=>c])}];
-
-//# sourceMappingURL=packages_dashboard_app_agents_%5BagentId%5D_not-found_tsx_4b34a8e6._.js.map

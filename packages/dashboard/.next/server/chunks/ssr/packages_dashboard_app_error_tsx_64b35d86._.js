@@ -1,3 +1,0 @@
-module.exports=[37131,a=>{"use strict";var b=a.i(87924);function c({error:a,reset:c}){return(0,b.jsxs)("div",{style:{padding:"2rem",fontFamily:"system-ui"},children:[(0,b.jsx)("h2",{children:"Something went wrong!"}),(0,b.jsx)("p",{style:{color:"#666",marginTop:"1rem"},children:a.message||"An unexpected error occurred"}),(0,b.jsx)("button",{onClick:()=>c(),style:{marginTop:"1rem",padding:"0.5rem 1rem",background:"#0070f3",color:"white",border:"none",borderRadius:"4px",cursor:"pointer"},children:"Try again"})]})}a.s(["default",()=>c])}];
-
-//# sourceMappingURL=packages_dashboard_app_error_tsx_64b35d86._.js.map
