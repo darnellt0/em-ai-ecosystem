@@ -52,10 +52,30 @@ The project is a sophisticated, enterprise-grade AI executive assistant ecosyste
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| Dashboard dev mode Tailwind | Low | Needs fix (build works) |
+| Dashboard dev mode Tailwind | Low | Workaround available |
 | Jest/Lerna package conflict | Medium | Tests don't run via lerna |
 | Redis/DB connection | Expected | Needs infrastructure |
 | Environment variables | Expected | Needs configuration |
+
+#### Dashboard Dev Mode Issue Details
+
+**Problem:** Next.js dev mode fails to process `@tailwind` directives in monorepo setup due to npm workspace hoisting.
+
+**Error:**
+```
+Module parse failed: Unexpected character '@' (1:0)
+> @tailwind base;
+```
+
+**Root Cause:** npm workspaces hoist tailwindcss/postcss/autoprefixer to root node_modules, but Next.js dev mode's PostCSS loader doesn't resolve them correctly in this configuration.
+
+**Workaround:** Use production build for development:
+```bash
+cd packages/dashboard
+npm run build && PORT=3001 npm start
+```
+
+**Production Server Works:** ✅ Tailwind CSS compiles correctly, all styles render properly.
 
 ---
 
@@ -175,7 +195,7 @@ cd packages/dashboard && npm run build && npm start
 | **Build Status** | ✅ All Passing |
 | **API Server** | ✅ Running (12 agents) |
 | **Dashboard Build** | ✅ Working |
-| **Dashboard Dev** | ⚠️ Tailwind issue |
+| **Dashboard Dev** | ⚠️ Use prod build |
 | **Test Suite** | ⚠️ Package conflicts |
 | **Documentation** | ✅ Extensive |
 | **Architecture** | ✅ Well-designed |
