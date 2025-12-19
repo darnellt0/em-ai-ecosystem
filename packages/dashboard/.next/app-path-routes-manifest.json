@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/about/page": "/about",
+  "/agents/[agentId]/page": "/agents/[agentId]",
+  "/agents/growth/page": "/agents/growth",
+  "/agents/page": "/agents",
+  "/corporate/page": "/corporate",
+  "/em/emotional-hub/page": "/em/emotional-hub",
+  "/em/leadership-hub/page": "/em/leadership-hub",
+  "/exec-admin/p0/page": "/exec-admin/p0",
+  "/page": "/",
+  "/programs/page": "/programs",
+  "/tools/actions/page": "/tools/actions",
+  "/tools/content-pipeline/page": "/tools/content-pipeline",
+  "/tools/voice-growth/page": "/tools/voice-growth"
+}

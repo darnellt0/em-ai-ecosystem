@@ -1,97 +1,69 @@
-import { runDailyBrief } from '../src/index';
-import { DailyBriefDependencies } from '../src/index';
+import { generateDailyBrief } from '../service';
+import { runDailyBriefWorkflow } from '../workflows';
 
-describe('Daily Brief Agent', () => {
-  const fixedDate = new Date('2025-05-15T08:00:00Z');
+describe('Daily Brief Agent (P0)', () => {
+  const date = '2025-01-15';
 
-  beforeAll(() => {
-    jest.useFakeTimers().setSystemTime(fixedDate);
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
-
-  const makeDeps = (opts: { withVoice?: boolean } = {}): DailyBriefDependencies => {
-    const calendar = {
-      listEvents: jest.fn().mockResolvedValue([
-        { start: '2025-05-15T10:00:00Z', end: '2025-05-15T11:00:00Z', summary: 'Meeting' },
-      ]),
-    };
-
-    const summarizer = {
-      generateDailyBrief: jest.fn().mockResolvedValue({
-        priorities: ['Finish spec', 'Send recap'],
-        agenda: ['Team sync 10am'],
-        tasks: ['Draft PRD'],
-        inboxHighlights: ['Investor email received'],
-        suggestedFocusWindows: [{ start: '9:00', end: '11:00', reason: 'Deep work' }],
-        text: 'Priorities: Finish spec; Send recap.',
-        html: '<h1>Daily Brief</h1>',
-      }),
-    };
-
-    const email = {
-      sendEmail: jest.fn().mockResolvedValue({ success: true, messageId: 'msg-1' }),
-    };
-
-    const voice = opts.withVoice
-      ? {
-          synthesize: jest.fn().mockResolvedValue('out/daily-brief-user-2025-05-15.mp3'),
-        }
-      : undefined;
-
-    const activityLog = {
-      logAgentRun: jest.fn().mockResolvedValue({ success: true }),
-    };
-
-    const deps: DailyBriefDependencies = {
-      calendar,
-      summarizer,
-      email,
-      voice,
-      recipientsResolver: () => ['user@example.com'],
-      activityLog,
-      timeZone: 'America/Los_Angeles',
-    };
-    return deps;
-  };
-
-  it('generates brief and sends email', async () => {
-    const deps = makeDeps();
-    const result = await runDailyBrief({ userId: 'user' }, deps);
-
-    expect(deps.calendar.listEvents).toHaveBeenCalled();
-    expect(deps.summarizer.generateDailyBrief).toHaveBeenCalled();
-    const [recipients, subject, html] = (deps.email.sendEmail as jest.Mock).mock.calls[0];
-    expect(recipients).toEqual(expect.arrayContaining(['user@example.com']));
-    expect(subject).toContain('Your Daily Brief');
-    expect(html).toContain('Daily Brief');
-    expect(result.priorities).toContain('Finish spec');
-    expect(result.rendered.text).toContain('Priorities');
-  });
-
-  it('generates audio when voice + API key are present', async () => {
-    process.env.ELEVENLABS_API_KEY = 'test-key';
-    const deps = makeDeps({ withVoice: true });
-    const result = await runDailyBrief({ userId: 'user' }, deps);
-
-    expect(deps.voice!.synthesize).toHaveBeenCalled();
-    expect(result.rendered.audioPath).toContain('.mp3');
-  });
-
-  it('logs activity on success and error', async () => {
-    const deps = makeDeps();
-    await runDailyBrief({ userId: 'user' }, deps);
-    expect(deps.activityLog?.logAgentRun).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'success', agentName: 'DailyBrief' })
+  it('returns strict schema with populated values when integrations respond', async () => {
+    const output = await runDailyBriefWorkflow(
+      { user: 'darnell', date },
+      {
+        priorities: {
+          fetchTopPriorities: jest.fn().mockResolvedValue([
+            { title: 'Ship onboarding', why: 'Unblocks revenue', nextStep: 'Publish FAQ' },
+          ]),
+        },
+        calendar: {
+          summarizeDay: jest.fn().mockResolvedValue({ meetings: 3, highlights: ['Investor sync', 'Team standup'] }),
+          suggestFocusBlock: jest.fn().mockResolvedValue({ start: `${date}T09:00:00Z`, end: `${date}T10:00:00Z`, theme: 'Ship onboarding FAQ' }),
+        },
+        inbox: {
+          fetchHighlights: jest.fn().mockResolvedValue([{ from: 'investor@example.com', subject: 'Follow-up', whyImportant: 'Keeps deal warm' }]),
+        },
+        actions: {
+          suggestActions: jest.fn().mockResolvedValue([
+            { type: 'email_draft', title: 'Investor follow-up', details: 'Send concise update' },
+          ]),
+        },
+      }
     );
 
-    const depsError = makeDeps();
-    (depsError.email.sendEmail as jest.Mock).mockRejectedValue(new Error('fail'));
-    await expect(runDailyBrief({ userId: 'user' }, depsError)).rejects.toThrow('fail');
-    expect(depsError.activityLog?.logAgentRun).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'error' })
+    expect(output.status).toBe('OK');
+    expect(output.output).toMatchObject({
+      date,
+      topPriorities: [
+        { title: 'Ship onboarding', why: 'Unblocks revenue', nextStep: 'Publish FAQ' },
+      ],
+      focusBlock: { start: `${date}T09:00:00Z`, end: `${date}T10:00:00Z`, theme: 'Ship onboarding FAQ' },
+      calendarSummary: { meetings: 3, highlights: ['Investor sync', 'Team standup'] },
+      inboxHighlights: { items: [{ from: 'investor@example.com', subject: 'Follow-up', whyImportant: 'Keeps deal warm' }] },
+      risks: expect.any(Array),
+      suggestedActions: [{ type: 'email_draft', title: 'Investor follow-up', details: 'Send concise update' }],
+    });
+  });
+
+  it('handles missing integrations gracefully with empty arrays', async () => {
+    const { output, warnings } = await generateDailyBrief({ user: 'shria', date });
+    expect(warnings).toEqual(expect.arrayContaining(['priorities.integration_missing', 'calendar.integration_missing', 'inbox.integration_missing', 'actions.integration_missing']));
+    expect(output.calendarSummary.meetings).toBe(0);
+    expect(output.calendarSummary.highlights).toEqual([]);
+    expect(output.inboxHighlights.items).toEqual([]);
+    expect(output.topPriorities).toEqual([]);
+    expect(output.suggestedActions.length).toBeGreaterThan(0); // fallback actions still present
+  });
+
+  it('logs the runId when provided', async () => {
+    const info = jest.fn();
+    const warn = jest.fn();
+    const runId = 'run-abc123';
+    await runDailyBriefWorkflow(
+      { user: 'darnell', date, runId },
+      {
+        logger: { info, warn },
+      }
     );
+
+    expect(info).toHaveBeenCalledWith('[DailyBrief] start', expect.objectContaining({ runId }));
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('[DailyBrief] complete'), expect.objectContaining({ runId }));
   });
 });

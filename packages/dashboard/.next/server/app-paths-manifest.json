@@ -1,7 +1,17 @@
 {
-  "/page": "app/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/about/page": "app/about/page.js",
-  "/corporate/page": "app/corporate/page.js",
+  "/agents/[agentId]/page": "app/agents/[agentId]/page.js",
+  "/agents/growth/page": "app/agents/growth/page.js",
   "/agents/page": "app/agents/page.js",
-  "/agents/[agentId]/page": "app/agents/[agentId]/page.js"
+  "/corporate/page": "app/corporate/page.js",
+  "/em/emotional-hub/page": "app/em/emotional-hub/page.js",
+  "/em/leadership-hub/page": "app/em/leadership-hub/page.js",
+  "/exec-admin/p0/page": "app/exec-admin/p0/page.js",
+  "/page": "app/page.js",
+  "/programs/page": "app/programs/page.js",
+  "/tools/actions/page": "app/tools/actions/page.js",
+  "/tools/content-pipeline/page": "app/tools/content-pipeline/page.js",
+  "/tools/voice-growth/page": "app/tools/voice-growth/page.js"
 }

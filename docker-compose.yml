@@ -3,7 +3,11 @@ version: '3.8'
 services:
   # API Server - Express with Voice API Integration
   api:
-    image: node:18-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: em-api-v2
+    image: em-api:latest
     container_name: em-api
     ports:
       - "3000:3000"
@@ -26,19 +30,14 @@ services:
       - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
       - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
       - VOICE_API_TOKEN=${VOICE_API_TOKEN}
-      
-
     depends_on:
       - database
       - redis
     volumes:
-      - ./packages/api/dist:/app/dist:ro
-      - ./packages/api/package.json:/app/package.json:ro
-      - ./packages/api/node_modules:/app/node_modules
       - ./logs:/app/logs
       - ./data:/app/data
     working_dir: /app
-    command: sh -c "npm install --production && node dist/index.js"
+    command: ["npx", "ts-node", "packages/api/src/index.ts"]
     networks:
       - em-network
     healthcheck:
@@ -90,7 +89,10 @@ services:
 
   # Growth Agents Worker - BullMQ Job Processor
   worker:
-    image: node:18-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: em-api:latest
     container_name: em-worker
     environment:
       - NODE_ENV=production
@@ -111,13 +113,12 @@ services:
       - database
       - redis
     volumes:
-      - ./packages/api/dist:/app/dist:ro
-      - ./packages/api/package.json:/app/package.json:ro
-      - ./packages/api/node_modules:/app/node_modules
       - ./logs:/app/logs
       - ./data:/app/data
     working_dir: /app
-    command: sh -c "npm install --production && node dist/growth-agents/worker.js"
+    command: ["npx", "ts-node", "packages/api/src/growth-agents/worker.ts"]
+    working_dir: /app/packages/api
+    command: ["node", "dist/growth-agents/worker.js"]
     networks:
       - em-network
     restart: unless-stopped

@@ -4,7 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+// Usage:
+//   cd packages/api && npm run phase6:qa
+//   set API_BASE_URL if your API is not on http://localhost:4000
 const BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
+const DEFAULT_FOUNDER = process.env.FOUNDER_SHRIA_EMAIL || 'shria@elevatedmovements.com';
 
 type CheckResult = { ok: boolean; message: string };
 
@@ -78,16 +82,16 @@ async function checkOrchestratorMonitor(): Promise<CheckResult> {
 async function checkExecAdminRun(): Promise<CheckResult> {
   try {
     const body = JSON.stringify({
-      founderEmail: process.env.FOUNDER_SHRIA_EMAIL || 'shria@elevatedmovements.com',
+      founderEmail: DEFAULT_FOUNDER,
       mode: 'full',
     });
-    const data = await fetchJson<{ success?: boolean; launchedAgents?: string[]; jobIds?: string[] }>(
+    const data = await fetchJson<{ success?: boolean; launchedAgents?: string[]; jobIds?: string[]; runId?: string }>(
       `${BASE_URL}/em-ai/exec-admin/growth/run`,
       { method: 'POST', body }
     );
     const agents = data.launchedAgents?.length ?? 0;
     const jobs = data.jobIds?.length ?? 0;
-    return { ok: data.success === true, message: `launchedAgents=${agents}, jobIds=${jobs}` };
+    return { ok: data.success === true, message: `runId=${data.runId ?? 'n/a'} launchedAgents=${agents}, jobIds=${jobs}` };
   } catch (err: any) {
     return { ok: false, message: err.message };
   }
@@ -100,11 +104,51 @@ async function checkExecAdminStatus(): Promise<CheckResult> {
       agentRegistryCount?: number;
       recentProgress?: unknown[];
       recentEvents?: unknown[];
+      latestRun?: { runId?: string; status?: string };
+      recentRuns?: Array<{ runId?: string }>;
     }>(`${BASE_URL}/em-ai/exec-admin/growth/status`);
     return {
       ok: data.success === true,
-      message: `agents=${data.agentRegistryCount ?? 0}, progress=${data.recentProgress?.length ?? 0}, events=${data.recentEvents?.length ?? 0}`,
+      message: `agents=${data.agentRegistryCount ?? 0}, progress=${data.recentProgress?.length ?? 0}, events=${data.recentEvents?.length ?? 0}, latestRun=${data.latestRun?.runId ?? 'n/a'}`,
     };
+  } catch (err: any) {
+    return { ok: false, message: err.message };
+  }
+}
+
+async function checkRunHistoryList(): Promise<{ ok: boolean; message: string; runId?: string }> {
+  try {
+    const data = await fetchJson<{ success?: boolean; runs?: Array<{ runId: string; founderEmail: string }> }>(
+      `${BASE_URL}/em-ai/exec-admin/growth/runs?founderEmail=${encodeURIComponent(DEFAULT_FOUNDER)}&limit=10`
+    );
+    const first = data.runs?.[0];
+    if (!data.success || !first) {
+      return { ok: false, message: 'no runs returned' };
+    }
+    return { ok: true, message: `runs=${data.runs?.length ?? 0}, first=${first.runId}`, runId: first.runId };
+  } catch (err: any) {
+    return { ok: false, message: err.message };
+  }
+}
+
+async function checkRunHistoryDetail(runId: string): Promise<CheckResult> {
+  try {
+    const data = await fetchJson<{ success?: boolean; run?: { runId?: string; status?: string } }>(
+      `${BASE_URL}/em-ai/exec-admin/growth/runs/${runId}`
+    );
+    return { ok: data.success === true && data.run?.runId === runId, message: `runId=${data.run?.runId}, status=${data.run?.status}` };
+  } catch (err: any) {
+    return { ok: false, message: err.message };
+  }
+}
+
+async function checkRunHistoryRefresh(runId: string): Promise<CheckResult> {
+  try {
+    const data = await fetchJson<{ success?: boolean; run?: { lastProgressAt?: string; summary?: unknown } }>(
+      `${BASE_URL}/em-ai/exec-admin/growth/runs/${runId}/refresh`,
+      { method: 'POST' }
+    );
+    return { ok: data.success === true, message: `refreshed=${data.success} lastProgressAt=${data.run?.lastProgressAt ?? 'n/a'}` };
   } catch (err: any) {
     return { ok: false, message: err.message };
   }
@@ -121,6 +165,7 @@ async function runChecks() {
   ];
 
   let allOk = true;
+  let lastRunId: string | undefined;
 
   for (const check of checks) {
     const result = await check.fn();
@@ -128,6 +173,59 @@ async function runChecks() {
     console.log(`${prefix} ${check.label} → ${result.message}`);
     if (!result.ok) {
       allOk = false;
+    }
+    if (check.label === '/em-ai/exec-admin/growth/run' && result.ok) {
+      const runIdMatch = result.message.match(/runId=([^\\s]+)/);
+      lastRunId = runIdMatch?.[1];
+    }
+  }
+
+  const historyList = await checkRunHistoryList();
+  console.log(`${historyList.ok ? '[✓]' : '[x]'} /em-ai/exec-admin/growth/runs → ${historyList.message}`);
+  if (!historyList.ok) {
+    allOk = false;
+  }
+  const summaryRunId = historyList.runId || lastRunId;
+
+  if (summaryRunId) {
+    const detail = await checkRunHistoryDetail(summaryRunId);
+    console.log(`${detail.ok ? '[✓]' : '[x]'} /em-ai/exec-admin/growth/runs/:runId → ${detail.message}`);
+    if (!detail.ok) {
+      allOk = false;
+    }
+
+    const refresh = await checkRunHistoryRefresh(summaryRunId);
+    console.log(`${refresh.ok ? '[✓]' : '[x]'} /em-ai/exec-admin/growth/runs/:runId/refresh → ${refresh.message}`);
+    if (!refresh.ok) {
+      allOk = false;
+    }
+
+    // summary endpoint
+    try {
+      const summary = await fetchJson<{ success?: boolean; summary?: any }>(
+        `${BASE_URL}/em-ai/exec-admin/growth/runs/${summaryRunId}/summary`
+      );
+      const ok = summary.success === true && !!summary.summary?.runId;
+      console.log(`${ok ? '[✓]' : '[x]'} /em-ai/exec-admin/growth/runs/:runId/summary → summary returned`);
+      if (!ok) allOk = false;
+    } catch (err: any) {
+      console.log(`[x] /em-ai/exec-admin/growth/runs/:runId/summary → ${err.message}`);
+      allOk = false;
+    }
+
+    if (process.env.ENABLE_GROWTH_RETRY === 'true') {
+      try {
+        const retry = await fetchJson<{ success?: boolean; retriedAgents?: string[]; message?: string }>(
+          `${BASE_URL}/em-ai/exec-admin/growth/runs/${summaryRunId}/retry`,
+          { method: 'POST', body: JSON.stringify({}) }
+        );
+        const ok = retry.success === true;
+        console.log(`${ok ? '[✓]' : '[x]'} /em-ai/exec-admin/growth/runs/:runId/retry → ${retry.message || 'ok'}`);
+        if (!ok) allOk = false;
+      } catch (err: any) {
+        console.log(`[x] /em-ai/exec-admin/growth/runs/:runId/retry → ${err.message}`);
+        allOk = false;
+      }
     }
   }
 
