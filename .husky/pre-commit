@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run typecheck on API package
+echo "🔍 Running type check..."
+cd packages/api && npm run typecheck || exit 1
+
+# Run linting on API package
+echo "🧹 Running linter..."
+cd packages/api && npm run lint || exit 1
+
+echo "✅ Pre-commit checks passed!"
