@@ -11,6 +11,7 @@ import { RhythmAgent } from './rhythm-agent';
 import { PurposeAgent } from './purpose-agent';
 import { BaseAgent } from './base-agent';
 import Redis from 'ioredis';
+import { createRedisClient } from '../config/redis.config';
 
 export interface AgentMetadata {
   id: string;
@@ -63,7 +64,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       };
 
       try {
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        const redis = createRedisClient();
         await redis.ping();
         checks.redis = true;
         await redis.quit();
@@ -105,7 +106,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       };
 
       try {
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        const redis = createRedisClient();
         await redis.ping();
         checks.redis = true;
         await redis.quit();
@@ -147,7 +148,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       };
 
       try {
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        const redis = createRedisClient();
         await redis.ping();
         checks.redis = true;
         await redis.quit();
@@ -189,7 +190,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       };
 
       try {
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        const redis = createRedisClient();
         await redis.ping();
         checks.redis = true;
         await redis.quit();
@@ -231,7 +232,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       };
 
       try {
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        const redis = createRedisClient();
         await redis.ping();
         checks.redis = true;
         await redis.quit();

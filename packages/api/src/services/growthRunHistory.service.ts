@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
+import { createLazyRedisClient } from '../config/redis.config';
 
 export type GrowthRunStatus = 'queued' | 'running' | 'complete' | 'failed';
 
@@ -32,12 +33,11 @@ const HISTORY_LIMIT = 50;
 function ensureRedis() {
   if (redisInitTried) return redisClient;
   redisInitTried = true;
-  const url = process.env.REDIS_URL;
-  if (!url || process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test') {
     return null;
   }
   try {
-    redisClient = new Redis(url, { maxRetriesPerRequest: 1, lazyConnect: true });
+    redisClient = createLazyRedisClient({ maxRetriesPerRequest: 1 });
     redisClient.on('error', () => {});
   } catch {
     redisClient = null;
