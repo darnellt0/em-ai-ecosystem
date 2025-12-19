@@ -18,7 +18,8 @@ export interface P0RunRecord {
   qaBlocked?: boolean;
   actionPackSummary?: string;
   error?: string;
-  
+}
+
 export type P0ArtifactRunStatus = 'running' | 'success' | 'fail';
 
 export type P0ArtifactRunRecord = {
