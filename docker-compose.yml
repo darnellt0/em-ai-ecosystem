@@ -29,6 +29,8 @@ services:
       - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
       - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
       - VOICE_API_TOKEN=${VOICE_API_TOKEN}
+      - STT_PROVIDER=${STT_PROVIDER:-openai}
+      - STT_OPENAI_API_KEY=${STT_OPENAI_API_KEY:-${OPENAI_API_KEY}}
     depends_on:
       - database
       - redis

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { runDailyBriefWorkflow, DailyBriefPayload, DailyBriefResult } from '../../../agents/daily-brief/service';
+import { runDailyBriefService, DailyBriefPayload, DailyBriefResult } from '../../../agents/daily-brief/service';
 import { calendarService } from './calendar.service';
 import { insightsService } from './insights.service';
 import logger from '../utils/logger';
@@ -21,7 +21,7 @@ export async function runDailyBriefAgent(input: { user: DailyBriefPayload['user'
 
   const payload: DailyBriefPayload = { user: input.user, date: input.date, runId };
 
-  const output = await runDailyBriefWorkflow(payload, {
+  const output = await runDailyBriefService(payload, {
     logger,
     priorities: {
       fetchTopPriorities: async (user, date) => {

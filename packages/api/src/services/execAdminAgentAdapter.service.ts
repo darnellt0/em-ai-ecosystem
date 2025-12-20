@@ -35,8 +35,8 @@ const EXEC_ADMIN_AGENT_ADAPTERS: Record<string, ExecAdminAgentAdapter> = {
   'growth.rhythm': async (ctx) => runRhythmAgent(toGrowthInput(ctx.payload)),
   'growth.purpose': async (ctx) => runPurposeAgent(toGrowthInput(ctx.payload)),
   'productivity.dailyBrief': async (ctx) => {
-    const { userId = 'founder', date } = ctx.payload;
-    return runDailyBriefAgent({ userId, date });
+    const { userId = 'darnell', date } = ctx.payload;
+    return runDailyBriefAgent({ user: userId as 'darnell' | 'shria', date });
   },
 };
 
