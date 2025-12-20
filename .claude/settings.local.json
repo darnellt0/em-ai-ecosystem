@@ -72,7 +72,9 @@
       "Bash(docker exec:*)",
       "Bash(docker-compose restart:*)",
       "Bash(docker inspect:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(python:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": [],
     "ask": []

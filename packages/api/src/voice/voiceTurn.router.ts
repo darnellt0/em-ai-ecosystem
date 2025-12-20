@@ -57,6 +57,8 @@ interface VoiceTurnResponse {
   assistant: {
     kind: 'result' | 'follow_up' | 'confirmation' | 'error';
     text: string;
+    runId?: string;
+    artifact?: any; // Main artifact placement for UI consumption (e.g., journal prompts)
     followUp?: {
       suggestions: string[];
       context?: any;
@@ -67,8 +69,14 @@ interface VoiceTurnResponse {
       noAction: string;
       context?: any;
     };
-    runId?: string;
-    metadata?: any;
+    metadata?: {
+      route?: string;
+      complexity?: string;
+      intent?: string;
+      latency?: number;
+      cost?: number;
+      nextBestAction?: string;
+    };
   };
   error?: string;
 }
@@ -300,6 +308,8 @@ async function processCommand(user: string, text: string, res: Response): Promis
       assistant: {
         kind: 'result',
         text: summary || 'Command processed successfully',
+        runId: routingResult.runId,
+        artifact: routingResult.artifact, // Place artifact at top level for easy UI access
         metadata: {
           route: routingResult.route,
           complexity: routingResult.complexity,

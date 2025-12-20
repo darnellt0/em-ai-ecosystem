@@ -7,6 +7,7 @@
 
 import OpenAI from 'openai';
 import { agentFactory } from '../agents/agent-factory';
+import { executeJournalWithHistory, formatJournalPromptsForVoice } from './journal-execution.service';
 
 interface HybridRequest {
   transcript: string;
@@ -22,6 +23,8 @@ interface HybridResponse {
   humanSummary: string;
   nextBestAction?: string;
   data?: any;
+  runId?: string;
+  artifact?: any;
   cost?: number;
   latency?: number;
 }
@@ -55,6 +58,18 @@ export class HybridRouterService {
     'follow-up': {
       keywords: ['follow up', 'remind', 'reminder', 'remember', 'task', 'todo'],
       confidence: 0.90
+    },
+    'journal-daily-reflection': {
+      keywords: ['daily reflection', 'daily journal', 'morning reflection', 'start day reflection'],
+      confidence: 0.95
+    },
+    'journal-midday-check-in': {
+      keywords: ['midday check in', 'midday check-in', 'afternoon check', 'midday reflection'],
+      confidence: 0.95
+    },
+    'journal-day-close': {
+      keywords: ['day close', 'end of day reflection', 'evening reflection', 'close out day'],
+      confidence: 0.95
     }
   };
 
@@ -98,6 +113,8 @@ export class HybridRouterService {
               humanSummary: result.humanSummary,
               nextBestAction: result.nextBestAction,
               data: result.data,
+              runId: result.runId,
+              artifact: result.artifact,
               cost: 0,
               latency
             };
@@ -233,7 +250,47 @@ export class HybridRouterService {
         this.extractTitle(request.transcript),
         undefined,
         request.transcript
-      )
+      ),
+
+      // Journal intents - use canonical execution with run history
+      'journal-daily-reflection': async () => {
+        const result = await executeJournalWithHistory({
+          user: request.founder,
+          intent: 'journal.daily_reflection',
+        });
+        return {
+          humanSummary: formatJournalPromptsForVoice(result.artifact),
+          data: result.artifact,
+          runId: result.runId, // UUID from p0RunHistory
+          artifact: result.artifact,
+        };
+      },
+
+      'journal-midday-check-in': async () => {
+        const result = await executeJournalWithHistory({
+          user: request.founder,
+          intent: 'journal.midday_check_in',
+        });
+        return {
+          humanSummary: formatJournalPromptsForVoice(result.artifact),
+          data: result.artifact,
+          runId: result.runId, // UUID from p0RunHistory
+          artifact: result.artifact,
+        };
+      },
+
+      'journal-day-close': async () => {
+        const result = await executeJournalWithHistory({
+          user: request.founder,
+          intent: 'journal.day_close',
+        });
+        return {
+          humanSummary: formatJournalPromptsForVoice(result.artifact),
+          data: result.artifact,
+          runId: result.runId, // UUID from p0RunHistory
+          artifact: result.artifact,
+        };
+      }
     };
 
     const handler = intentMap[intent];
