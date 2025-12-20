@@ -20,6 +20,7 @@ import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
 import transcribeRouter from './voice/transcribe.router';
+import voiceTurnRouter from './voice/voiceTurn.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
@@ -286,6 +287,11 @@ app.use('/api/voice', voiceAudioRouter);
  * Speech-to-text transcription endpoints
  */
 app.use('/api/voice', transcribeRouter);
+
+/**
+ * Voice turn endpoint - unified audio/text → command → response
+ */
+app.use('/api/voice', voiceTurnRouter);
 
 // ============================================================================
 // ROUTES - GROWTH AGENTS ORCHESTRATOR (PHASE 6)
