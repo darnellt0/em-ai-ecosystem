@@ -47,6 +47,25 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Dashboard - Next.js Frontend
+  dashboard:
+    build:
+      context: .
+      dockerfile: packages/dashboard/Dockerfile
+    image: em-dashboard:latest
+    container_name: em-dashboard
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+    depends_on:
+      - api
+    networks:
+      - em-network
+    restart: unless-stopped
+
   # PostgreSQL Database
   database:
     image: postgres:15-alpine
