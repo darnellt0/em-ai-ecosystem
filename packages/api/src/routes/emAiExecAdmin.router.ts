@@ -10,9 +10,9 @@ import { updateGrowthRun, getGrowthRun } from '../services/growthRunHistory.serv
 import { buildGrowthRunSummary } from '../services/growthRunSummary.service';
 import { orchestrator } from '../growth-agents/orchestrator';
 import { finalizeRunIfTerminal } from '../services/growthRunFinalize.service';
-import { runJournalAgent } from '../services/journal.service';
-import { buildJournalArtifact, getJournalPrompts, JournalArtifact, JournalIntent } from '../../../agents/journal';
-import { startP0ArtifactRun, finalizeP0ArtifactRun, listP0ArtifactRuns, getP0ArtifactRun } from '../services/p0RunHistory.service';
+import { JournalIntent } from '../../../agents/journal';
+import { listP0ArtifactRuns, getP0ArtifactRun } from '../services/p0RunHistory.service';
+import { executeJournalWithHistory } from '../services/journalExecution.service';
 
 const emAiExecAdminRouter = Router();
 
@@ -212,34 +212,19 @@ emAiExecAdminRouter.post('/api/exec-admin/p0/journal/run', async (req: Request, 
     });
   }
 
-  const kind = JOURNAL_KIND;
-  const run = startP0ArtifactRun({ kind, runId });
-  const warnings: string[] = [];
-  let artifact: JournalArtifact;
-  let status: 'success' | 'fail' = 'success';
-  const resolvedDate = date || new Date().toISOString().slice(0, 10);
-
-  try {
-    artifact = await runJournalAgent({ user, intent, date });
-  } catch (err) {
-    warnings.push('Journal generation failed; returning placeholder output.');
-    artifact = buildJournalArtifact({
-      intent,
-      user,
-      date: resolvedDate,
-      prompts: getJournalPrompts(intent),
-    });
-    status = 'fail';
-  }
-
-  const finalized = finalizeP0ArtifactRun(run.runId, { status, artifact, kind });
+  const result = await executeJournalWithHistory({
+    user,
+    intent,
+    date,
+    runId,
+  });
 
   return res.json({
-    runId: finalized.runId,
-    kind,
-    status: finalized.status,
-    artifact,
-    ...(warnings.length ? { warnings } : {}),
+    runId: result.runId,
+    kind: JOURNAL_KIND,
+    status: result.status,
+    artifact: result.artifact,
+    ...(result.warnings?.length ? { warnings: result.warnings } : {}),
   });
 });
 

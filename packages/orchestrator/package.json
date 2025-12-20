@@ -6,9 +6,24 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts",
+      "require": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./dispatcher": {
+      "import": "./src/dispatcher.ts",
+      "require": "./src/dispatcher.ts",
+      "types": "./src/dispatcher.ts"
+    },
+    "./registry/agent-registry": {
+      "import": "./src/registry/agent-registry.ts",
+      "require": "./src/registry/agent-registry.ts",
+      "types": "./src/registry/agent-registry.ts"
+    },
+    "./flows": {
+      "import": "./src/flows/index.ts",
+      "require": "./src/flows/index.ts",
+      "types": "./src/flows/index.ts"
     }
   },
   "scripts": {

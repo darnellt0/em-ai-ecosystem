@@ -62,7 +62,10 @@
       "Bash(npx tsx:*)",
       "Bash(npm run integrity:*)",
       "Bash(npm exec:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm -w packages/api run typecheck)",
+      "Bash(docker compose:*)",
+      "Bash(npm -w packages/api test -- --passWithNoTests --testPathPattern=\"p0RunHistory\")"
     ],
     "deny": [],
     "ask": []
