@@ -19,6 +19,7 @@ import cors from 'cors';
 import voiceRouter from './voice/voice.router';
 import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
+import transcribeRouter from './voice/transcribe.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import emAiAgentsRouter from './routes/emAiAgents.router';
@@ -280,6 +281,11 @@ app.use('/api/voice', voiceRouter);
  * Audio generation endpoints for ElevenLabs TTS integration
  */
 app.use('/api/voice', voiceAudioRouter);
+
+/**
+ * Speech-to-text transcription endpoints
+ */
+app.use('/api/voice', transcribeRouter);
 
 // ============================================================================
 // ROUTES - GROWTH AGENTS ORCHESTRATOR (PHASE 6)
