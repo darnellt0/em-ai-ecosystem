@@ -16,12 +16,14 @@
     "build": "lerna run build",
     "dev": "lerna run dev --parallel",
     "test": "lerna run test",
+    "test:p0": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/p0-golden-path.eval.test.ts --runInBand --detectOpenHandles",
     "test:coverage": "lerna run test:coverage",
     "lint": "lerna run lint",
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"packages/*/tests/**/*.ts\"",
     "clean": "lerna run clean && rm -rf node_modules",
     "setup": "bash scripts/setup.sh",
     "health-check": "bash scripts/health-check.sh",
+    "n8n:check": "node packages/ops/n8n/check-n8n-connectivity.mjs",
     "check-agent-integrity": "echo 'Agent integrity check requires manual execution: cd to repo root and run: npx tsx --tsconfig tsconfig.json scripts/check-agent-integrity.ts' && exit 1",
     "test:calendar": "npx tsx scripts/test-google-calendar.ts",
     "backup": "bash scripts/backup.sh",
@@ -33,7 +35,11 @@
     "mobile:ios": "cd packages/mobile && npm run ios",
     "mobile:android": "cd packages/mobile && npm run android",
     "mobile:build:android": "cd packages/mobile && npm run build:android",
-    "mobile:build:ios": "cd packages/mobile && npm run build:ios"
+    "mobile:build:ios": "cd packages/mobile && npm run build:ios",
+    "test:p1": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
+    "test:p1:tools": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
+    "test:p1:routes": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts --runInBand --detectOpenHandles",
+    "test:all": "npm run test:p0 && npm run test:p1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

@@ -5,6 +5,10 @@ Everything else is frozen unless explicitly unlocked by the P0 freeze rules.
 
 ## Canonical Flow: P0 Daily Focus
 
+**Endpoint (single source of execution)**
+- POST `/api/exec-admin/p0/daily-focus`
+- Payload: `{ "userId": "string", "mode": "string?", "tone": "string?", "force": boolean? }`
+
 1. **EM Executive Admin receives request**
    - Entry point: `packages/api/src/exec-admin/flows/p0-daily-focus.ts` (`runP0DailyFocusExecAdmin`)
    - Required input: `{ userId, mode?, tone?, force? }`
@@ -45,6 +49,13 @@ Everything else is frozen unless explicitly unlocked by the P0 freeze rules.
 7. **P0 evals validate output**
    - Test suite: `packages/api/tests/p0-golden-path.eval.ts`
    - Deterministic checks for required fields, action pack shape, run history, and orchestrator success
+
+## Success Criteria (Must Stay True)
+
+- Request to `/api/exec-admin/p0/daily-focus` returns 200
+- Response includes `runId` and `success: true`
+- Run history persists input + output snapshots
+- `packages/api/tests/p0-golden-path.eval.ts` passes
 
 ## Regression Contract (Must Stay True)
 

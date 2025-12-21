@@ -1,3 +1,6 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '0';
+
 jest.mock('openai', () => {
   const OpenAI = jest.fn().mockImplementation(() => ({}));
   return { __esModule: true, default: OpenAI };
@@ -80,4 +83,3 @@ jest.mock('ws', () => {
   return { __esModule: true, WebSocketServer, WebSocket };
 });
 
-process.env.PORT = process.env.PORT || '0';
