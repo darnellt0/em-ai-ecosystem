@@ -35,15 +35,16 @@ function wrap(fn: (input: any) => Promise<any>, key: string) {
 export function ensureGrowthAgentsRegistered() {
   if (growthRegistered) return;
 
-  registerAgent({ key: 'growth.journal', description: 'Journal growth agent', run: wrap(runJournalAgent, 'growth.journal') });
-  registerAgent({ key: 'growth.niche', description: 'Niche growth agent', run: wrap(runNicheAgent, 'growth.niche') });
-  registerAgent({ key: 'growth.mindset', description: 'Mindset growth agent', run: wrap(runMindsetAgent, 'growth.mindset') });
-  registerAgent({ key: 'growth.rhythm', description: 'Rhythm growth agent', run: wrap(runRhythmAgent, 'growth.rhythm') });
-  registerAgent({ key: 'growth.purpose', description: 'Purpose growth agent', run: wrap(runPurposeAgent, 'growth.purpose') });
+  registerAgent({ key: 'growth.journal', description: 'Journal growth agent', status: 'frozen', run: wrap(runJournalAgent, 'growth.journal') });
+  registerAgent({ key: 'growth.niche', description: 'Niche growth agent', status: 'frozen', run: wrap(runNicheAgent, 'growth.niche') });
+  registerAgent({ key: 'growth.mindset', description: 'Mindset growth agent', status: 'frozen', run: wrap(runMindsetAgent, 'growth.mindset') });
+  registerAgent({ key: 'growth.rhythm', description: 'Rhythm growth agent', status: 'frozen', run: wrap(runRhythmAgent, 'growth.rhythm') });
+  registerAgent({ key: 'growth.purpose', description: 'Purpose growth agent', status: 'frozen', run: wrap(runPurposeAgent, 'growth.purpose') });
 
   registerAgent({
     key: 'growth.pack',
     description: 'Exec Admin growth pack (all growth agents + content action pack)',
+    status: 'frozen',
     run: async (payload: any): Promise<AgentOutput<any>> => {
       const founderEmail = payload.founderEmail || payload.userId;
       if (!founderEmail) return { status: 'FAILED', error: 'founderEmail or userId required' };

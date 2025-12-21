@@ -6,6 +6,9 @@ export type AgentHealthFn = () => Promise<{ status: string; details?: any }>;
 export interface AgentDefinition {
   key: string;
   description?: string;
+  status?: 'active' | 'frozen';
+  inputContract?: string;
+  outputContract?: string;
   run: AgentRunFn;
   health?: AgentHealthFn;
 }
