@@ -32,6 +32,14 @@ export async function runTool(req: ToolRequest): Promise<ToolResult> {
   }
 }
 
+export async function runToolByName(toolName: string, input?: any, meta?: Record<string, any>): Promise<ToolResult> {
+  const [tool, action] = toolName.split('.', 2);
+  if (!tool || !action) {
+    return { ok: false, error: { code: 'INVALID_TOOL', message: `Tool name ${toolName} must include tool.action` } };
+  }
+  return runTool({ tool, action, input, meta });
+}
+
 export async function runToolWithFallback(req: ToolRequest): Promise<ToolResult> {
   // Prefer MCP if enabled; otherwise local registry handler
   if (process.env.ENABLE_MCP === 'true') {
