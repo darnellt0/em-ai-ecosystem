@@ -16,7 +16,16 @@ export interface P0RunRecord {
   finishedAt?: string;
   qaPassed?: boolean;
   qaBlocked?: boolean;
+  evalStatus?: {
+    status: string;
+    passed?: boolean;
+    blocked?: boolean;
+    reasons?: string[];
+  };
+  inputSnapshot?: unknown;
+  outputSnapshot?: unknown;
   actionPackSummary?: string;
+  artifact?: unknown;
   error?: string;
 }
 
