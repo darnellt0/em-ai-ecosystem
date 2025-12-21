@@ -103,6 +103,24 @@ docker-compose ps
 docker-compose logs -f api
 ```
 
+### Exec Admin: Daily Brief
+
+- Dashboard path: `/exec-admin/daily-brief`
+- API endpoints:
+  - POST `http://localhost:3000/api/exec-admin/p0/daily-brief`
+  - GET `http://localhost:3000/api/exec-admin/p0/daily-brief/runs?limit=20`
+  - GET `http://localhost:3000/api/exec-admin/p0/daily-brief/runs/:runId`
+- Run artifacts are stored under `packages/api/.data/runs`.
+- Windows smoke check:
+  - `Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/exec-admin/p0/daily-brief" -ContentType "application/json" -Body '{"user":"darnell","runId":"dev-smoke-1"}'`
+
+### Database migrations
+
+- Migrations live in `packages/api/migrations` (filename ordering, e.g., `20250101000000_description.sql`).
+- Run manually: `npm run db:migrate` (uses `packages/api/scripts/migrate.mjs`, reads `DATABASE_URL`).
+- Optional startup: set `RUN_MIGRATIONS_ON_START=true` to run migrations when the API boots.
+- Tracking table: `schema_migrations` (filename PK, applied_at).
+
 ## ?? Deployment (Render + Vercel)
 
 ### Render API Service
