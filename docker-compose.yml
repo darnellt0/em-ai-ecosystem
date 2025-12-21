@@ -52,29 +52,6 @@ services:
     build:
       context: .
       dockerfile: packages/dashboard/Dockerfile
-      args:
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:3000
-    image: em-dashboard:latest
-    container_name: em-dashboard
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      # Use same-origin (empty) to leverage Caddy reverse proxy - no CORS needed
-      # - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-      - API_BASE_URL_INTERNAL=http://api:3000
-    depends_on:
-      - api
-    networks:
-      - em-network
-    restart: unless-stopped
-
-  # Dashboard - Next.js Frontend
-  dashboard:
-    build:
-      context: .
-      dockerfile: packages/dashboard/Dockerfile
     image: em-dashboard:latest
     container_name: em-dashboard
     ports:
