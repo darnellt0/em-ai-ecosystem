@@ -335,10 +335,10 @@ export async function createFollowUp(input: FollowUpInput): Promise<VoiceRespons
  */
 export async function getDailyBrief(founder: string): Promise<VoiceResponse> {
   try {
-    const brief = await runDailyBriefAgent({ userId: founder });
+    const brief = await runDailyBriefAgent({ user: founder as 'darnell' | 'shria' });
     const briefText =
-      brief.rendered.text ||
-      [brief.priorities.join(', '), brief.agenda.join(', '), brief.tasks.join(', ')].join('\n');
+      brief.text ||
+      [brief.topPriorities?.join(', ') || '', brief.sections?.map(s => s.content).join(', ') || ''].join('\n');
 
     return {
       status: 'ok',

@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package files for the dashboard
 COPY packages/dashboard/package*.json ./packages/dashboard/
-RUN cd packages/dashboard && npm ci
+RUN cd packages/dashboard && npm install --frozen-lockfile || npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -23,8 +23,9 @@ COPY packages/dashboard ./packages/dashboard
 # Set working directory to dashboard
 WORKDIR /app/packages/dashboard
 
-# Set environment variable for API URL (can be overridden at runtime)
-ENV NEXT_PUBLIC_API_BASE_URL=http://api:3000
+# Set environment variable for API URL (must be set at build time for Next.js)
+# Use localhost:3000 since the browser will access the API from the host machine
+ENV NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
 
 # Build the Next.js application
 RUN npm run build
@@ -37,9 +38,6 @@ ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-
-# Copy built application
-COPY --from=builder /app/packages/dashboard/public ./public
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing

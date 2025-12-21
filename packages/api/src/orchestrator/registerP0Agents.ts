@@ -1,4 +1,4 @@
-import { registerAgent } from '@em/orchestrator/registry/agent-registry';
+import { registerAgent } from '../../../orchestrator/src/registry/agent-registry';
 import { runDailyBriefAdapter } from '../../../agents/daily-brief/adapter';
 import { runInsightAdapter } from '../../../agents/insights/adapter';
 import { runJournalPromptAdapter } from '../../../agents/journal/adapter';

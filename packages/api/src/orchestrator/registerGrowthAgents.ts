@@ -49,7 +49,7 @@ export function ensureGrowthAgentsRegistered() {
       if (!founderEmail) return { status: 'FAILED', error: 'founderEmail or userId required' };
       const agents = ['growth.journal', 'growth.niche', 'growth.mindset', 'growth.rhythm', 'growth.purpose'];
       const reqs = agents.map((key) => ({ key, payload: { founderEmail } }));
-      const { runAgentsConcurrently } = await import('@em/orchestrator/dispatcher');
+      const { runAgentsConcurrently } = await import('../../../orchestrator/src/dispatcher');
       const results = await runAgentsConcurrently(reqs);
 
       const insights: any[] = [];

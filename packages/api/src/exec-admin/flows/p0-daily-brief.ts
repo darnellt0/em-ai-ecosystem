@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { runAgentsConcurrently } from '@em/orchestrator/dispatcher';
+import { runAgentsConcurrently } from '../../../../orchestrator/src/dispatcher';
 import { ensureP0AgentsRegistered } from '../../orchestrator/registerP0Agents';
 import logger from '../../utils/logger';
 import { DailyBriefPayload, DailyBriefResult } from '../../../agents/daily-brief/service';

@@ -1,11 +1,11 @@
 import express from 'express';
-import { listAgents } from '../../orchestrator/src/registry/agent-registry';
+import { getAllAgentIds } from '../growth-agents/agent-registry';
 
 const router = express.Router();
 
 router.get('/api/system/health', async (_req, res) => {
   try {
-    const agents = listAgents();
+    const agents = getAllAgentIds();
     const flags = {
       ENABLE_ACTION_EXECUTION: process.env.ENABLE_ACTION_EXECUTION === 'true',
       ENABLE_CALENDAR_WRITES: process.env.ENABLE_CALENDAR_WRITES === 'true',
@@ -27,9 +27,10 @@ router.get('/api/system/health', async (_req, res) => {
 });
 
 router.get('/api/agents/registry', async (_req, res) => {
-  const agents = listAgents().map((a) => ({
-    key: a.key,
-    description: a.description || '',
+  const agentIds = getAllAgentIds();
+  const agents = agentIds.map((id) => ({
+    key: id,
+    description: '',
   }));
   res.json({ success: true, agents, count: agents.length });
 });

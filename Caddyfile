@@ -6,7 +6,7 @@
   admin 0.0.0.0:2019
 }
 
-# Main domain routing - everything goes to API
+# Main domain routing - dashboard + API through reverse proxy
 localhost:80 {
   # Security headers (apply to all routes)
   header {
@@ -25,8 +25,12 @@ localhost:80 {
     format json
   }
 
-  # API handles everything (including dashboard HTML)
-  reverse_proxy api:3000
+  # API endpoints - route to API container
+  reverse_proxy /api/* api:3000
+  reverse_proxy /health api:3000
+
+  # Dashboard - route everything else to dashboard container
+  reverse_proxy dashboard:3001
 }
 
 # n8n configuration

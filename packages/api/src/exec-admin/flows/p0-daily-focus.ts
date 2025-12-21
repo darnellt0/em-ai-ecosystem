@@ -1,4 +1,4 @@
-import { runP0DailyFocusFlow } from '@em/orchestrator/flows';
+import { runP0DailyFocusFlow } from '../../../../orchestrator/src/flows';
 import { Insight, Action } from '../../../../shared/contracts';
 import { ensureP0AgentsRegistered } from '../../orchestrator/registerP0Agents';
 import { savePlannedAction } from '../../actions/action.store';
