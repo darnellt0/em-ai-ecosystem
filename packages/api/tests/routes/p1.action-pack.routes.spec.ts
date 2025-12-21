@@ -15,12 +15,39 @@ jest.mock('../../src/services/calendar.service', () => ({
   },
 }));
 
+jest.mock('../../src/tools/tool.registry', () => ({
+  registerToolHandler: jest.fn(),
+  getToolHandler: jest.fn(),
+  listToolHandlers: jest.fn(() => []),
+  runTool: jest.fn(async () => ({ ok: true, output: {} })),
+  runToolByName: jest.fn(async (toolName: string, input: any) => {
+    if (toolName === 'tasks.create_task') {
+      return { ok: true, output: { task: { title: input?.title } } };
+    }
+    if (toolName === 'calendar.create_event' || toolName === 'calendar.update_event') {
+      return { ok: true, output: { eventId: 'evt-123' } };
+    }
+    if (toolName === 'capture.post_note') {
+      return { ok: true, output: { noop: true } };
+    }
+    return { ok: true, output: {} };
+  }),
+}));
+
+jest.mock('../../src/tools/tasks.tool', () => ({
+  createTaskHandler: jest.fn((req: any) => ({
+    ok: true,
+    output: { taskId: 'task-1', task: { title: req?.input?.title } },
+  })),
+}));
+
 import request from 'supertest';
 import app from '../../src/index';
 import { getP0Run, recordP0RunStart, updateP0Run } from '../../src/services/p0RunHistory.service';
 
 describe('POST /api/exec-admin/p1/execute-action-pack', () => {
   it('executes action pack by runId and stores results on the same run', async () => {
+    const userId = 'founder@example.com';
     const storedActionPack = {
       summary: 'Daily focus summary',
       tasks: [{ title: 'Stored Task', detail: 'Email the client', priority: 'high' }],
@@ -34,7 +61,7 @@ describe('POST /api/exec-admin/p1/execute-action-pack', () => {
     };
 
     const run = await recordP0RunStart({
-      founderEmail: 'darnell',
+      founderEmail: userId,
       date: new Date().toISOString().slice(0, 10),
       force: true,
       kind: 'p0.daily_focus',
@@ -51,10 +78,11 @@ describe('POST /api/exec-admin/p1/execute-action-pack', () => {
 
     const res = await request(app)
       .post('/api/exec-admin/p1/execute-action-pack')
-      .send({ userId: 'darnell', runId: run.runId, actionPack: inlineActionPack, actions: ['calendar', 'tasks'] });
+      .send({ userId, runId: run.runId, actionPack: inlineActionPack, actions: ['calendar', 'tasks'] });
 
-    console.log('Response status:', res.status);
-    console.log('Response body:', JSON.stringify(res.body, null, 2));
+    if (res.status !== 200) {
+      console.log('P1 route error:', res.body?.error);
+    }
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

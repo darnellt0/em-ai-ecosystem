@@ -37,7 +37,8 @@
     "mobile:build:ios": "cd packages/mobile && npm run build:ios",
     "test:p1": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
     "test:p1:tools": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
-    "test:p1:routes": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts --runInBand --detectOpenHandles"
+    "test:p1:routes": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts --runInBand --detectOpenHandles",
+    "test:all": "npm run test:p0 && npm run test:p1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
