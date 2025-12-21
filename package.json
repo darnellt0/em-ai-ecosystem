@@ -23,6 +23,7 @@
     "clean": "lerna run clean && rm -rf node_modules",
     "setup": "bash scripts/setup.sh",
     "health-check": "bash scripts/health-check.sh",
+    "n8n:check": "node packages/ops/n8n/check-n8n-connectivity.mjs",
     "check-agent-integrity": "echo 'Agent integrity check requires manual execution: cd to repo root and run: npx tsx --tsconfig tsconfig.json scripts/check-agent-integrity.ts' && exit 1",
     "test:calendar": "npx tsx scripts/test-google-calendar.ts",
     "backup": "bash scripts/backup.sh",
