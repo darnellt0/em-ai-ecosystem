@@ -5,6 +5,8 @@ import {
   findByIdempotency,
 } from './action.store';
 import { recordAudit } from './action.audit';
+import { runTool } from '../tools/tool.registry';
+import { ensureToolHandlersRegistered } from '../tools/registerTools';
 
 interface ExecutionContext {
   mode: 'PLAN' | 'EXECUTE';
@@ -65,24 +67,68 @@ export async function executeAction(action: PlannedAction, ctx: ExecutionContext
 }
 
 async function routeExecution(action: PlannedAction, flags: Record<string, boolean>): Promise<ActionReceipt> {
+  ensureToolHandlersRegistered();
+
   switch (action.type) {
     case 'calendar.propose_block':
       return { status: 'PLANNED', message: 'Proposal only (no writes)' };
-    case 'calendar.create_event':
+
+    case 'calendar.create_event': {
       if (!flags.ENABLE_CALENDAR_WRITES) return { status: 'BLOCKED', message: 'Calendar writes disabled' };
-      return { status: 'EXECUTED', message: 'Calendar event created (mock)', externalRef: 'cal-evt-123' };
+
+      const result = await runTool({
+        tool: 'calendar',
+        action: 'schedule',
+        input: action.payload,
+      });
+
+      if (result.ok && result.output?.success) {
+        console.log('[ActionExecutor] Calendar event created', { eventId: result.output.data?.eventId });
+        return {
+          status: 'EXECUTED',
+          message: `Calendar event created: ${result.output.data?.event?.summary}`,
+          externalRef: result.output.data?.eventId,
+        };
+      }
+
+      console.error('[ActionExecutor] Calendar schedule failed', { error: result.error });
+      return { status: 'FAILED', message: result.error?.message || 'Calendar schedule failed' };
+    }
+
     case 'gmail.draft_email':
       if (!flags.ENABLE_GMAIL_DRAFTS) return { status: 'BLOCKED', message: 'Gmail drafts disabled' };
       return { status: 'EXECUTED', message: 'Email drafted (mock)', externalRef: 'gmail-draft-123' };
-    case 'gmail.send_email':
+
+    case 'gmail.send_email': {
       if (!flags.ENABLE_GMAIL_SEND) return { status: 'BLOCKED', message: 'Gmail send disabled' };
-      return { status: 'EXECUTED', message: 'Email sent (mock)', externalRef: 'gmail-send-123' };
+
+      const result = await runTool({
+        tool: 'email',
+        action: 'send_followup',
+        input: action.payload,
+      });
+
+      if (result.ok && result.output?.success) {
+        console.log('[ActionExecutor] Email sent', { messageId: result.output.data?.messageId });
+        return {
+          status: 'EXECUTED',
+          message: `Email sent to ${action.payload.to}`,
+          externalRef: result.output.data?.messageId,
+        };
+      }
+
+      console.error('[ActionExecutor] Email send failed', { error: result.error });
+      return { status: 'FAILED', message: result.error?.message || 'Email send failed' };
+    }
+
     case 'sheets.append_row':
     case 'sheets.update_row':
       if (!flags.ENABLE_SHEETS_WRITES) return { status: 'BLOCKED', message: 'Sheets writes disabled' };
       return { status: 'EXECUTED', message: 'Sheets operation completed (mock)', externalRef: 'sheets-123' };
+
     case 'task.create':
       return { status: 'EXECUTED', message: 'Task created (mock)', externalRef: 'task-123' };
+
     default:
       return { status: 'BLOCKED', message: 'Unknown action type' };
   }
