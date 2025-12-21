@@ -46,6 +46,24 @@ pwsh ./scripts/generate-content-pack.ps1
 pwsh ./scripts/generate-content-pack.ps1 -ApproveFirstOne
 ```
 
+## Database setup (PostgreSQL)
+
+The docker-compose stack initializes PostgreSQL with:
+- **Database:** `elevated_movements`
+- **User:** `postgres`
+- **Password:** `postgres`
+
+### Reset database volume
+
+If you see errors like `FATAL: database "elevated_movements" does not exist` or `role "postgres" does not exist`, the existing volume may have stale credentials. Reset it:
+
+```powershell
+docker compose down -v   # removes volumes (data will be lost)
+docker compose up -d --build
+```
+
+> **Note:** `docker compose down -v` destroys all data in `postgres_data`, `redis_data`, etc. Only use this in development when you need a fresh start.
+
 ## If build still fails
 - Confirm `.dockerignore` is applied: `docker build -f Dockerfile . --progress=plain`
 - Look for any `node_modules` paths in the build context; they should be excluded.
