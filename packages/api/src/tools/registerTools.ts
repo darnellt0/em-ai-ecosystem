@@ -1,4 +1,5 @@
 import { listPendingActions } from '../actions/action.store';
+import { publishActionPackWebhook } from '../actions/actionpack.webhook';
 import { registerToolHandler } from './tool.registry';
 import { handleCalendarSchedule, handleCalendarReschedule } from './calendar.tool';
 import { handleEmailSendFollowup } from './email.tool';

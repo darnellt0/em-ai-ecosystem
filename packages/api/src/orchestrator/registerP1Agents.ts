@@ -35,75 +35,113 @@ const P1_KEYS = [
 export function ensureP1AgentsRegistered() {
   if (p1Registered) return;
 
-  registerAgent({ key: 'brand.storyteller.generate', description: 'Brand storyteller agent', run: (p) => runBrandStorytellerAdapter(p) });
+  registerAgent({
+    key: 'brand.storyteller.generate',
+    description: 'Brand storyteller agent',
+    status: 'frozen',
+    run: (p) => runBrandStorytellerAdapter(p),
+  });
   registerAgent({
     key: 'content.creative_director.review',
     description: 'Creative director review',
+    status: 'frozen',
     run: (p) => runCreativeDirectorAdapter(p),
   });
   registerAgent({
     key: 'strategy.integrated.plan',
     description: 'Integrated strategist',
+    status: 'frozen',
     run: (p) => runIntegratedStrategistAdapter(p),
   });
   registerAgent({
     key: 'relationships.track.update',
     description: 'Relationship tracker',
+    status: 'frozen',
     run: (p) => runRelationshipTrackerAdapter(p),
   });
   registerAgent({
     key: 'curriculum.generate.module',
     description: 'Curriculum generator',
+    status: 'frozen',
     run: (p) => runCurriculumGeneratorAdapter(p),
   });
-  registerAgent({ key: 'events.architect.plan', description: 'Event architect', run: (p) => runEventArchitectAdapter(p) });
+  registerAgent({
+    key: 'events.architect.plan',
+    description: 'Event architect',
+    status: 'frozen',
+    run: (p) => runEventArchitectAdapter(p),
+  });
   registerAgent({
     key: 'accountability.check_in',
     description: 'Accountability partner',
+    status: 'frozen',
     run: (p) => runAccountabilityPartnerAdapter(p),
   });
   registerAgent({
     key: 'community.curator.outreach',
     description: 'Community curator',
+    status: 'frozen',
     run: (p) => runCommunityCuratorAdapter(p),
   });
   // Stubbed/blocked P1 agents (registered for discoverability)
-  registerAgent({ key: 'p1.rhythm', description: 'Rhythm agent (stub)', run: runP1StubAdapter('p1.rhythm', 'Rhythm agent') });
-  registerAgent({ key: 'p1.purpose', description: 'Purpose agent (stub)', run: runP1StubAdapter('p1.purpose', 'Purpose agent') });
-  registerAgent({ key: 'p1.mindset', description: 'Mindset agent (stub)', run: runP1StubAdapter('p1.mindset', 'Mindset agent') });
+  registerAgent({
+    key: 'p1.rhythm',
+    description: 'Rhythm agent (stub)',
+    status: 'frozen',
+    run: runP1StubAdapter('p1.rhythm', 'Rhythm agent'),
+  });
+  registerAgent({
+    key: 'p1.purpose',
+    description: 'Purpose agent (stub)',
+    status: 'frozen',
+    run: runP1StubAdapter('p1.purpose', 'Purpose agent'),
+  });
+  registerAgent({
+    key: 'p1.mindset',
+    description: 'Mindset agent (stub)',
+    status: 'frozen',
+    run: runP1StubAdapter('p1.mindset', 'Mindset agent'),
+  });
   registerAgent({
     key: 'p1.membership_guardian',
     description: 'Membership guardian (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.membership_guardian', 'Membership guardian'),
   });
   registerAgent({
     key: 'p1.systems_architect',
     description: 'Systems architect (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.systems_architect', 'Systems architect'),
   });
   registerAgent({
     key: 'p1.voice_companion',
     description: 'Voice companion (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.voice_companion', 'Voice companion'),
   });
   registerAgent({
     key: 'p1.vision_builder',
     description: 'Vision builder (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.vision_builder', 'Vision builder'),
   });
   registerAgent({
     key: 'p1.wellness_reset',
     description: 'Wellness reset (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.wellness_reset', 'Wellness reset'),
   });
   registerAgent({
     key: 'p1.meal_vision',
     description: 'Meal vision (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.meal_vision', 'Meal vision'),
   });
   registerAgent({
     key: 'p1.quicklist',
     description: 'Quicklist (stub)',
+    status: 'frozen',
     run: runP1StubAdapter('p1.quicklist', 'Quicklist'),
   });
 

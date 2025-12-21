@@ -31,6 +31,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <Link href="/corporate" className="hover:text-white">
                   Corporate Partnerships
                 </Link>
+                <Link href="/exec-admin/daily-brief" className="hover:text-white">
+                  Daily Brief
+                </Link>
                 <Link href="/community" className="hover:text-white">
                   Community
                 </Link>

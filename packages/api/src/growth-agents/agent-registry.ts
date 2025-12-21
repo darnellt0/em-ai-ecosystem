@@ -17,6 +17,7 @@ export interface AgentMetadata {
   id: string;
   name: string;
   description: string;
+  status?: 'active' | 'frozen';
   phase: 'Rooted' | 'Grounded' | 'Radiant';
   priority: number;
   version: string;
@@ -50,6 +51,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       id: 'journal',
       name: 'Daily Journal Agent',
       description: 'Sends personalized daily journal prompts based on founder preferences',
+      status: 'frozen',
       phase: 'Rooted',
       priority: 1,
       version: '1.0.0',
@@ -92,6 +94,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       id: 'niche',
       name: 'Niche Research Agent',
       description: 'Analyzes growth opportunities and generates niche insights for founders',
+      status: 'frozen',
       phase: 'Grounded',
       priority: 2,
       version: '1.0.0',
@@ -134,6 +137,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       id: 'mindset',
       name: 'Mindset Coaching Agent',
       description: 'Provides mindset coaching and mental framework guidance for founders',
+      status: 'frozen',
       phase: 'Grounded',
       priority: 3,
       version: '1.0.0',
@@ -176,6 +180,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       id: 'rhythm',
       name: 'Weekly Rhythm Agent',
       description: 'Tracks and optimizes founder weekly rhythms and productivity patterns',
+      status: 'frozen',
       phase: 'Rooted',
       priority: 4,
       version: '1.0.0',
@@ -218,6 +223,7 @@ export const AGENT_REGISTRY: Record<string, AgentRegistryEntry> = {
       id: 'purpose',
       name: 'Purpose Alignment Agent',
       description: 'Ensures founder activities align with long-term purpose and vision',
+      status: 'frozen',
       phase: 'Radiant',
       priority: 5,
       version: '1.0.0',
