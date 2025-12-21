@@ -74,7 +74,11 @@
       "Bash(docker inspect:*)",
       "Bash(git checkout:*)",
       "Bash(python:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File scripts/merge-to-main.ps1)",
+      "Bash(git stash:*)",
+      "Bash(git pull:*)",
+      "Bash(git clean:*)"
     ],
     "deny": [],
     "ask": []
