@@ -16,6 +16,7 @@
     "build": "lerna run build",
     "dev": "lerna run dev --parallel",
     "test": "lerna run test",
+    "test:p0": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/p0-golden-path.eval.test.ts --runInBand --detectOpenHandles",
     "test:coverage": "lerna run test:coverage",
     "lint": "lerna run lint",
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"packages/*/tests/**/*.ts\"",
@@ -33,7 +34,10 @@
     "mobile:ios": "cd packages/mobile && npm run ios",
     "mobile:android": "cd packages/mobile && npm run android",
     "mobile:build:android": "cd packages/mobile && npm run build:android",
-    "mobile:build:ios": "cd packages/mobile && npm run build:ios"
+    "mobile:build:ios": "cd packages/mobile && npm run build:ios",
+    "test:p1": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
+    "test:p1:tools": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/tools/p1.tools.spec.ts --runInBand --detectOpenHandles",
+    "test:p1:routes": "npx jest --config packages/api/jest.config.js --runTestsByPath packages/api/tests/routes/p1.action-pack.routes.spec.ts --runInBand --detectOpenHandles"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

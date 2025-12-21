@@ -1,4 +1,4 @@
-# P0 Freeze Rules
+# P0 Freeze Rules (P0 COMPLETE)
 
 ## What is Allowed During Stabilization
 
@@ -13,6 +13,7 @@
 - New agents, new frameworks, or new orchestration paths.
 - Broad refactors unrelated to P0 stability.
 - Additional QA surface area beyond the P0 evals.
+- Any change to `packages/api/src/routes/p0-*` requires rerunning `packages/api/tests/p0-golden-path.eval.test.ts`.
 
 ## Criteria to Unlock P1
 
@@ -23,3 +24,8 @@ All must be true:
 3. Registry shows **only** P0 agents as active; all others are frozen.
 4. Tool layer covers all external integrations used by P0.
 5. Run history records inputs, outputs, and eval pass/fail clearly.
+
+## P0 Complete (2025-12-21)
+
+- P0 Golden Path is locked as the regression baseline.
+- Allowed next: P1-scoped work only, with P0 untouched unless re-validated.
