@@ -13,14 +13,7 @@ router.post('/api/exec-admin/p1/execute-action-pack', async (req: Request, res: 
     const result = await executeActionPack({ userId, runId, actionPack, actions, force });
     if (!result.success) {
       const status = result.statusCode || 400;
-      const message = result.error || 'action pack execution failed';
-      if (status === 404) {
-        return res.status(404).json({ success: false, error: 'runId not found' });
-      }
-      if (message.includes('actionPack not found')) {
-        return res.status(400).json({ success: false, error: 'action pack missing on run' });
-      }
-      return res.status(status).json({ success: false, error: message });
+      return res.status(status).json({ success: false, error: result.error || 'Execution failed' });
     }
 
     return res.json({

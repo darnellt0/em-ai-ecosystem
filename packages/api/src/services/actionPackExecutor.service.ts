@@ -42,6 +42,19 @@ function validateActionPack(pack: any): string[] {
   return [];
 }
 
+function resolveActionPackFromRun(runRecord: any) {
+  const candidates = [
+    runRecord?.outputSnapshot?.actionPack,
+    runRecord?.outputSnapshot?.action_pack,
+    runRecord?.outputSnapshot?.data?.actionPack,
+    runRecord?.outputSnapshot?.data?.action_pack,
+    runRecord?.actionPack,
+    runRecord?.data?.actionPack,
+    runRecord?.artifact?.actionPack,
+  ];
+  return candidates.find((item) => item && typeof item === 'object') || null;
+}
+
 export async function executeActionPack(input: ActionPackExecutorInput) {
   if (!input.userId) {
     return { success: false, error: 'userId is required', statusCode: 400 };
@@ -57,8 +70,8 @@ export async function executeActionPack(input: ActionPackExecutorInput) {
     if (!runRecord) {
       return { success: false, error: `runId ${resolvedRunId} not found`, statusCode: 404 };
     }
-    const fromRun = runRecord?.outputSnapshot?.actionPack;
-    if (fromRun) actionPack = fromRun;
+    const fromRun = resolveActionPackFromRun(runRecord);
+    actionPack = fromRun;
     if (!actionPack) {
       return { success: false, error: `actionPack not found for runId ${resolvedRunId}`, statusCode: 400 };
     }
@@ -70,7 +83,7 @@ export async function executeActionPack(input: ActionPackExecutorInput) {
 
   const validationErrors = validateActionPack(actionPack);
   if (validationErrors.length) {
-    return { success: false, error: validationErrors.join('; ') };
+    return { success: false, error: validationErrors.join('; '), statusCode: 400 };
   }
 
   const actions = normalizeActions(input.actions);
