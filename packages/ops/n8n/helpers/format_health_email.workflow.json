@@ -1,0 +1,57 @@
+{
+  "name": "Helper: Format Health Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Helper: Format Health Email\n\n**Purpose**: Format healthcheck/watchdog alerts into email subject + body\n\n**Inputs**:\n- checkName: string (e.g., 'API Health', 'Run Sanity')\n- url: string (endpoint checked)\n- status: number (HTTP status or 0 for errors)\n- error: string (error message)\n- observedAt: string (timestamp)\n- recovered: boolean (optional, true if this is a recovery alert)\n\n**Outputs**:\n- subject: string\n- text: string (plain text body)\n- html: string (HTML body)",
+        "height": 380,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const checkName = $input.item.json.checkName || 'Health Check';\nconst url = $input.item.json.url || 'unknown';\nconst status = $input.item.json.status || 0;\nconst error = $input.item.json.error || 'Unknown error';\nconst observedAt = $input.item.json.observedAt || new Date().toISOString();\nconst recovered = $input.item.json.recovered || false;\nconst details = $input.item.json.details || '';\n\nconst emoji = recovered ? '✅' : '🚨';\nconst statusWord = recovered ? 'RECOVERED' : 'ALERT';\n\nconst subject = `${emoji} ${checkName} ${statusWord}`;\n\nconst text = recovered\n  ? `${checkName} has recovered.\\n\\nURL: ${url}\\nStatus: ${status}\\nObserved: ${observedAt}\\n\\nThe issue has been resolved.`\n  : `${checkName} is experiencing issues.\\n\\nURL: ${url}\\nStatus: ${status}\\nError: ${error}\\nObserved: ${observedAt}${details ? '\\n\\nDetails:\\n' + details : ''}`;\n\nconst html = recovered\n  ? `<h2>${emoji} ${checkName} has recovered</h2>\n     <p><strong>URL:</strong> <code>${url}</code></p>\n     <p><strong>Status:</strong> ${status}</p>\n     <p><strong>Observed:</strong> ${observedAt}</p>\n     <p>The issue has been resolved.</p>`\n  : `<h2>${emoji} ${checkName} Alert</h2>\n     <p><strong>URL:</strong> <code>${url}</code></p>\n     <p><strong>Status:</strong> ${status}</p>\n     <p><strong>Error:</strong> ${error}</p>\n     <p><strong>Observed:</strong> ${observedAt}</p>\n     ${details ? '<h3>Details:</h3><pre>' + details + '</pre>' : ''}`;\n\nreturn { subject, text, html };"
+      },
+      "id": "format-email",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

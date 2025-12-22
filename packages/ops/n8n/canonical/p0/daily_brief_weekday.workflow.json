@@ -1,0 +1,314 @@
+{
+  "name": "P0 Daily Brief (Weekday)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [640, 400],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## P0 Daily Brief (Weekday)\n\n**Purpose**: Run P0 Daily Focus automation every weekday at 7:30 AM Pacific\n\n**Schedule**: 7:30 AM Mon-Fri (America/Los_Angeles)\n**Status**: DISABLED by default - activate after import\n\n**Required Env Vars**:\n- EM_API_BASE_URL\n- EM_DAILY_BRIEF_EMAIL_TO\n- EM_N8N_ENV\n- P0_USER_ID (optional, defaults to 'local-dev')\n\n**What it does**:\n1. Calls POST /api/exec-admin/p0/daily-focus\n2. If success: sends brief email via helpers\n3. If failure: sends alert email with dedupe\n\n**How to test**:\n1. Click 'Execute workflow' button (manual test)\n2. Check email configured in EM_DAILY_BRIEF_EMAIL_TO",
+        "height": 520,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 120]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: HTTP Call API' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "method",
+              "value": "POST"
+            },
+            {
+              "name": "urlPath",
+              "value": "/api/exec-admin/p0/daily-focus"
+            },
+            {
+              "name": "body",
+              "value": "={{ { userId: $env.P0_USER_ID || 'local-dev', mode: 'auto' } }}"
+            }
+          ]
+        }
+      },
+      "id": "call-daily-focus",
+      "name": "Call Daily Focus API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-success",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.ok }}"
+            }
+          ]
+        }
+      },
+      "id": "check-success",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1040, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json.data || {};\nconst runId = data.runId || 'unknown';\nconst qaStatus = data.data?.qaStatus || 'unknown';\nconst confidence = data.data?.confidenceScore || 0;\nconst timestamp = data.timestamp || new Date().toISOString();\n\nconst subject = 'P0 Daily Brief Complete';\n\nconst text = `P0 Daily Brief has been generated successfully.\\n\\nRun ID: ${runId}\\nQA Status: ${qaStatus}\\nConfidence: ${confidence}\\nTimestamp: ${timestamp}\\n\\nCheck your dashboard for details.`;\n\nconst html = `<h2>✅ P0 Daily Brief Complete</h2>\n<p><strong>Run ID:</strong> <code>${runId}</code></p>\n<p><strong>QA Status:</strong> ${qaStatus}</p>\n<p><strong>Confidence:</strong> ${confidence}</p>\n<p><strong>Timestamp:</strong> ${timestamp}</p>\n<p>Check your dashboard for full details.</p>`;\n\nreturn { subject, text, html, to: $env.EM_DAILY_BRIEF_EMAIL_TO };"
+      },
+      "id": "format-success-email",
+      "name": "Format Success Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Email Notify' }}"
+      },
+      "id": "send-success-email",
+      "name": "Send Success Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Format Health Email' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "checkName",
+              "value": "P0 Daily Brief Run"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('Call Daily Focus API').item.json.url }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $('Call Daily Focus API').item.json.status }}"
+            },
+            {
+              "name": "error",
+              "value": "={{ $('Call Daily Focus API').item.json.error }}"
+            },
+            {
+              "name": "observedAt",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "format-failure-email",
+      "name": "Format Failure Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1240, 500]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Dedupe Alert' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "key",
+              "value": "daily-brief-run-failed"
+            },
+            {
+              "name": "cooldownMinutes",
+              "value": 60
+            }
+          ]
+        }
+      },
+      "id": "check-dedupe",
+      "name": "Check Dedupe",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "should-send",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.shouldSend }}"
+            }
+          ]
+        }
+      },
+      "id": "if-should-send",
+      "name": "If Should Send",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Email Notify' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "to",
+              "value": "={{ $env.EM_ALERT_EMAIL_TO }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $('Format Failure Email').item.json.subject }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Format Failure Email').item.json.text }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $('Format Failure Email').item.json.html }}"
+            }
+          ]
+        }
+      },
+      "id": "send-alert",
+      "name": "Send Alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1840, 400]
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Daily Focus API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Daily Focus API": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Format Success Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Failure Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Email": {
+      "main": [
+        [
+          {
+            "node": "Send Success Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Failure Email": {
+      "main": [
+        [
+          {
+            "node": "Check Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dedupe": {
+      "main": [
+        [
+          {
+            "node": "If Should Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Should Send": {
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

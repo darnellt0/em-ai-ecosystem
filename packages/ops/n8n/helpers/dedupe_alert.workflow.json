@@ -1,0 +1,107 @@
+{
+  "name": "Helper: Dedupe Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Helper: Dedupe Alert\n\n**Purpose**: Prevent alert spam by deduplicating based on cooldown period\n\n**Inputs**:\n- key: string (unique identifier for this alert type)\n- cooldownMinutes: number (minutes before same alert can be sent again)\n- messageHash: optional string (for content-based deduping)\n\n**Required Env Vars**:\n- EM_WATCHDOG_COOLDOWN_MINUTES (default 60)\n\n**Implementation**: Uses n8n workflow static data for persistence\n\n**Outputs**:\n- shouldSend: boolean\n- lastSent: string (ISO timestamp) or null",
+        "height": 400,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 80]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "key",
+              "name": "key",
+              "type": "string",
+              "value": "={{ $json.key || 'default' }}"
+            },
+            {
+              "id": "cooldown",
+              "name": "cooldownMinutes",
+              "type": "number",
+              "value": "={{ $json.cooldownMinutes || Number($env.EM_WATCHDOG_COOLDOWN_MINUTES) || 60 }}"
+            },
+            {
+              "id": "now",
+              "name": "now",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "id": "static-data",
+              "name": "staticData",
+              "type": "object",
+              "value": "={{ $workflow.staticData }}"
+            }
+          ]
+        }
+      },
+      "id": "prepare-check",
+      "name": "Prepare Check",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const key = $input.item.json.key;\nconst cooldownMinutes = $input.item.json.cooldownMinutes;\nconst now = new Date($input.item.json.now);\nconst staticData = $workflow.staticData;\n\n// Initialize alerts object if not present\nif (!staticData.alerts) {\n  staticData.alerts = {};\n}\n\nconst lastSentStr = staticData.alerts[key];\nlet shouldSend = true;\nlet lastSent = null;\n\nif (lastSentStr) {\n  const lastSentTime = new Date(lastSentStr);\n  const minutesSince = (now - lastSentTime) / 1000 / 60;\n  \n  if (minutesSince < cooldownMinutes) {\n    shouldSend = false;\n  }\n  lastSent = lastSentStr;\n}\n\n// Update last sent time if we're sending\nif (shouldSend) {\n  staticData.alerts[key] = now.toISOString();\n}\n\nreturn {\n  shouldSend,\n  lastSent,\n  key,\n  cooldownMinutes,\n  now: now.toISOString()\n};"
+      },
+      "id": "check-cooldown",
+      "name": "Check Cooldown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Check": {
+      "main": [
+        [
+          {
+            "node": "Check Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "alerts": {}
+  },
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

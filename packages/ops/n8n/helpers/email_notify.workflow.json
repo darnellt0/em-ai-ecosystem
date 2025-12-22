@@ -1,178 +1,142 @@
 {
-  "name": "Email Notify Helper",
-  "versionId": "8d1798d2-db9b-45c5-b300-3361af2aca24",
+  "name": "Helper: Email Notify",
   "nodes": [
     {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
-      "name": "Email Notify Trigger",
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.1,
-      "position": [100, 300]
+      "typeVersion": 1,
+      "position": [640, 300]
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "content": "## Helper: Email Notify\n\n**Purpose**: Send email notifications via Gmail with environment prefixes\n\n**Inputs**:\n- to: email address or comma-separated list\n- subject: email subject (prefix added automatically)\n- text: plain text body\n- html: optional HTML body\n\n**Required Env Vars**:\n- EM_ALERT_EMAIL_TO or EM_DAILY_BRIEF_EMAIL_TO (fallback for 'to')\n- EM_N8N_ENV (local|staging|prod) - adds [LOCAL], [STAGING], [PROD] prefix\n- EM_EMAIL_FROM_NAME (optional)\n\n**Required Credentials**:\n- Gmail OAuth2\n\n**Outputs**:\n- sent: true\n- to: recipient\n- subject: final subject with prefix",
+        "height": 420,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 80]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
             {
-              "name": "title",
-              "value": "{{ $json.title || 'Notification' }}"
+              "id": "env-prefix",
+              "name": "envPrefix",
+              "type": "string",
+              "value": "={{ $env.EM_N8N_ENV === 'prod' ? '[PROD] ' : ($env.EM_N8N_ENV === 'staging' ? '[STAGING] ' : '[LOCAL] ') }}"
             },
             {
-              "name": "message",
-              "value": "{{ $json.message || '' }}"
-            }
-          ],
-          "json": [
+              "id": "final-subject",
+              "name": "finalSubject",
+              "type": "string",
+              "value": "={{ $json.envPrefix + ($json.subject || 'EM-AI Notification') }}"
+            },
             {
-              "name": "meta",
-              "value": "{{ $json.meta || {} }}"
+              "id": "final-to",
+              "name": "finalTo",
+              "type": "string",
+              "value": "={{ $json.to || $env.EM_ALERT_EMAIL_TO || $env.EM_DAILY_BRIEF_EMAIL_TO || 'CONFIGURE_EMAIL@example.com' }}"
+            },
+            {
+              "id": "final-text",
+              "name": "finalText",
+              "type": "string",
+              "value": "={{ $json.text || '' }}"
+            },
+            {
+              "id": "final-html",
+              "name": "finalHtml",
+              "type": "string",
+              "value": "={{ $json.html || '' }}"
             }
           ]
         }
       },
-      "name": "Normalize Payload",
+      "id": "prepare-email",
+      "name": "Prepare Email",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [320, 300]
+      "typeVersion": 3.4,
+      "position": [840, 300]
     },
     {
       "parameters": {
-        "conditions": {
-          "options": [
-            {
-              "condition": "equal",
-              "value1": "{{ ($env.EM_ALERT_EMAIL_TO || '').includes('@') ? 'true' : 'false' }}",
-              "value2": "true"
-            }
-          ]
-        }
-      },
-      "name": "Email Config?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [540, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
         "resource": "message",
         "operation": "send",
-        "sendTo": "{{ $env.EM_ALERT_EMAIL_TO }}",
-        "subject": "{{ '[' + ($env.EM_N8N_ENV || 'local') + '] ' + $json.title }}",
-        "emailType": "text",
-        "message": "{{ $json.message }}{{ $json.meta && Object.keys($json.meta).length ? '\n\nMeta: ' + JSON.stringify($json.meta) : '' }}"
+        "sendTo": "={{ $json.finalTo }}",
+        "subject": "={{ $json.finalSubject }}",
+        "emailType": "={{ $json.finalHtml ? 'html' : 'text' }}",
+        "message": "={{ $json.finalHtml || $json.finalText }}",
+        "options": {
+          "appendAttribution": false
+        }
       },
+      "id": "send-email",
       "name": "Send Email",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [760, 220],
-      "continueOnFail": true
+      "position": [1040, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
-              "name": "title",
-              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+              "id": "sent",
+              "name": "sent",
+              "type": "boolean",
+              "value": true
             },
             {
-              "name": "message",
-              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
-            }
-          ],
-          "json": [
+              "id": "to",
+              "name": "to",
+              "type": "string",
+              "value": "={{ $('Prepare Email').item.json.finalTo }}"
+            },
             {
-              "name": "meta",
-              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
-            }
-          ],
-          "boolean": [
-            {
-              "name": "notified",
-              "value": "{{ $json.id ? true : false }}"
+              "id": "subject",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $('Prepare Email').item.json.finalSubject }}"
             }
           ]
         }
       },
-      "name": "Mark Notified",
+      "id": "format-output",
+      "name": "Format Output",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [980, 220]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
-            {
-              "name": "title",
-              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
-            },
-            {
-              "name": "message",
-              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
-            }
-          ],
-          "json": [
-            {
-              "name": "meta",
-              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
-            }
-          ],
-          "boolean": [
-            {
-              "name": "notified",
-              "value": false
-            }
-          ]
-        }
-      },
-      "name": "Noop Return",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [760, 380]
+      "typeVersion": 3.4,
+      "position": [1240, 300]
     }
   ],
   "connections": {
-    "Email Notify Trigger": {
+    "Execute Workflow Trigger": {
       "main": [
         [
           {
-            "node": "Normalize Payload",
+            "node": "Prepare Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Normalize Payload": {
-      "main": [
-        [
-          {
-            "node": "Email Config?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email Config?": {
+    "Prepare Email": {
       "main": [
         [
           {
             "node": "Send Email",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Noop Return",
             "type": "main",
             "index": 0
           }
@@ -183,7 +147,7 @@
       "main": [
         [
           {
-            "node": "Mark Notified",
+            "node": "Format Output",
             "type": "main",
             "index": 0
           }
@@ -191,8 +155,13 @@
       ]
     }
   },
-  "active": false,
-  "settings": {},
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null,
-  "description": "Helper workflow: sends an email notification when configured and returns notified=true/false."
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
 }

@@ -1,0 +1,69 @@
+{
+  "name": "Email Agent - Finance & Billing",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 240]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {},
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the Finance & Billing Assistant. Your role is to review and summarize financial emails and extract key billing details.\n\nYou MUST output ONLY valid JSON matching this exact schema:\n{\n  \"category\": \"finance\",\n  \"action\": \"draft\",\n  \"notify\": true,\n  \"label\": \"Admin/Finance\",\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"summary\": \"string\",\n  \"recommendation\": null,\n  \"confidence\": 0.0,\n  \"extracted\": {\n    \"name\": \"string|null\",\n    \"email\": \"string|null\",\n    \"company\": \"string|null\",\n    \"phone\": null,\n    \"invoice_number\": \"string|null\",\n    \"amount\": \"string|null\",\n    \"due_date\": \"string|null\"\n  },\n  \"meta\": {\n    \"messageId\": \"={{ $json.id }}\",\n    \"threadId\": \"={{ $json.threadId }}\",\n    \"from\": \"={{ $json.from }}\",\n    \"to\": \"={{ $json.to }}\",\n    \"receivedAt\": \"={{ $json.receivedAt }}\",\n    \"rawSubject\": \"={{ $json.subject }}\"\n  }\n}\n\nGuidelines:\n- Extract: sender name/company, invoice number, amount, due date\n- Provide a clear summary of the financial document\n- Default to action=\"draft\" and notify=true\n- Never mention Slack or Telegram\n- If details are missing or unclear, state that in the summary\n- Use professional, precise tone\n- If not a valid invoice/billing document, state that clearly"
+            },
+            {
+              "role": "user",
+              "content": "Email Subject: ={{ $json.subject }}\nEmail From: ={{ $json.from }}\nEmail Body: ={{ $json.text }}"
+            }
+          ]
+        },
+        "jsonOutput": true
+      },
+      "id": "finance-llm",
+      "name": "Process Finance Email",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [840, 240],
+      "credentials": {
+        "openAiApi": {
+          "id": "OpenAi account",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Process Finance Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

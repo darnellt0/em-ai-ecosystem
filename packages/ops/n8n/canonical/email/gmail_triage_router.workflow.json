@@ -1,0 +1,779 @@
+{
+  "name": "Gmail Triage Router",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [640, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email-id",
+              "name": "id",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "email-threadId",
+              "name": "threadId",
+              "type": "string",
+              "value": "={{ $json.threadId }}"
+            },
+            {
+              "id": "email-from",
+              "name": "from",
+              "type": "string",
+              "value": "={{ $json.from.value[0].address }}"
+            },
+            {
+              "id": "email-to",
+              "name": "to",
+              "type": "string",
+              "value": "={{ $json.to.value[0].address }}"
+            },
+            {
+              "id": "email-subject",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $json.headers.subject }}"
+            },
+            {
+              "id": "email-text",
+              "name": "text",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "id": "email-html",
+              "name": "html",
+              "type": "string",
+              "value": "={{ $json.html }}"
+            },
+            {
+              "id": "email-receivedAt",
+              "name": "receivedAt",
+              "type": "string",
+              "value": "={{ $json.headers.date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalize-email",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.from }}\n{{ $json.subject }}\n{{ $json.text }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "internal",
+              "description": "Emails from employees or internal team members. Keywords: request, inquiry, support, question, follow-up, feedback"
+            },
+            {
+              "category": "support",
+              "description": "Emails related to customer support, service requests, feedback, support tickets. Keywords: request, inquiry, support, question, follow-up, feedback"
+            },
+            {
+              "category": "promotions",
+              "description": "Marketing campaigns, promotional offers, newsletters. Keywords: newsletter, promotion, offer, sale, campaign, marketing, launch"
+            },
+            {
+              "category": "finance",
+              "description": "Admin or financial matters: invoices, billing, payments, receipts. Keywords: invoice, payment, billing, receipt, financial, expense, account"
+            },
+            {
+              "category": "sales",
+              "description": "Sales opportunities, service inquiries, pricing requests, referrals. Keywords: interested, pricing, quote, demo, partner"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "text-classifier",
+      "name": "Classify Email",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [1040, 400]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "openai-chat-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [1040, 600],
+      "credentials": {
+        "openAiApi": {
+          "id": "OpenAi account",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "switch-internal",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "internal"
+            }
+          ]
+        }
+      },
+      "id": "switch-node",
+      "name": "Route by Category",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "labelIds": [
+          "Label_Internal"
+        ]
+      },
+      "id": "label-internal",
+      "name": "Label: Internal",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "labelIds": [
+          "Label_CustomerSupport"
+        ]
+      },
+      "id": "label-support",
+      "name": "Label: Customer Support",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, 350],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "labelIds": [
+          "Label_Promotions"
+        ]
+      },
+      "id": "label-promotions",
+      "name": "Label: Promotions",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, 500],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "labelIds": [
+          "Label_Finance"
+        ]
+      },
+      "id": "label-finance",
+      "name": "Label: Finance",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, 650],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "labelIds": [
+          "Label_Sales"
+        ]
+      },
+      "id": "label-sales",
+      "name": "Label: Sales",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1440, 800],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Agent - Internal' }}",
+        "fieldsUi": {
+          "values": []
+        }
+      },
+      "id": "exec-internal",
+      "name": "Execute: Internal Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Agent - Customer Support' }}",
+        "fieldsUi": {
+          "values": []
+        }
+      },
+      "id": "exec-support",
+      "name": "Execute: Support Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 350]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Agent - Promotions' }}",
+        "fieldsUi": {
+          "values": []
+        }
+      },
+      "id": "exec-promotions",
+      "name": "Execute: Promotions Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Agent - Finance & Billing' }}",
+        "fieldsUi": {
+          "values": []
+        }
+      },
+      "id": "exec-finance",
+      "name": "Execute: Finance Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 650]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Agent - Sales' }}",
+        "fieldsUi": {
+          "values": []
+        }
+      },
+      "id": "exec-sales",
+      "name": "Execute: Sales Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-action-draft",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "draft"
+            }
+          ]
+        }
+      },
+      "id": "if-draft",
+      "name": "If Action: Draft",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1840, 200]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "sendTo": "={{ $('Normalize Email').item.json.from }}",
+          "appendAttribution": false
+        }
+      },
+      "id": "create-draft",
+      "name": "Create Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2040, 100],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Normalize Email').item.json.id }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-reply",
+      "name": "Send Gmail Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2040, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-notify",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.notify }}"
+            }
+          ]
+        }
+      },
+      "id": "if-notify",
+      "name": "If Notify",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2240, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Email Notify Helper' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "subject",
+              "value": "={{ 'New ' + $json.category + ' email: ' + $json.meta.rawSubject }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ 'Category: ' + $json.label + '\\n\\nFrom: ' + $json.meta.from + '\\n\\nSubject: ' + $json.meta.rawSubject + '\\n\\nSummary: ' + $json.summary + '\\n\\nAction: ' + $json.action }}"
+            }
+          ]
+        }
+      },
+      "id": "exec-notify",
+      "name": "Execute: Email Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2440, 100]
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Normalize Email').item.json.id }}"
+      },
+      "id": "mark-read",
+      "name": "Mark as Read",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2640, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail OAuth2",
+          "name": "Gmail OAuth2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email": {
+      "main": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Category": {
+      "main": [
+        [
+          {
+            "node": "Label: Internal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Customer Support",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Promotions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Finance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Internal": {
+      "main": [
+        [
+          {
+            "node": "Execute: Internal Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Customer Support": {
+      "main": [
+        [
+          {
+            "node": "Execute: Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Promotions": {
+      "main": [
+        [
+          {
+            "node": "Execute: Promotions Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Finance": {
+      "main": [
+        [
+          {
+            "node": "Execute: Finance Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Sales": {
+      "main": [
+        [
+          {
+            "node": "Execute: Sales Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: Internal Agent": {
+      "main": [
+        [
+          {
+            "node": "If Action: Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: Support Agent": {
+      "main": [
+        [
+          {
+            "node": "If Action: Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: Promotions Agent": {
+      "main": [
+        [
+          {
+            "node": "If Action: Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: Finance Agent": {
+      "main": [
+        [
+          {
+            "node": "If Action: Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: Sales Agent": {
+      "main": [
+        [
+          {
+            "node": "If Action: Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Action: Draft": {
+      "main": [
+        [
+          {
+            "node": "Create Gmail Draft",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Gmail Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "Mark as Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Reply": {
+      "main": [
+        [
+          {
+            "node": "Mark as Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Notify": {
+      "main": [
+        [
+          {
+            "node": "Execute: Email Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Execute: Email Notify": {
+      "main": [
+        [
+          {
+            "node": "Mark as Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}
