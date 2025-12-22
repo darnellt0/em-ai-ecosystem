@@ -1,0 +1,216 @@
+{
+  "name": "Voice API Failure → Incident + Apology",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-failure-hook",
+        "httpMethod": "POST"
+      },
+      "name": "Failure Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "voice-failure-webhook-id"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "notEqual",
+              "value1": "{{ $env.SLACK_WEBHOOK_URL }}",
+              "value2": ""
+            }
+          ]
+        }
+      },
+      "name": "Slack Config?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "Voice API error: {{ $json.humanSummary || 'Unknown error' }} (endpoint: {{ $json.endpoint }})"
+            }
+          ]
+        }
+      },
+      "name": "Notify Slack (Optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [520, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ $json.body?.status || $json.status }}",
+              "value2": "ok"
+            }
+          ]
+        }
+      },
+      "name": "Check Slack Posted",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 220]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.API_BASE_URL }}/api/voice/support/follow-up",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.VOICE_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"subject\": \"Follow-up: Voice API Issue\",\n  \"dueISO\": \"{{ new Date(Date.now() + 3600000).toISOString() }}\",\n  \"context\": \"Error during voice command execution: {{ $json.humanSummary }}. Issue has been logged and escalated.\",\n  \"founder\": \"{{ $json.founder || 'shria' }}\"\n}"
+      },
+      "name": "Create Follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 250]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"incidentId\": \"{{ $json.body?.id || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "name": "Respond with Apology",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "note",
+              "value": "Slack webhook not configured; skipped notification."
+            }
+          ]
+        }
+      },
+      "name": "Noop Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [520, 380]
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"An error occurred while processing your request. We are investigating.\"\n}"
+      },
+      "name": "Respond Fallback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1140, 450]
+    }
+  ],
+  "connections": {
+    "Failure Webhook": {
+      "main": [
+        [
+          {
+            "node": "Slack Config?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Config?": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack (Optional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Noop Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack (Optional)": {
+      "main": [
+        [
+          {
+            "node": "Check Slack Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Slack Posted": {
+      "main": [
+        [
+          {
+            "node": "Create Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Noop Log": {
+      "main": [
+        [
+          {
+            "node": "Create Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Respond with Apology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "staticData": null,
+  "description": "Handles voice API failures: logs incident, creates follow-up reminder, and responds with empathetic apology message to user."
+}
