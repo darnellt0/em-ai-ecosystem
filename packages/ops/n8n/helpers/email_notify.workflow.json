@@ -1,12 +1,12 @@
 {
-  "name": "Slack Notify Helper",
-  "versionId": "48b33886-ba11-4e61-a44f-c995425df240",
+  "name": "Email Notify Helper",
+  "versionId": "8d1798d2-db9b-45c5-b300-3361af2aca24",
   "nodes": [
     {
       "parameters": {
         "inputSource": "passthrough"
       },
-      "name": "Slack Notify Trigger",
+      "name": "Email Notify Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [100, 300]
@@ -44,38 +44,32 @@
           "options": [
             {
               "condition": "equal",
-              "value1": "{{ ($env.SLACK_WEBHOOK_URL || '').startsWith('http') ? 'true' : 'false' }}",
+              "value1": "{{ ($env.EM_ALERT_EMAIL_TO || '').includes('@') ? 'true' : 'false' }}",
               "value2": "true"
             }
           ]
         }
       },
-      "name": "Slack Config?",
+      "name": "Email Config?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [540, 300]
     },
     {
       "parameters": {
-        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
-        "method": "POST",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "body": "{\n  \"text\": \"{{ $json.title }} - {{ $json.message }}{{ $json.meta && Object.keys($json.meta).length ? ' | meta: ' + JSON.stringify($json.meta) : '' }}\"\n}",
-        "responseFormat": "string",
-        "fullResponse": true
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "{{ $env.EM_ALERT_EMAIL_TO }}",
+        "subject": "{{ '[' + ($env.EM_N8N_ENV || 'local') + '] ' + $json.title }}",
+        "emailType": "text",
+        "message": "{{ $json.message }}{{ $json.meta && Object.keys($json.meta).length ? '\n\nMeta: ' + JSON.stringify($json.meta) : '' }}"
       },
-      "name": "Notify Slack",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [760, 220]
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [760, 220],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -100,7 +94,7 @@
           "boolean": [
             {
               "name": "notified",
-              "value": true
+              "value": "{{ $json.id ? true : false }}"
             }
           ]
         }
@@ -145,7 +139,7 @@
     }
   ],
   "connections": {
-    "Slack Notify Trigger": {
+    "Email Notify Trigger": {
       "main": [
         [
           {
@@ -160,18 +154,18 @@
       "main": [
         [
           {
-            "node": "Slack Config?",
+            "node": "Email Config?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Config?": {
+    "Email Config?": {
       "main": [
         [
           {
-            "node": "Notify Slack",
+            "node": "Send Email",
             "type": "main",
             "index": 0
           }
@@ -185,7 +179,7 @@
         ]
       ]
     },
-    "Notify Slack": {
+    "Send Email": {
       "main": [
         [
           {
@@ -200,5 +194,5 @@
   "active": false,
   "settings": {},
   "staticData": null,
-  "description": "Helper workflow: posts a Slack notification when configured and returns notified=true/false."
+  "description": "Helper workflow: sends an email notification when configured and returns notified=true/false."
 }

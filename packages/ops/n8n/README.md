@@ -8,18 +8,19 @@ Legacy copies also exist under `documentation/integrations/n8n` for historical d
 
 - `canonical/api_failure_incident_apology.json`
   - Trigger: Webhook (`POST /webhook/voice-failure-hook`)
-  - Calls: Execute Workflow -> `helpers/slack_notify.json` (initial failure + follow-up result)
+  - Calls: Execute Workflow -> `helpers/email_notify.workflow.json` (initial failure + follow-up result)
   - Calls: `POST {{$env.API_BASE_URL}}/api/voice/support/follow-up`
-  - Requires: `API_BASE_URL`, optional `SLACK_WEBHOOK_URL`
+  - Requires: `API_BASE_URL`, `EM_ALERT_EMAIL_TO`, `EM_N8N_ENV`
   - Notes: If your API requires auth, pass `voiceApiToken` in the webhook payload.
 
 ## Helpers
 
-- `helpers/slack_notify.json`
+- `helpers/email_notify.workflow.json`
   - Trigger: Execute Workflow (sub-workflow)
   - Reads: `title`, `message`, `meta`
-  - Posts: Slack webhook via `{{$env.SLACK_WEBHOOK_URL}}` when configured
-  - Noops when Slack URL is missing or not http; returns `notified=true/false`
+  - Sends: Gmail email to `{{$env.EM_ALERT_EMAIL_TO}}`
+  - Noops when `EM_ALERT_EMAIL_TO` is missing or invalid; returns `notified=true/false`
+  - Requires: Gmail credentials configured in n8n (OAuth2 recommended)
 
 ## Other Workflows
 
@@ -27,14 +28,15 @@ Legacy copies also exist under `documentation/integrations/n8n` for historical d
   - Trigger: Webhook (`POST /webhook/voice-hook`)
   - Calls: `POST {{$env.API_BASE_URL}}/api/voice/{{ $json.endpoint }}`
   - Calls: `POST {{$env.DASHBOARD_BASE_URL}}/api/ingest`
-  - Requires: `API_BASE_URL`, `DASHBOARD_BASE_URL`
+  - Requires: `VOICE_API_TOKEN`, `API_BASE_URL`, `DASHBOARD_BASE_URL`
 
 - `p0_daily_focus_to_p1_action_pack.json`
   - Trigger: Cron (weekday mornings)
   - Calls: `POST {{$env.API_BASE_URL}}/api/exec-admin/p0/daily-focus`
   - Calls: `POST {{$env.API_BASE_URL}}/api/exec-admin/p1/execute-action-pack`
   - Calls: `GET {{$env.API_BASE_URL}}/em-ai/exec-admin/p0/runs/{{runId}}`
-  - Requires: `API_BASE_URL`, optional `SLACK_WEBHOOK_URL`, optional `P0_USER_ID`
+  - Calls: Execute Workflow -> `helpers/email_notify.workflow.json` (run status)
+  - Requires: `API_BASE_URL`, `EM_ALERT_EMAIL_TO`, optional `P0_USER_ID`
 
 All workflows are **inactive** by default on import.
 
@@ -45,8 +47,12 @@ All workflows are **inactive** by default on import.
 3) Import helper workflows from `packages/ops/n8n/helpers`
 4) Import canonical workflows from `packages/ops/n8n/canonical`
 5) Import other workflows from `packages/ops/n8n`
-6) Open each canonical workflow and select the `Slack Notify Helper` in Execute Workflow nodes (if not auto-selected)
+6) Open workflows that use Execute Workflow and select the `Email Notify Helper` (if not auto-selected)
 7) Confirm the workflows stay inactive
+
+## Migration Note
+
+- If you previously imported `slack_notify`, delete it in n8n. All notifications are email-only now.
 
 ## API Base URL (Host vs Docker)
 
@@ -57,7 +63,9 @@ All workflows are **inactive** by default on import.
 Set these in n8n:
 - `API_BASE_URL`
 - `DASHBOARD_BASE_URL` (if using the dashboard ingest node)
-- `SLACK_WEBHOOK_URL` (optional)
+- `VOICE_API_TOKEN` (for Voice API workflows)
+- `EM_ALERT_EMAIL_TO` (comma-separated)
+- `EM_N8N_ENV` (`local`, `staging`, or `prod`)
 - `P0_USER_ID` (optional, defaults to `local-dev`)
 
 ## First-Run Checklist
