@@ -88,25 +88,6 @@ export async function runP0DailyFocusExecAdmin(req: P0DailyFocusRequest) {
       }
     }
 
-    // Update run record
-    await updateP0Run(runRecord.runId, {
-      status: qa.blocked ? 'blocked' : 'complete',
-      finishedAt: new Date().toISOString(),
-      qaPassed: qa.passed,
-      qaBlocked: qa.blocked,
-      evalStatus: { status: qa.status, passed: qa.passed, blocked: qa.blocked, reasons: qa.reasons },
-      inputSnapshot,
-      outputSnapshot: {
-        focus: data?.focus,
-        insights: data?.insights,
-        actions: data?.actions,
-        qaStatus,
-        confidenceScore: data?.confidenceScore,
-      },
-      actionPackSummary: data?.focus || 'Daily Focus generated',
-      kind: 'p0.daily_focus',
-    });
-
     const safeActionPack = {
       version: 'p0.v1',
       date,
@@ -120,6 +101,26 @@ export async function runP0DailyFocusExecAdmin(req: P0DailyFocusRequest) {
       safeNextSteps: qa.blocked ? ['Review QA issues', 'Retry with lighter mode'] : undefined,
       ...data?.actionPack,
     };
+
+    // Update run record (include action pack for downstream execution)
+    await updateP0Run(runRecord.runId, {
+      status: qa.blocked ? 'blocked' : 'complete',
+      finishedAt: new Date().toISOString(),
+      qaPassed: qa.passed,
+      qaBlocked: qa.blocked,
+      evalStatus: { status: qa.status, passed: qa.passed, blocked: qa.blocked, reasons: qa.reasons },
+      inputSnapshot,
+      outputSnapshot: {
+        focus: data?.focus,
+        insights: data?.insights,
+        actions: data?.actions,
+        qaStatus,
+        confidenceScore: data?.confidenceScore,
+        actionPack: safeActionPack,
+      },
+      actionPackSummary: data?.focus || 'Daily Focus generated',
+      kind: 'p0.daily_focus',
+    });
 
     logger.info('[ExecAdmin] p0.daily_focus complete', { runId: runRecord.runId, qaStatus });
 

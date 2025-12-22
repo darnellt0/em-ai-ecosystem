@@ -153,6 +153,9 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - NODE_ENV=production
+      - API_BASE_URL=http://host.docker.internal:3000
+      - DASHBOARD_BASE_URL=http://host.docker.internal:3001
+      - SLACK_WEBHOOK_URL=   # optional
     volumes:
       - n8n_data:/home/node/.n8n
     networks:

@@ -1,7 +1,7 @@
 import { runP0DailyFocusExecAdmin } from '../src/exec-admin/flows/p0-daily-focus';
 import { getP0Run } from '../src/services/p0RunHistory.service';
 
-const publishActionPackWebhook = jest.fn().mockResolvedValue(undefined);
+const mockPublishActionPackWebhook = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../agents/daily-brief/adapter', () => ({
   runDailyBriefAdapter: jest.fn().mockResolvedValue({
@@ -54,13 +54,15 @@ jest.mock('../../agents/content-synthesizer/adapter', () => ({
 }));
 
 jest.mock('../src/actions/actionpack.webhook', () => ({
-  publishActionPackWebhook: (...args: any[]) => publishActionPackWebhook(...args),
+  publishActionPackWebhook: jest.fn(function () {
+    return mockPublishActionPackWebhook.apply(this, arguments);
+  }),
 }));
 
 describe('P0 Golden Path evals', () => {
   beforeEach(() => {
     process.env.ENABLE_ACTIONPACK_WEBHOOK = 'false';
-    publishActionPackWebhook.mockClear();
+    mockPublishActionPackWebhook.mockClear();
   });
 
   it('runs P0 Daily Focus end-to-end with required outputs', async () => {
@@ -80,6 +82,6 @@ describe('P0 Golden Path evals', () => {
     expect(stored?.inputSnapshot).toMatchObject({ userId: 'founder@example.com', mode: 'founder' });
     expect(stored?.outputSnapshot?.focus).toBeDefined();
     expect(stored?.evalStatus?.status).toBeDefined();
-    expect(publishActionPackWebhook).toHaveBeenCalledTimes(1);
+    expect(mockPublishActionPackWebhook).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,0 +1,198 @@
+{
+  "name": "Email Notify Helper",
+  "versionId": "8d1798d2-db9b-45c5-b300-3361af2aca24",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "name": "Email Notify Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $json.title || 'Notification' }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $json.message || '' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $json.meta || {} }}"
+            }
+          ]
+        }
+      },
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ ($env.EM_ALERT_EMAIL_TO || '').includes('@') ? 'true' : 'false' }}",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Email Config?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "{{ $env.EM_ALERT_EMAIL_TO }}",
+        "subject": "{{ '[' + ($env.EM_N8N_ENV || 'local') + '] ' + $json.title }}",
+        "emailType": "text",
+        "message": "{{ $json.message }}{{ $json.meta && Object.keys($json.meta).length ? '\n\nMeta: ' + JSON.stringify($json.meta) : '' }}"
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [760, 220],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "notified",
+              "value": "{{ $json.id ? true : false }}"
+            }
+          ]
+        }
+      },
+      "name": "Mark Notified",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [980, 220]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "notified",
+              "value": false
+            }
+          ]
+        }
+      },
+      "name": "Noop Return",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [760, 380]
+    }
+  ],
+  "connections": {
+    "Email Notify Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Email Config?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Config?": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Noop Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Notified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "staticData": null,
+  "description": "Helper workflow: sends an email notification when configured and returns notified=true/false."
+}

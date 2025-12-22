@@ -33,6 +33,8 @@ import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
 import { scheduleDailyBriefCron } from './schedules/daily-brief.schedule';
 import p0DailyBriefRouter from './routes/p0-daily-brief.routes';
+import p0DailyFocusRouter from './routes/p0-daily-focus.routes';
+import p1ActionPackRouter from './routes/p1-action-pack.routes';
 import { performHealthCheck } from './services/health.service';
 
 // Initialize Sentry after env is loaded
@@ -307,7 +309,11 @@ app.use('/api/orchestrator', orchestratorRouter);
  */
 app.use('/', emAiExecAdminRouter);
 app.use('/', p0DailyBriefRouter);
+// P0 Golden Path — do not modify without rerunning p0-golden-path.eval.ts
+app.use(p0DailyFocusRouter);
+console.log('[Routes] mounted p0DailyFocusRouter -> POST /api/exec-admin/p0/daily-focus');
 app.use('/', p0RunsRouter);
+app.use(p1ActionPackRouter);
 
 /**
  * Serve growth agents monitoring UI (only if dashboard is enabled)
@@ -484,9 +490,11 @@ app.use((req: Request, res: Response) => {
       '/api/config',
       '/api/executions',
       '/api/dashboard',
+      '/api/exec-admin/p0/daily-focus',
       '/api/exec-admin/p0/journal/run',
       '/api/exec-admin/p0/journal/runs',
       '/api/exec-admin/p0/journal/runs/:runId',
+      '/api/exec-admin/p1/execute-action-pack',
       '/api/voice/scheduler/block',
       '/api/voice/scheduler/confirm',
       '/api/voice/scheduler/reschedule',
@@ -540,52 +548,56 @@ if (!registryValidation.valid) {
   console.log('✅ Agent registry validation passed');
 }
 
-const server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
-  console.log('\n✅ Elevated Movements AI Ecosystem API Server');
-  console.log(`   Port: ${PORT}`);
-  console.log(`   Environment: ${NODE_ENV}`);
-  console.log(`   Status: Running\n`);
-  console.log(`📊 DASHBOARD ENDPOINTS:`);
-  console.log(`   GET /health                        - Health check`);
-  console.log(`   GET /api/agents                    - List all agents`);
-  console.log(`   GET /api/agents/status             - Agent status`);
-  console.log(`   GET /api/config                    - Configuration`);
-  console.log(`   GET /api/executions                - Recent executions`);
-  console.log(`   GET /api/dashboard                 - Dashboard data\n`);
-  console.log(`🎤 VOICE API ENDPOINTS (Phase Voice-0):`);
-  console.log(`   POST /api/voice/scheduler/block         - Block focus time`);
-  console.log(`   POST /api/voice/scheduler/confirm       - Confirm meeting`);
-  console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
-  console.log(`   POST /api/voice/coach/pause             - Start meditation`);
-  console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
-  console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
-});
+let server: ReturnType<typeof app.listen> | null = null;
 
-if (!(global as any).__VOICE_WSS_INITIALIZED__) {
-  initVoiceRealtimeWSS(server);
-  (global as any).__VOICE_WSS_INITIALIZED__ = true;
+if (NODE_ENV !== 'test') {
+  server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
+    console.log('\n✅ Elevated Movements AI Ecosystem API Server');
+    console.log(`   Port: ${PORT}`);
+    console.log(`   Environment: ${NODE_ENV}`);
+    console.log(`   Status: Running\n`);
+    console.log(`📊 DASHBOARD ENDPOINTS:`);
+    console.log(`   GET /health                        - Health check`);
+    console.log(`   GET /api/agents                    - List all agents`);
+    console.log(`   GET /api/agents/status             - Agent status`);
+    console.log(`   GET /api/config                    - Configuration`);
+    console.log(`   GET /api/executions                - Recent executions`);
+    console.log(`   GET /api/dashboard                 - Dashboard data\n`);
+    console.log(`🎤 VOICE API ENDPOINTS (Phase Voice-0):`);
+    console.log(`   POST /api/voice/scheduler/block         - Block focus time`);
+    console.log(`   POST /api/voice/scheduler/confirm       - Confirm meeting`);
+    console.log(`   POST /api/voice/scheduler/reschedule    - Reschedule event`);
+    console.log(`   POST /api/voice/coach/pause             - Start meditation`);
+    console.log(`   POST /api/voice/support/log-complete    - Mark task done`);
+    console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
+  });
+
+  if (!(global as any).__VOICE_WSS_INITIALIZED__) {
+    initVoiceRealtimeWSS(server);
+    (global as any).__VOICE_WSS_INITIALIZED__ = true;
+  }
+
+  // Start Daily Brief cron schedules (PT)
+  scheduleDailyBriefCron();
+
+  // Graceful shutdown with Sentry flush
+  process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    server?.close(async () => {
+      await flushSentry();
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('SIGINT received, shutting down gracefully...');
+    server?.close(async () => {
+      await flushSentry();
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
 }
-
-// Start Daily Brief cron schedules (PT)
-scheduleDailyBriefCron();
-
-// Graceful shutdown with Sentry flush
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  server.close(async () => {
-    await flushSentry();
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  server.close(async () => {
-    await flushSentry();
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
 
 export default app;

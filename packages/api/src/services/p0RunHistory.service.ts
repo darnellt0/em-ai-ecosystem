@@ -26,6 +26,21 @@ export interface P0RunRecord {
   outputSnapshot?: unknown;
   actionPackSummary?: string;
   artifact?: unknown;
+  p1ExecutionResults?: {
+    success: boolean;
+    results: unknown[];
+    executedAt: string;
+    actions?: Record<
+      string,
+      {
+        status: 'success' | 'failed' | 'partial';
+        executedAt: string;
+        resultsCount: number;
+        lastResult?: unknown;
+        skippedAt?: string;
+      }
+    >;
+  };
   error?: string;
 }
 
@@ -86,7 +101,14 @@ async function getRunRedis(runId: string): Promise<P0RunRecord | null> {
   const redis = ensureRedis();
   if (!redis) return null;
   const raw = await redis.get(keyRun(runId));
-  return raw ? (JSON.parse(raw) as P0RunRecord) : null;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as P0RunRecord;
+    if (!parsed || typeof parsed !== 'object' || !('runId' in parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 async function listRunsRedis(founderEmail: string, limit: number): Promise<P0RunRecord[]> {

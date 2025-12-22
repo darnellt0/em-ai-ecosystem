@@ -1,0 +1,231 @@
+{
+  "name": "P0 Daily Focus - P1 Action Pack",
+  "versionId": "9da19f33-4965-4cb3-953f-72551f487627",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyWeek",
+              "hour": 8,
+              "minute": 30,
+              "weekday": "MON"
+            },
+            {
+              "mode": "everyWeek",
+              "hour": 8,
+              "minute": 30,
+              "weekday": "TUE"
+            },
+            {
+              "mode": "everyWeek",
+              "hour": 8,
+              "minute": 30,
+              "weekday": "WED"
+            },
+            {
+              "mode": "everyWeek",
+              "hour": 8,
+              "minute": 30,
+              "weekday": "THU"
+            },
+            {
+              "mode": "everyWeek",
+              "hour": 8,
+              "minute": 30,
+              "weekday": "FRI"
+            }
+          ]
+        }
+      },
+      "name": "Weekday Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.API_BASE_URL }}/api/exec-admin/p0/daily-focus",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"userId\": \"{{ $env.P0_USER_ID || 'local-dev' }}\",\n  \"force\": false\n}"
+      },
+      "name": "Start P0 Daily Focus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "runId",
+              "value": "{{ $json.runId || $json.data?.runId }}"
+            }
+          ]
+        }
+      },
+      "name": "Extract runId",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.API_BASE_URL }}/api/exec-admin/p1/execute-action-pack",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"userId\": \"{{ $env.P0_USER_ID || 'local-dev' }}\",\n  \"runId\": \"{{ $json.runId }}\",\n  \"force\": false\n}"
+      },
+      "name": "Execute P1 Action Pack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.API_BASE_URL }}/em-ai/exec-admin/p0/runs/{{ $json.runId }}",
+        "method": "GET"
+      },
+      "name": "Fetch Run Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "P0 to P1 Run Status"
+            },
+            {
+              "name": "message",
+              "value": "Run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ { runId: $json.run?.runId || $json.runId, status: $json.run?.status || 'unknown' } }}"
+            }
+          ]
+        }
+      },
+      "name": "Email Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Email Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1420, 300],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Weekday Cron": {
+      "main": [
+        [
+          {
+            "node": "Start P0 Daily Focus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start P0 Daily Focus": {
+      "main": [
+        [
+          {
+            "node": "Extract runId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract runId": {
+      "main": [
+        [
+          {
+            "node": "Execute P1 Action Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute P1 Action Pack": {
+      "main": [
+        [
+          {
+            "node": "Fetch Run Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Run Status": {
+      "main": [
+        [
+          {
+            "node": "Email Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Payload": {
+      "main": [
+        [
+          {
+            "node": "Email Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "description": "Weekday cron trigger: P0 Daily Focus -> P1 execute action pack -> fetch run status -> email notify."
+}
