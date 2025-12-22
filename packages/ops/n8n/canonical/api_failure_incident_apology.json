@@ -35,7 +35,7 @@
           ]
         }
       },
-      "name": "Normalize Slack Payload",
+      "name": "Normalize Email Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [320, 300]
@@ -43,13 +43,13 @@
     {
       "parameters": {
         "source": "database",
-        "workflowId": "SLACK_NOTIFY_HELPER_ID",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
         "mode": "once",
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "name": "Slack Notify (Failure)",
+      "name": "Email Notify (Failure)",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [540, 300],
@@ -119,7 +119,7 @@
           ]
         }
       },
-      "name": "Slack Payload (Success)",
+      "name": "Email Payload (Success)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [1200, 220]
@@ -127,13 +127,13 @@
     {
       "parameters": {
         "source": "database",
-        "workflowId": "SLACK_NOTIFY_HELPER_ID",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
         "mode": "once",
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "name": "Slack Notify (Success)",
+      "name": "Email Notify (Success)",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [1420, 220],
@@ -171,7 +171,7 @@
           ]
         }
       },
-      "name": "Slack Payload (Failure)",
+      "name": "Email Payload (Failure)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [1200, 380]
@@ -179,13 +179,13 @@
     {
       "parameters": {
         "source": "database",
-        "workflowId": "SLACK_NOTIFY_HELPER_ID",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
         "mode": "once",
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "name": "Slack Notify (Failure Follow-up)",
+      "name": "Email Notify (Failure Follow-up)",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [1420, 380],
@@ -207,25 +207,25 @@
       "main": [
         [
           {
-            "node": "Normalize Slack Payload",
+            "node": "Normalize Email Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Normalize Slack Payload": {
+    "Normalize Email Payload": {
       "main": [
         [
           {
-            "node": "Slack Notify (Failure)",
+            "node": "Email Notify (Failure)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Notify (Failure)": {
+    "Email Notify (Failure)": {
       "main": [
         [
           {
@@ -251,32 +251,32 @@
       "main": [
         [
           {
-            "node": "Slack Payload (Success)",
+            "node": "Email Payload (Success)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Slack Payload (Failure)",
+            "node": "Email Payload (Failure)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Payload (Success)": {
+    "Email Payload (Success)": {
       "main": [
         [
           {
-            "node": "Slack Notify (Success)",
+            "node": "Email Notify (Success)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Notify (Success)": {
+    "Email Notify (Success)": {
       "main": [
         [
           {
@@ -287,18 +287,18 @@
         ]
       ]
     },
-    "Slack Payload (Failure)": {
+    "Email Payload (Failure)": {
       "main": [
         [
           {
-            "node": "Slack Notify (Failure Follow-up)",
+            "node": "Email Notify (Failure Follow-up)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Notify (Failure Follow-up)": {
+    "Email Notify (Failure Follow-up)": {
       "main": [
         [
           {
@@ -313,5 +313,5 @@
   "active": false,
   "settings": {},
   "staticData": null,
-  "description": "Handles voice API failures by delegating Slack notifications to a helper, creating follow-ups, and responding with an apology."
+  "description": "Handles voice API failures by delegating email notifications to a helper, creating follow-ups, and responding with an apology."
 }

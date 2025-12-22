@@ -1,6 +1,6 @@
 {
-  "name": "Voice API Failure → Incident + Apology",
-  "versionId": "c6688d25-0c9e-4097-9629-875e8a73b312",
+  "name": "Voice API Failure - Incident + Apology",
+  "versionId": "c1c6f890-6924-4b02-baec-aebfce0c3a94",
   "nodes": [
     {
       "parameters": {
@@ -15,59 +15,45 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": [
+        "keepOnlySet": true,
+        "values": {
+          "string": [
             {
-              "condition": "notEqual",
-              "value1": "{{ $env.SLACK_WEBHOOK_URL }}",
-              "value2": ""
+              "name": "title",
+              "value": "Voice API Failure"
+            },
+            {
+              "name": "message",
+              "value": "{{ $json.humanSummary || 'Unknown voice API error' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ { endpoint: $json.endpoint, requestId: $json.requestId, founder: $json.founder } }}"
             }
           ]
         }
       },
-      "name": "Slack Config?",
-      "type": "n8n-nodes-base.if",
+      "name": "Normalize Email Payload",
+      "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [300, 300]
+      "position": [320, 300]
     },
     {
       "parameters": {
-        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
-        "method": "POST",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "body": "{\n  \"text\": \"Voice API error: {{ $json.humanSummary || 'Unknown error' }} (endpoint: {{ $json.endpoint }})\"\n}",
-        "responseFormat": "string",
-        "fullResponse": true
-      },
-      "name": "Notify Slack (Optional)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [520, 220]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": [
-            {
-              "condition": "equal",
-              "value1": "{{ $json.body }}",
-              "value2": "ok"
-            }
-          ]
+        "source": "database",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
         }
       },
-      "name": "Check Slack Posted",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [720, 220]
+      "name": "Email Notify (Failure)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [540, 300],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -77,7 +63,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ $env.VOICE_API_TOKEN }}"
+              "value": "Bearer {{ $node[\"Failure Webhook\"].json.voiceApiToken || '' }}"
             },
             {
               "name": "Content-Type",
@@ -86,22 +72,30 @@
           ]
         },
         "sendBody": true,
-        "body": "{\n  \"subject\": \"Follow-up: Voice API Issue\",\n  \"dueISO\": \"{{ new Date(Date.now() + 3600000).toISOString() }}\",\n  \"context\": \"Error during voice command execution: {{ $json.humanSummary }}. Issue has been logged and escalated.\",\n  \"founder\": \"{{ $json.founder || 'shria' }}\"\n}"
+        "body": "{\n  \"subject\": \"Follow-up: Voice API Issue\",\n  \"dueISO\": \"{{ new Date(Date.now() + 3600000).toISOString() }}\",\n  \"context\": \"Error during voice command execution: {{ $node[\"Failure Webhook\"].json.humanSummary || 'Unknown error' }}. Issue has been logged and escalated.\",\n  \"founder\": \"{{ $node[\"Failure Webhook\"].json.founder || 'shria' }}\"\n}"
       },
       "name": "Create Follow-up",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [920, 250]
+      "position": [760, 300],
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "respondWithData": true,
-        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"followUpStatus\": \"{{ $json.status || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ $json.status }}",
+              "value2": "ok"
+            }
+          ]
+        }
       },
-      "name": "Respond with Apology",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1140, 300]
+      "name": "Follow-up OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [980, 300]
     },
     {
       "parameters": {
@@ -109,26 +103,103 @@
         "values": {
           "string": [
             {
-              "name": "note",
-              "value": "Slack webhook not configured; skipped notification."
+              "name": "title",
+              "value": "Follow-up Created"
+            },
+            {
+              "name": "message",
+              "value": "{{ $json.humanSummary || 'Follow-up created.' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ { status: $json.status, taskId: $json.data?.taskId, followUpSubject: $json.data?.followUpSubject } }}"
             }
           ]
         }
       },
-      "name": "Noop Log",
+      "name": "Email Payload (Success)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [520, 380]
+      "position": [1200, 220]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Email Notify (Success)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1420, 220],
+      "continueOnFail": true
     },
     {
       "parameters": {
         "respondWithData": true,
-        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"An error occurred while processing your request. We are investigating.\"\n}"
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"followUpStatus\": \"{{ $node[\"Create Follow-up\"].json.status || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "name": "Respond with Apology",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 220]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "Follow-up Failed"
+            },
+            {
+              "name": "message",
+              "value": "{{ $json.humanSummary || $json.error?.message || 'Follow-up failed.' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ { status: $json.status || 'error' } }}"
+            }
+          ]
+        }
+      },
+      "name": "Email Payload (Failure)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1200, 380]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Email Notify (Failure Follow-up)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1420, 380],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWithData": true,
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"An error occurred while processing your request. We are investigating.\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
       },
       "name": "Respond Fallback",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1140, 450]
+      "position": [1640, 380]
     }
   ],
   "connections": {
@@ -136,61 +207,25 @@
       "main": [
         [
           {
-            "node": "Slack Config?",
+            "node": "Normalize Email Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Config?": {
+    "Normalize Email Payload": {
       "main": [
         [
           {
-            "node": "Notify Slack (Optional)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Noop Log",
+            "node": "Email Notify (Failure)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Notify Slack (Optional)": {
-      "main": [
-        [
-          {
-            "node": "Check Slack Posted",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Slack Posted": {
-      "main": [
-        [
-          {
-            "node": "Create Follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Fallback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Noop Log": {
+    "Email Notify (Failure)": {
       "main": [
         [
           {
@@ -205,7 +240,69 @@
       "main": [
         [
           {
+            "node": "Follow-up OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up OK?": {
+      "main": [
+        [
+          {
+            "node": "Email Payload (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Payload (Failure)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Payload (Success)": {
+      "main": [
+        [
+          {
+            "node": "Email Notify (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Notify (Success)": {
+      "main": [
+        [
+          {
             "node": "Respond with Apology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Payload (Failure)": {
+      "main": [
+        [
+          {
+            "node": "Email Notify (Failure Follow-up)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Notify (Failure Follow-up)": {
+      "main": [
+        [
+          {
+            "node": "Respond Fallback",
             "type": "main",
             "index": 0
           }
@@ -216,5 +313,5 @@
   "active": false,
   "settings": {},
   "staticData": null,
-  "description": "Handles voice API failures: logs incident, creates follow-up reminder, and responds with empathetic apology message to user."
+  "description": "Handles voice API failures by delegating email notifications to a helper, creating follow-ups, and responding with an apology."
 }

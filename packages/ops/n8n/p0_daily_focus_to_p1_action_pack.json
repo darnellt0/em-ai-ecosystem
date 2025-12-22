@@ -1,5 +1,5 @@
 {
-  "name": "P0 Daily Focus → P1 Action Pack",
+  "name": "P0 Daily Focus - P1 Action Pack",
   "versionId": "9da19f33-4965-4cb3-953f-72551f487627",
   "nodes": [
     {
@@ -113,60 +113,45 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": [
-            {
-              "condition": "notEqual",
-              "value1": "{{ $env.SLACK_WEBHOOK_URL }}",
-              "value2": ""
-            }
-          ]
-        }
-      },
-      "name": "Slack Config?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1180, 300]
-    },
-    {
-      "parameters": {
-        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
-        "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "P0→P1 run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
-            }
-          ]
-        }
-      },
-      "name": "Notify Slack (Optional)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1400, 220]
-    },
-    {
-      "parameters": {
         "keepOnlySet": true,
         "values": {
           "string": [
             {
-              "name": "runId",
-              "value": "{{ $json.run?.runId || $json.runId }}"
+              "name": "title",
+              "value": "P0 to P1 Run Status"
             },
             {
-              "name": "status",
-              "value": "{{ $json.run?.status || 'unknown' }}"
+              "name": "message",
+              "value": "Run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ { runId: $json.run?.runId || $json.runId, status: $json.run?.status || 'unknown' } }}"
             }
           ]
         }
       },
-      "name": "Noop Log",
+      "name": "Email Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [1400, 380]
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Email Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1420, 300],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -218,25 +203,18 @@
       "main": [
         [
           {
-            "node": "Slack Config?",
+            "node": "Email Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Config?": {
+    "Email Payload": {
       "main": [
         [
           {
-            "node": "Notify Slack (Optional)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Noop Log",
+            "node": "Email Notify",
             "type": "main",
             "index": 0
           }
@@ -249,5 +227,5 @@
     "timezone": "America/Los_Angeles"
   },
   "staticData": null,
-  "description": "Weekday cron trigger: P0 Daily Focus → P1 execute action pack → fetch run status → notify/log."
+  "description": "Weekday cron trigger: P0 Daily Focus -> P1 execute action pack -> fetch run status -> email notify."
 }
