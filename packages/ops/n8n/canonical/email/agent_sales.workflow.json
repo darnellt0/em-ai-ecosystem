@@ -1,0 +1,69 @@
+{
+  "name": "Email Agent - Sales",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 240]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {},
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the Sales Agent. Your role is to professionally handle sales inquiries and extract lead information.\n\nYou MUST output ONLY valid JSON matching this exact schema:\n{\n  \"category\": \"sales\",\n  \"action\": \"draft\",\n  \"notify\": true,\n  \"label\": \"Sales Opportunity\",\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"summary\": \"string\",\n  \"recommendation\": null,\n  \"confidence\": 0.0,\n  \"extracted\": {\n    \"name\": \"string|null\",\n    \"email\": \"string|null\",\n    \"company\": \"string|null\",\n    \"phone\": \"string|null\",\n    \"invoice_number\": null,\n    \"amount\": null,\n    \"due_date\": null\n  },\n  \"meta\": {\n    \"messageId\": \"={{ $json.id }}\",\n    \"threadId\": \"={{ $json.threadId }}\",\n    \"from\": \"={{ $json.from }}\",\n    \"to\": \"={{ $json.to }}\",\n    \"receivedAt\": \"={{ $json.receivedAt }}\",\n    \"rawSubject\": \"={{ $json.subject }}\"\n  }\n}\n\nGuidelines:\n- Extract: lead name, email, company, phone number\n- Draft a warm, professional, and confident response\n- Provide a concise summary of the sales inquiry\n- Default to action=\"draft\" and notify=true\n- Never mention Slack or Telegram\n- Include relevant details in the response\n- If key contact information is missing, note it in the summary\n- End with a professional closing and clear call-to-action"
+            },
+            {
+              "role": "user",
+              "content": "Email Subject: ={{ $json.subject }}\nEmail From: ={{ $json.from }}\nEmail Body: ={{ $json.text }}"
+            }
+          ]
+        },
+        "jsonOutput": true
+      },
+      "id": "sales-llm",
+      "name": "Process Sales Email",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [840, 240],
+      "credentials": {
+        "openAiApi": {
+          "id": "OpenAi account",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Process Sales Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,69 @@
+{
+  "name": "Email Agent - Internal",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 240]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {},
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the Internal Email Assistant. Your role is to handle internal team emails professionally.\n\nYou MUST output ONLY valid JSON matching this exact schema:\n{\n  \"category\": \"internal\",\n  \"action\": \"draft\",\n  \"notify\": true,\n  \"label\": \"Internal\",\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"summary\": \"string|null\",\n  \"recommendation\": null,\n  \"confidence\": 0.0,\n  \"extracted\": {\n    \"name\": \"string|null\",\n    \"email\": \"string|null\",\n    \"company\": null,\n    \"phone\": \"string|null\",\n    \"invoice_number\": null,\n    \"amount\": null,\n    \"due_date\": null\n  },\n  \"meta\": {\n    \"messageId\": \"={{ $json.id }}\",\n    \"threadId\": \"={{ $json.threadId }}\",\n    \"from\": \"={{ $json.from }}\",\n    \"to\": \"={{ $json.to }}\",\n    \"receivedAt\": \"={{ $json.receivedAt }}\",\n    \"rawSubject\": \"={{ $json.subject }}\"\n  }\n}\n\nGuidelines:\n- Be professional and warm\n- Use bullet points for clarity\n- Keep responses short and actionable\n- Default to action=\"draft\" and notify=true\n- Never mention Slack or Telegram\n- Extract sender name and email from the email content\n- If you cannot find required information, state it clearly in the body\n- End with a professional closing"
+            },
+            {
+              "role": "user",
+              "content": "Email Subject: ={{ $json.subject }}\nEmail From: ={{ $json.from }}\nEmail Body: ={{ $json.text }}"
+            }
+          ]
+        },
+        "jsonOutput": true
+      },
+      "id": "internal-llm",
+      "name": "Process Internal Email",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [840, 240],
+      "credentials": {
+        "openAiApi": {
+          "id": "OpenAi account",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Process Internal Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}
