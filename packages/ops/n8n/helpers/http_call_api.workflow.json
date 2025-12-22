@@ -1,0 +1,169 @@
+{
+  "name": "Helper: HTTP Call API",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Helper: HTTP Call API\n\n**Purpose**: Make HTTP calls to EM-AI API with consistent error handling\n\n**Inputs**:\n- method: GET|POST|PUT|DELETE\n- urlPath: /api/... (relative path)\n- headers: optional object\n- query: optional object\n- body: optional object\n- timeoutMs: optional number (default 30000)\n\n**Required Env Vars**:\n- EM_API_BASE_URL\n\n**Outputs**:\n- ok: boolean\n- status: number\n- data: any\n- error: string (if failed)\n- url: string (full URL called)",
+        "height": 360,
+        "width": 420
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 100]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "build-url",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $env.EM_API_BASE_URL?.replace(/\\/$/, '') + '/' + ($json.urlPath || '').replace(/^\\//, '') }}"
+            },
+            {
+              "id": "method",
+              "name": "method",
+              "type": "string",
+              "value": "={{ $json.method || 'GET' }}"
+            },
+            {
+              "id": "timeout",
+              "name": "timeoutMs",
+              "type": "number",
+              "value": "={{ $json.timeoutMs || 30000 }}"
+            }
+          ]
+        }
+      },
+      "id": "prepare-request",
+      "name": "Prepare Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": "={{ Object.entries($('Execute Workflow Trigger').item.json.headers || {}).map(([name, value]) => ({ name, value })) }}"
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": "={{ Object.entries($('Execute Workflow Trigger').item.json.query || {}).map(([name, value]) => ({ name, value })) }}"
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Execute Workflow Trigger').item.json.body || {}) }}",
+        "options": {
+          "timeout": "={{ $json.timeoutMs }}"
+        }
+      },
+      "id": "http-request",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "type": "boolean",
+              "value": "={{ $json.statusCode >= 200 && $json.statusCode < 300 }}"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "type": "number",
+              "value": "={{ $json.statusCode || 0 }}"
+            },
+            {
+              "id": "data",
+              "name": "data",
+              "type": "object",
+              "value": "={{ $json.body || {} }}"
+            },
+            {
+              "id": "url",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $('Prepare Request').item.json.url }}"
+            },
+            {
+              "id": "error",
+              "name": "error",
+              "type": "string",
+              "value": "={{ $json.error?.message || ($json.statusCode >= 400 ? 'HTTP ' + $json.statusCode : '') }}"
+            }
+          ]
+        }
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1240, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}

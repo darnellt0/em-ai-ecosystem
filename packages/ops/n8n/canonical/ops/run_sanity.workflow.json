@@ -1,0 +1,453 @@
+{
+  "name": "Ops: Run Sanity Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "interval-trigger",
+      "name": "Interval Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [640, 400],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Ops: Run Sanity Check\n\n**Purpose**: Detect stuck runs or missing finalization\n\n**Schedule**: Every 15 minutes\n**Status**: DISABLED by default - activate after import\n\n**Required Env Vars**:\n- EM_API_BASE_URL\n- EM_ALERT_EMAIL_TO\n- EM_N8N_ENV\n- EM_WATCHDOG_COOLDOWN_MINUTES (default 60)\n\n**What it does**:\n1. Calls GET /em-ai/exec-admin/p0/runs?limit=20\n2. Checks for runs in 'running' state >30 min old\n3. If found: sends alert (dedupe 60min)\n4. If recovered: sends recovery alert (once)\n\n**How to test**:\n1. Ensure API is running\n2. Click 'Execute workflow' button\n3. Should see no alerts if all runs healthy",
+        "height": 500,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 120]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: HTTP Call API' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "method",
+              "value": "GET"
+            },
+            {
+              "name": "urlPath",
+              "value": "/em-ai/exec-admin/p0/runs"
+            },
+            {
+              "name": "query",
+              "value": "={{ { limit: 20 } }}"
+            }
+          ]
+        }
+      },
+      "id": "get-runs",
+      "name": "Get Recent Runs",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json;\nconst ok = response.ok;\nconst runs = response.data?.runs || [];\nconst STUCK_THRESHOLD_MINUTES = 30;\n\nif (!ok) {\n  return {\n    healthy: false,\n    error: response.error || 'Failed to fetch runs',\n    stuckRuns: [],\n    details: `API error: ${response.error}`\n  };\n}\n\nconst now = new Date();\nconst stuckRuns = runs.filter(run => {\n  if (run.status !== 'running' && run.status !== 'pending') {\n    return false;\n  }\n  \n  const startedAt = new Date(run.startedAt || run.createdAt);\n  const minutesRunning = (now - startedAt) / 1000 / 60;\n  \n  return minutesRunning > STUCK_THRESHOLD_MINUTES;\n});\n\nconst healthy = stuckRuns.length === 0;\n\nconst details = stuckRuns.length > 0\n  ? `Found ${stuckRuns.length} stuck run(s):\\n\\n` +\n    stuckRuns.map(r => \n      `- Run ${r.runId} (${r.kind || 'unknown'}): ${r.status}, started ${new Date(r.startedAt || r.createdAt).toISOString()}`\n    ).join('\\n')\n  : '';\n\nreturn {\n  healthy,\n  stuckRuns: stuckRuns.map(r => r.runId),\n  stuckCount: stuckRuns.length,\n  details,\n  error: healthy ? '' : 'Stuck runs detected'\n};"
+      },
+      "id": "analyze-runs",
+      "name": "Analyze Runs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-healthy",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.healthy }}"
+            }
+          ]
+        }
+      },
+      "id": "check-healthy",
+      "name": "Check Healthy",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Dedupe Alert' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "key",
+              "value": "run-sanity-recovered"
+            },
+            {
+              "name": "cooldownMinutes",
+              "value": 60
+            }
+          ]
+        }
+      },
+      "id": "check-recovery-dedupe",
+      "name": "Check Recovery Dedupe",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "should-send-recovery",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.shouldSend }}"
+            }
+          ]
+        }
+      },
+      "id": "if-send-recovery",
+      "name": "If Send Recovery",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Format Health Email' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "checkName",
+              "value": "Run Sanity Check"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('Get Recent Runs').item.json.url }}"
+            },
+            {
+              "name": "status",
+              "value": 200
+            },
+            {
+              "name": "error",
+              "value": ""
+            },
+            {
+              "name": "observedAt",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "recovered",
+              "value": true
+            }
+          ]
+        }
+      },
+      "id": "format-recovery",
+      "name": "Format Recovery Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1840, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Email Notify' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "to",
+              "value": "={{ $env.EM_ALERT_EMAIL_TO }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            }
+          ]
+        }
+      },
+      "id": "send-recovery",
+      "name": "Send Recovery Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2040, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Format Health Email' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "checkName",
+              "value": "Run Sanity Check"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('Get Recent Runs').item.json.url }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $('Get Recent Runs').item.json.status }}"
+            },
+            {
+              "name": "error",
+              "value": "={{ $('Analyze Runs').item.json.error }}"
+            },
+            {
+              "name": "details",
+              "value": "={{ $('Analyze Runs').item.json.details }}"
+            },
+            {
+              "name": "observedAt",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "format-failure",
+      "name": "Format Failure Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 500]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Dedupe Alert' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "key",
+              "value": "run-sanity"
+            }
+          ]
+        }
+      },
+      "id": "check-failure-dedupe",
+      "name": "Check Failure Dedupe",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "should-send-failure",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "leftValue": "={{ $json.shouldSend }}"
+            }
+          ]
+        }
+      },
+      "id": "if-send-failure",
+      "name": "If Send Failure",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1840, 500]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ 'Helper: Email Notify' }}",
+        "fieldsUi": {
+          "values": [
+            {
+              "name": "to",
+              "value": "={{ $env.EM_ALERT_EMAIL_TO }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $('Format Failure Email').item.json.subject }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Format Failure Email').item.json.text }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $('Format Failure Email').item.json.html }}"
+            }
+          ]
+        }
+      },
+      "id": "send-failure",
+      "name": "Send Failure Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2040, 500]
+    }
+  ],
+  "connections": {
+    "Interval Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Runs": {
+      "main": [
+        [
+          {
+            "node": "Analyze Runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Runs": {
+      "main": [
+        [
+          {
+            "node": "Check Healthy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Healthy": {
+      "main": [
+        [
+          {
+            "node": "Check Recovery Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Failure Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Recovery Dedupe": {
+      "main": [
+        [
+          {
+            "node": "If Send Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Send Recovery": {
+      "main": [
+        [
+          {
+            "node": "Format Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Format Recovery Email": {
+      "main": [
+        [
+          {
+            "node": "Send Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Failure Email": {
+      "main": [
+        [
+          {
+            "node": "Check Failure Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Failure Dedupe": {
+      "main": [
+        [
+          {
+            "node": "If Send Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Send Failure": {
+      "main": [
+        [
+          {
+            "node": "Send Failure Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "versionId": "1"
+}
