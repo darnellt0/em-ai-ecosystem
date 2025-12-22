@@ -1,0 +1,204 @@
+{
+  "name": "Slack Notify Helper",
+  "versionId": "48b33886-ba11-4e61-a44f-c995425df240",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "name": "Slack Notify Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $json.title || 'Notification' }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $json.message || '' }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $json.meta || {} }}"
+            }
+          ]
+        }
+      },
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "condition": "equal",
+              "value1": "{{ ($env.SLACK_WEBHOOK_URL || '').startsWith('http') ? 'true' : 'false' }}",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Slack Config?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
+        "method": "POST",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "body": "{\n  \"text\": \"{{ $json.title }} - {{ $json.message }}{{ $json.meta && Object.keys($json.meta).length ? ' | meta: ' + JSON.stringify($json.meta) : '' }}\"\n}",
+        "responseFormat": "string",
+        "fullResponse": true
+      },
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [760, 220]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "notified",
+              "value": true
+            }
+          ]
+        }
+      },
+      "name": "Mark Notified",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [980, 220]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
+            }
+          ],
+          "json": [
+            {
+              "name": "meta",
+              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "notified",
+              "value": false
+            }
+          ]
+        }
+      },
+      "name": "Noop Return",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [760, 380]
+    }
+  ],
+  "connections": {
+    "Slack Notify Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Slack Config?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Config?": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Noop Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack": {
+      "main": [
+        [
+          {
+            "node": "Mark Notified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "staticData": null,
+  "description": "Helper workflow: posts a Slack notification when configured and returns notified=true/false."
+}
