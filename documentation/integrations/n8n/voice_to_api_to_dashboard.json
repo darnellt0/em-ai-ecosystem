@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "url": "http://api:3000/api/voice/{{ $json.endpoint }}",
+        "url": "{{ $env.API_BASE_URL }}/api/voice/{{ $json.endpoint }}",
         "method": "POST",
         "headerParameters": {
           "parameters": [
@@ -138,7 +138,7 @@
     },
     {
       "parameters": {
-        "url": "http://dashboard:8080/api/ingest",
+        "url": "{{ $env.DASHBOARD_BASE_URL }}/api/ingest",
         "method": "POST",
         "headerParameters": {
           "parameters": [
@@ -230,7 +230,7 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {},
   "staticData": null,
   "description": "Receives voice commands via webhook, routes to appropriate Voice API endpoint, ingests result to dashboard, and responds with human-friendly summary."

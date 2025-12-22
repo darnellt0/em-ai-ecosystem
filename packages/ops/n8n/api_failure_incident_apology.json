@@ -33,15 +33,18 @@
       "parameters": {
         "url": "{{ $env.SLACK_WEBHOOK_URL }}",
         "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
+        "headerParameters": {
           "parameters": [
             {
-              "name": "text",
-              "value": "Voice API error: {{ $json.humanSummary || 'Unknown error' }} (endpoint: {{ $json.endpoint }})"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "body": "{\n  \"text\": \"Voice API error: {{ $json.humanSummary || 'Unknown error' }} (endpoint: {{ $json.endpoint }})\"\n}",
+        "responseFormat": "string",
+        "fullResponse": true
       },
       "name": "Notify Slack (Optional)",
       "type": "n8n-nodes-base.httpRequest",
@@ -54,7 +57,7 @@
           "options": [
             {
               "condition": "equal",
-              "value1": "{{ $json.body?.status || $json.status }}",
+              "value1": "{{ $json.body }}",
               "value2": "ok"
             }
           ]
@@ -92,7 +95,7 @@
     {
       "parameters": {
         "respondWithData": true,
-        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"incidentId\": \"{{ $json.body?.id || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"followUpStatus\": \"{{ $json.status || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
       },
       "name": "Respond with Apology",
       "type": "n8n-nodes-base.respondToWebhook",
