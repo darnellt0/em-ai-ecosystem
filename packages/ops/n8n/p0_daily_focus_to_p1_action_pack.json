@@ -4,50 +4,27 @@
   "nodes": [
     {
       "parameters": {
-        "triggerTimes": {
-          "item": [
+        "rule": {
+          "interval": [
             {
-              "mode": "everyWeek",
-              "hour": 8,
-              "minute": 30,
-              "weekday": "MON"
-            },
-            {
-              "mode": "everyWeek",
-              "hour": 8,
-              "minute": 30,
-              "weekday": "TUE"
-            },
-            {
-              "mode": "everyWeek",
-              "hour": 8,
-              "minute": 30,
-              "weekday": "WED"
-            },
-            {
-              "mode": "everyWeek",
-              "hour": 8,
-              "minute": 30,
-              "weekday": "THU"
-            },
-            {
-              "mode": "everyWeek",
-              "hour": 8,
-              "minute": 30,
-              "weekday": "FRI"
+              "field": "cronExpression",
+              "expression": "30 8 * * 1-5"
             }
           ]
         }
       },
+      "id": "weekday-cron",
       "name": "Weekday Cron",
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [100, 300]
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300],
+      "disabled": true
     },
     {
       "parameters": {
-        "url": "{{ $env.API_BASE_URL }}/api/exec-admin/p0/daily-focus",
+        "url": "={{ $env.EM_API_BASE_URL || $env.API_BASE_URL }}/api/exec-admin/p0/daily-focus",
         "method": "POST",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -57,34 +34,39 @@
           ]
         },
         "sendBody": true,
-        "body": "{\n  \"userId\": \"{{ $env.P0_USER_ID || 'local-dev' }}\",\n  \"force\": false\n}"
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  userId: $env.P0_USER_ID || 'local-dev',\n  force: false\n} }}"
       },
+      "id": "start-p0-daily-focus",
       "name": "Start P0 Daily Focus",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
+      "typeVersion": 4.2,
       "position": [320, 300]
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
+              "id": "extract-runid",
               "name": "runId",
-              "value": "{{ $json.runId || $json.data?.runId }}"
+              "type": "string",
+              "value": "={{ $json.runId || $json.data?.runId }}"
             }
           ]
         }
       },
+      "id": "extract-runid",
       "name": "Extract runId",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.4,
       "position": [540, 300]
     },
     {
       "parameters": {
-        "url": "{{ $env.API_BASE_URL }}/api/exec-admin/p1/execute-action-pack",
+        "url": "={{ $env.EM_API_BASE_URL || $env.API_BASE_URL }}/api/exec-admin/p1/execute-action-pack",
         "method": "POST",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -94,79 +76,55 @@
           ]
         },
         "sendBody": true,
-        "body": "{\n  \"userId\": \"{{ $env.P0_USER_ID || 'local-dev' }}\",\n  \"runId\": \"{{ $json.runId }}\",\n  \"force\": false\n}"
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  userId: $env.P0_USER_ID || 'local-dev',\n  runId: $json.runId,\n  force: false\n} }}"
       },
+      "id": "execute-p1-action-pack",
       "name": "Execute P1 Action Pack",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
+      "typeVersion": 4.2,
       "position": [760, 300]
     },
     {
       "parameters": {
-        "url": "{{ $env.API_BASE_URL }}/em-ai/exec-admin/p0/runs/{{ $json.runId }}",
+        "url": "={{ ($env.EM_API_BASE_URL || $env.API_BASE_URL) + '/em-ai/exec-admin/p0/runs/' + $('Extract runId').item.json.runId }}",
         "method": "GET"
       },
+      "id": "fetch-run-status",
       "name": "Fetch Run Status",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
+      "typeVersion": 4.2,
       "position": [980, 300]
     },
     {
       "parameters": {
-        "conditions": {
-          "options": [
+        "workflowId": "={{ 'Helper: Email Notify' }}",
+        "fieldsUi": {
+          "values": [
             {
-              "condition": "notEqual",
-              "value1": "{{ $env.SLACK_WEBHOOK_URL }}",
-              "value2": ""
-            }
-          ]
-        }
-      },
-      "name": "Slack Config?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1180, 300]
-    },
-    {
-      "parameters": {
-        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
-        "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "P0→P1 run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
-            }
-          ]
-        }
-      },
-      "name": "Notify Slack (Optional)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1400, 220]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
-            {
-              "name": "runId",
-              "value": "{{ $json.run?.runId || $json.runId }}"
+              "name": "to",
+              "value": "={{ $env.EM_DAILY_BRIEF_EMAIL_TO || $env.EM_ALERT_EMAIL_TO }}"
             },
             {
-              "name": "status",
-              "value": "{{ $json.run?.status || 'unknown' }}"
+              "name": "subject",
+              "value": "P0→P1 Daily Run Complete"
+            },
+            {
+              "name": "text",
+              "value": "=P0 Daily Focus and P1 Action Pack execution completed.\n\nRun ID: {{ $json.run?.runId || $json.runId || 'unknown' }}\nStatus: {{ $json.run?.status || 'unknown' }}\nUser: {{ $env.P0_USER_ID || 'local-dev' }}\nTimestamp: {{ $now.toISO() }}"
+            },
+            {
+              "name": "html",
+              "value": "=<h2>✅ P0→P1 Daily Run Complete</h2>\n<p><strong>Run ID:</strong> <code>{{ $json.run?.runId || $json.runId || 'unknown' }}</code></p>\n<p><strong>Status:</strong> {{ $json.run?.status || 'unknown' }}</p>\n<p><strong>User:</strong> {{ $env.P0_USER_ID || 'local-dev' }}</p>\n<p><strong>Timestamp:</strong> {{ $now.toISO() }}</p>"
             }
           ]
         }
       },
-      "name": "Noop Log",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [1400, 380]
+      "id": "send-completion-email",
+      "name": "Send Completion Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1180, 300]
     }
   ],
   "connections": {
@@ -218,25 +176,7 @@
       "main": [
         [
           {
-            "node": "Slack Config?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Slack Config?": {
-      "main": [
-        [
-          {
-            "node": "Notify Slack (Optional)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Noop Log",
+            "node": "Send Completion Email",
             "type": "main",
             "index": 0
           }
@@ -249,5 +189,8 @@
     "timezone": "America/Los_Angeles"
   },
   "staticData": null,
-  "description": "Weekday cron trigger: P0 Daily Focus → P1 execute action pack → fetch run status → notify/log."
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "description": "Weekday cron trigger: P0 Daily Focus → P1 execute action pack → fetch run status → email notification."
 }

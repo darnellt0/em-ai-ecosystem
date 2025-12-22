@@ -42,18 +42,21 @@ Located in `canonical/p0/` and `canonical/ops/`. These orchestrate the business 
 
 - `api_failure_incident_apology.json`
   - Trigger: Webhook (`POST /webhook/voice-failure-hook`)
-  - Calls: Slack webhook via `{{$env.SLACK_WEBHOOK_URL}}` (optional)
+  - Sends: Email alert via `helpers/email_notify.workflow.json`
   - Calls: `POST {{$env.API_BASE_URL}}/api/voice/support/follow-up`
-  - Requires: `VOICE_API_TOKEN`, `API_BASE_URL`, optional `SLACK_WEBHOOK_URL`
+  - Requires: `VOICE_API_TOKEN`, `EM_API_BASE_URL` (or `API_BASE_URL`), `EM_ALERT_EMAIL_TO`
 
 - `p0_daily_focus_to_p1_action_pack.json`
-  - Trigger: Cron (weekday mornings)
+  - Trigger: Cron weekday 8:30 AM Pacific (DISABLED by default)
   - Calls: `POST {{$env.API_BASE_URL}}/api/exec-admin/p0/daily-focus`
   - Calls: `POST {{$env.API_BASE_URL}}/api/exec-admin/p1/execute-action-pack`
   - Calls: `GET {{$env.API_BASE_URL}}/em-ai/exec-admin/p0/runs/{{runId}}`
-  - Requires: `API_BASE_URL`, optional `SLACK_WEBHOOK_URL`, optional `P0_USER_ID`
+  - Sends: Completion email via `helpers/email_notify.workflow.json`
+  - Requires: `EM_API_BASE_URL` (or `API_BASE_URL`), `EM_DAILY_BRIEF_EMAIL_TO`, `P0_USER_ID` (optional)
 
 All workflows are **inactive** by default on import.
+
+**Migration Note**: If you previously imported `slack_notify.json` or `slack_notify.workflow.json`, please delete it from your n8n instance. We now use email-only notifications via `helpers/email_notify.workflow.json`.
 
 ## Import Order
 
@@ -123,7 +126,6 @@ EM_WATCHDOG_COOLDOWN_MINUTES=60  # optional, defaults to 60
 API_BASE_URL=http://host.docker.internal:3000
 DASHBOARD_BASE_URL=http://localhost:3001
 VOICE_API_TOKEN=your-token-here
-SLACK_WEBHOOK_URL=https://hooks.slack.com/...  # optional
 ```
 
 ### 5. Import Workflows

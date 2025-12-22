@@ -7,6 +7,7 @@
         "path": "voice-failure-hook",
         "httpMethod": "POST"
       },
+      "id": "failure-webhook",
       "name": "Failure Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
@@ -15,69 +16,44 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": [
+        "workflowId": "={{ 'Helper: Email Notify' }}",
+        "fieldsUi": {
+          "values": [
             {
-              "condition": "notEqual",
-              "value1": "{{ $env.SLACK_WEBHOOK_URL }}",
-              "value2": ""
+              "name": "to",
+              "value": "={{ $env.EM_ALERT_EMAIL_TO }}"
+            },
+            {
+              "name": "subject",
+              "value": "Voice API Failure Alert"
+            },
+            {
+              "name": "text",
+              "value": "=Voice API error detected:\n\nError: {{ $json.humanSummary || 'Unknown error' }}\nEndpoint: {{ $json.endpoint }}\nFounder: {{ $json.founder || 'unknown' }}\nTimestamp: {{ $now.toISO() }}\n\nA follow-up task has been created."
+            },
+            {
+              "name": "html",
+              "value": "=<h2>🚨 Voice API Failure</h2>\n<p><strong>Error:</strong> {{ $json.humanSummary || 'Unknown error' }}</p>\n<p><strong>Endpoint:</strong> <code>{{ $json.endpoint }}</code></p>\n<p><strong>Founder:</strong> {{ $json.founder || 'unknown' }}</p>\n<p><strong>Timestamp:</strong> {{ $now.toISO() }}</p>\n<p>A follow-up task has been created and will be due in 1 hour.</p>"
             }
           ]
         }
       },
-      "name": "Slack Config?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "id": "send-alert-email",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [300, 300]
     },
     {
       "parameters": {
-        "url": "{{ $env.SLACK_WEBHOOK_URL }}",
+        "url": "={{ $env.EM_API_BASE_URL || $env.API_BASE_URL }}/api/voice/support/follow-up",
         "method": "POST",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "body": "{\n  \"text\": \"Voice API error: {{ $json.humanSummary || 'Unknown error' }} (endpoint: {{ $json.endpoint }})\"\n}",
-        "responseFormat": "string",
-        "fullResponse": true
-      },
-      "name": "Notify Slack (Optional)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [520, 220]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": [
-            {
-              "condition": "equal",
-              "value1": "{{ $json.body }}",
-              "value2": "ok"
-            }
-          ]
-        }
-      },
-      "name": "Check Slack Posted",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [720, 220]
-    },
-    {
-      "parameters": {
-        "url": "{{ $env.API_BASE_URL }}/api/voice/support/follow-up",
-        "method": "POST",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ $env.VOICE_API_TOKEN }}"
+              "value": "={{ 'Bearer ' + $env.VOICE_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -86,49 +62,25 @@
           ]
         },
         "sendBody": true,
-        "body": "{\n  \"subject\": \"Follow-up: Voice API Issue\",\n  \"dueISO\": \"{{ new Date(Date.now() + 3600000).toISOString() }}\",\n  \"context\": \"Error during voice command execution: {{ $json.humanSummary }}. Issue has been logged and escalated.\",\n  \"founder\": \"{{ $json.founder || 'shria' }}\"\n}"
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  subject: 'Follow-up: Voice API Issue',\n  dueISO: $now.plus({hours: 1}).toISO(),\n  context: 'Error during voice command execution: ' + ($('Failure Webhook').item.json.humanSummary || 'Unknown error') + '. Issue has been logged and escalated.',\n  founder: $('Failure Webhook').item.json.founder || 'shria'\n} }}"
       },
+      "id": "create-followup",
       "name": "Create Follow-up",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [920, 250]
+      "typeVersion": 4.2,
+      "position": [500, 300]
     },
     {
       "parameters": {
-        "respondWithData": true,
-        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"I couldn't complete that. I've logged the issue and will follow up shortly.\",\n  \"followUpStatus\": \"{{ $json.status || 'unknown' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+        "respondWith": "json",
+        "responseBody": "={{ {\n  status: 'error',\n  message: 'I couldn\\'t complete that. I\\'ve logged the issue and will follow up shortly.',\n  followUpStatus: $json.statusCode >= 200 && $json.statusCode < 300 ? 'created' : 'failed',\n  timestamp: $now.toISO()\n} }}"
       },
+      "id": "respond-with-apology",
       "name": "Respond with Apology",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1140, 300]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
-            {
-              "name": "note",
-              "value": "Slack webhook not configured; skipped notification."
-            }
-          ]
-        }
-      },
-      "name": "Noop Log",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [520, 380]
-    },
-    {
-      "parameters": {
-        "respondWithData": true,
-        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"An error occurred while processing your request. We are investigating.\"\n}"
-      },
-      "name": "Respond Fallback",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1140, 450]
+      "typeVersion": 1.1,
+      "position": [700, 300]
     }
   ],
   "connections": {
@@ -136,61 +88,14 @@
       "main": [
         [
           {
-            "node": "Slack Config?",
+            "node": "Send Alert Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slack Config?": {
-      "main": [
-        [
-          {
-            "node": "Notify Slack (Optional)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Noop Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notify Slack (Optional)": {
-      "main": [
-        [
-          {
-            "node": "Check Slack Posted",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Slack Posted": {
-      "main": [
-        [
-          {
-            "node": "Create Follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Fallback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Noop Log": {
+    "Send Alert Email": {
       "main": [
         [
           {
@@ -216,5 +121,8 @@
   "active": false,
   "settings": {},
   "staticData": null,
-  "description": "Handles voice API failures: logs incident, creates follow-up reminder, and responds with empathetic apology message to user."
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-21T00:00:00.000Z",
+  "description": "Handles voice API failures: sends email alert, creates follow-up reminder, and responds with empathetic apology message to user."
 }
