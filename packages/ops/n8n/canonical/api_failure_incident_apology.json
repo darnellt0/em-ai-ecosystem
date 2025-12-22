@@ -15,49 +15,40 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
-              "name": "title",
+              "id": "subject",
+              "name": "subject",
+              "type": "string",
               "value": "Voice API Failure"
             },
             {
-              "name": "message",
-              "value": "{{ $json.humanSummary || 'Unknown voice API error' }}"
-            }
-          ],
-          "json": [
-            {
-              "name": "meta",
-              "value": "{{ { endpoint: $json.endpoint, requestId: $json.requestId, founder: $json.founder } }}"
+              "id": "text",
+              "name": "text",
+              "value": "=Voice API error detected:\n\nError: {{ $json.humanSummary || 'Unknown error' }}\nEndpoint: {{ $json.endpoint || 'unknown' }}\nRequest ID: {{ $json.requestId || 'unknown' }}\nFounder: {{ $json.founder || 'unknown' }}\nTimestamp: {{ $now.toISO() }}"
             }
           ]
         }
       },
-      "name": "Normalize Email Payload",
+      "name": "Format Failure Email",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.4,
       "position": [320, 300]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
-        "mode": "once",
-        "options": {
-          "waitForSubWorkflow": true
-        }
+        "workflowId": "={{ 'Helper: Email Notify' }}"
       },
       "name": "Email Notify (Failure)",
       "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [540, 300],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "url": "{{ $env.API_BASE_URL }}/api/voice/support/follow-up",
+        "url": "{{ $env.EM_API_BASE_URL || $env.API_BASE_URL }}/api/voice/support/follow-up",
         "method": "POST",
         "headerParameters": {
           "parameters": [
@@ -99,43 +90,35 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
-              "name": "title",
-              "value": "Follow-up Created"
+              "id": "subject",
+              "name": "subject",
+              "type": "string",
+              "value": "Voice API Follow-up Created"
             },
             {
-              "name": "message",
-              "value": "{{ $json.humanSummary || 'Follow-up created.' }}"
-            }
-          ],
-          "json": [
-            {
-              "name": "meta",
-              "value": "{{ { status: $json.status, taskId: $json.data?.taskId, followUpSubject: $json.data?.followUpSubject } }}"
+              "id": "text",
+              "name": "text",
+              "type": "string",
+              "value": "=Follow-up task created successfully.\n\nStatus: {{ $json.status }}\nTask ID: {{ $json.data?.taskId || 'unknown' }}\nSubject: {{ $json.data?.followUpSubject || 'unknown' }}\nTimestamp: {{ $now.toISO() }}"
             }
           ]
         }
       },
-      "name": "Email Payload (Success)",
+      "name": "Format Success Email",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.4,
       "position": [1200, 220]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
-        "mode": "once",
-        "options": {
-          "waitForSubWorkflow": true
-        }
+        "workflowId": "={{ 'Helper: Email Notify' }}"
       },
       "name": "Email Notify (Success)",
       "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [1420, 220],
       "continueOnFail": true
     },
@@ -151,43 +134,35 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
-              "name": "title",
-              "value": "Follow-up Failed"
+              "id": "subject",
+              "name": "subject",
+              "type": "string",
+              "value": "Voice API Follow-up Failed"
             },
             {
-              "name": "message",
-              "value": "{{ $json.humanSummary || $json.error?.message || 'Follow-up failed.' }}"
-            }
-          ],
-          "json": [
-            {
-              "name": "meta",
-              "value": "{{ { status: $json.status || 'error' } }}"
+              "id": "text",
+              "name": "text",
+              "type": "string",
+              "value": "=Follow-up task creation failed.\n\nError: {{ $json.humanSummary || $json.error?.message || 'Unknown error' }}\nStatus: {{ $json.status || 'error' }}\nTimestamp: {{ $now.toISO() }}"
             }
           ]
         }
       },
-      "name": "Email Payload (Failure)",
+      "name": "Format Failure Follow-up Email",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.4,
       "position": [1200, 380]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
-        "mode": "once",
-        "options": {
-          "waitForSubWorkflow": true
-        }
+        "workflowId": "={{ 'Helper: Email Notify' }}"
       },
       "name": "Email Notify (Failure Follow-up)",
       "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [1420, 380],
       "continueOnFail": true
     },
@@ -207,14 +182,14 @@
       "main": [
         [
           {
-            "node": "Normalize Email Payload",
+            "node": "Format Failure Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Normalize Email Payload": {
+    "Format Failure Email": {
       "main": [
         [
           {
@@ -251,21 +226,21 @@
       "main": [
         [
           {
-            "node": "Email Payload (Success)",
+            "node": "Format Success Email",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Email Payload (Failure)",
+            "node": "Format Failure Follow-up Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Email Payload (Success)": {
+    "Format Success Email": {
       "main": [
         [
           {
@@ -287,7 +262,7 @@
         ]
       ]
     },
-    "Email Payload (Failure)": {
+    "Format Failure Follow-up Email": {
       "main": [
         [
           {

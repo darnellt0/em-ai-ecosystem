@@ -33,18 +33,19 @@ Located in `canonical/p0/` and `canonical/ops/`. These orchestrate the business 
   - **What**: Detects stuck runs (>30min in running state), sends alerts
   - **Requires**: `EM_API_BASE_URL`, `EM_ALERT_EMAIL_TO`, `EM_N8N_ENV`
 
+#### Voice API Incident Handling
+- `canonical/api_failure_incident_apology.json`
+  - **Trigger**: Webhook (`POST /webhook/voice-failure-hook`)
+  - **What**: Handles voice API failures by sending email alerts and creating follow-up tasks
+  - **Calls**: `POST {{$env.EM_API_BASE_URL}}/api/voice/support/follow-up`
+  - **Requires**: `EM_API_BASE_URL` (or `API_BASE_URL`), `EM_ALERT_EMAIL_TO`, `EM_N8N_ENV`, `VOICE_API_TOKEN`
+
 ### Legacy Workflows
 - `voice_to_api_to_dashboard.json`
   - Trigger: Webhook (`POST /webhook/voice-hook`)
   - Calls: `POST {{$env.API_BASE_URL}}/api/voice/{{ $json.endpoint }}`
   - Calls: `POST {{$env.DASHBOARD_BASE_URL}}/api/ingest`
   - Requires: `VOICE_API_TOKEN`, `API_BASE_URL`, `DASHBOARD_BASE_URL`
-
-- `api_failure_incident_apology.json`
-  - Trigger: Webhook (`POST /webhook/voice-failure-hook`)
-  - Sends: Email alert via `helpers/email_notify.workflow.json`
-  - Calls: `POST {{$env.API_BASE_URL}}/api/voice/support/follow-up`
-  - Requires: `VOICE_API_TOKEN`, `EM_API_BASE_URL` (or `API_BASE_URL`), `EM_ALERT_EMAIL_TO`
 
 - `p0_daily_focus_to_p1_action_pack.json`
   - Trigger: Cron weekday 8:30 AM Pacific (DISABLED by default)
@@ -76,10 +77,10 @@ Import workflows in this order to satisfy dependencies:
    - `canonical/p0/daily_brief_weekday.workflow.json`
    - `canonical/ops/healthcheck_api.workflow.json`
    - `canonical/ops/run_sanity.workflow.json`
+   - `canonical/api_failure_incident_apology.json`
 
 4. **Legacy workflows** (optional):
    - `voice_to_api_to_dashboard.json`
-   - `api_failure_incident_apology.json`
    - `p0_daily_focus_to_p1_action_pack.json`
 
 ## Setup Steps
@@ -256,6 +257,7 @@ packages/ops/n8n/
 │   ├── dedupe_alert.workflow.json
 │   └── format_health_email.workflow.json
 ├── canonical/
+│   ├── api_failure_incident_apology.json
 │   ├── p0/
 │   │   └── daily_brief_weekday.workflow.json
 │   ├── ops/
@@ -270,6 +272,5 @@ packages/ops/n8n/
 │       └── agent_sales.workflow.json
 └── [legacy workflows]
     ├── voice_to_api_to_dashboard.json
-    ├── api_failure_incident_apology.json
     └── p0_daily_focus_to_p1_action_pack.json
 ```
