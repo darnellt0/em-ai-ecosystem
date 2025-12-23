@@ -141,7 +141,7 @@
     {
       "parameters": {
         "source": "database",
-        "workflowId": "EMAIL_NOTIFY_HELPER_ID",
+        "workflowId": "",
         "mode": "once",
         "options": {
           "waitForSubWorkflow": true
