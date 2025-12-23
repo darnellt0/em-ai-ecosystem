@@ -15,29 +15,31 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "Voice API Failure"
+              "type": "stringValue",
+              "stringValue": "Voice API Failure"
             },
             {
               "name": "message",
-              "value": "{{ $json.humanSummary || 'Unknown voice API error' }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $json.humanSummary || 'Unknown voice API error' }}"
+            },
             {
               "name": "meta",
-              "value": "{{ { endpoint: $json.endpoint, requestId: $json.requestId, founder: $json.founder } }}"
+              "type": "objectValue",
+              "objectValue": "={{ { endpoint: $json.endpoint, requestId: $json.requestId, founder: $json.founder } }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Normalize Email Payload",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [320, 300]
     },
     {
@@ -99,29 +101,31 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "Follow-up Created"
+              "type": "stringValue",
+              "stringValue": "Follow-up Created"
             },
             {
               "name": "message",
-              "value": "{{ $json.humanSummary || 'Follow-up created.' }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $json.humanSummary || 'Follow-up created.' }}"
+            },
             {
               "name": "meta",
-              "value": "{{ { status: $json.status, taskId: $json.data?.taskId, followUpSubject: $json.data?.followUpSubject } }}"
+              "type": "objectValue",
+              "objectValue": "={{ { status: $json.status, taskId: $json.data?.taskId, followUpSubject: $json.data?.followUpSubject } }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Email Payload (Success)",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [1200, 220]
     },
     {
@@ -151,29 +155,31 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "Follow-up Failed"
+              "type": "stringValue",
+              "stringValue": "Follow-up Failed"
             },
             {
               "name": "message",
-              "value": "{{ $json.humanSummary || $json.error?.message || 'Follow-up failed.' }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $json.humanSummary || $json.error?.message || 'Follow-up failed.' }}"
+            },
             {
               "name": "meta",
-              "value": "{{ { status: $json.status || 'error' } }}"
+              "type": "objectValue",
+              "objectValue": "={{ { status: $json.status || 'error' } }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Email Payload (Failure)",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [1200, 380]
     },
     {

@@ -66,19 +66,21 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "runId",
-              "value": "{{ $json.runId || $json.data?.runId }}"
+              "type": "stringValue",
+              "stringValue": "{{ $json.runId || $json.data?.runId }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Extract runId",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [540, 300]
     },
     {
@@ -113,29 +115,31 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "P0 to P1 Run Status"
+              "type": "stringValue",
+              "stringValue": "P0 to P1 Run Status"
             },
             {
               "name": "message",
-              "value": "Run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "Run {{ $json.run?.runId || $json.runId }} status: {{ $json.run?.status || 'unknown' }}"
+            },
             {
               "name": "meta",
-              "value": "{{ { runId: $json.run?.runId || $json.runId, status: $json.run?.status || 'unknown' } }}"
+              "type": "objectValue",
+              "objectValue": "={{ { runId: $json.run?.runId || $json.runId, status: $json.run?.status || 'unknown' } }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Email Payload",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [1200, 300]
     },
     {

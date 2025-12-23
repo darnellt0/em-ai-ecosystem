@@ -13,29 +13,31 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "{{ $json.title || 'Notification' }}"
+              "type": "stringValue",
+              "stringValue": "{{ $json.title || 'Notification' }}"
             },
             {
               "name": "message",
-              "value": "{{ $json.message || '' }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $json.message || '' }}"
+            },
             {
               "name": "meta",
-              "value": "{{ $json.meta || {} }}"
+              "type": "objectValue",
+              "objectValue": "={{ $json.meta || {} }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Normalize Payload",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [320, 300]
     },
     {
@@ -73,68 +75,70 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+              "type": "stringValue",
+              "stringValue": "{{ $node[\"Normalize Payload\"].json.title }}"
             },
             {
               "name": "message",
-              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $node[\"Normalize Payload\"].json.message }}"
+            },
             {
               "name": "meta",
-              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
-            }
-          ],
-          "boolean": [
+              "type": "objectValue",
+              "objectValue": "={{ $node[\"Normalize Payload\"].json.meta }}"
+            },
             {
               "name": "notified",
-              "value": "{{ $json.id ? true : false }}"
+              "type": "booleanValue",
+              "booleanValue": "={{ $json.id ? 'true' : 'false' }}"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Mark Notified",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [980, 220]
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "title",
-              "value": "{{ $node[\"Normalize Payload\"].json.title }}"
+              "type": "stringValue",
+              "stringValue": "{{ $node[\"Normalize Payload\"].json.title }}"
             },
             {
               "name": "message",
-              "value": "{{ $node[\"Normalize Payload\"].json.message }}"
-            }
-          ],
-          "json": [
+              "type": "stringValue",
+              "stringValue": "{{ $node[\"Normalize Payload\"].json.message }}"
+            },
             {
               "name": "meta",
-              "value": "{{ $node[\"Normalize Payload\"].json.meta }}"
-            }
-          ],
-          "boolean": [
+              "type": "objectValue",
+              "objectValue": "={{ $node[\"Normalize Payload\"].json.meta }}"
+            },
             {
               "name": "notified",
-              "value": false
+              "type": "booleanValue",
+              "booleanValue": "false"
             }
           ]
-        }
+        },
+        "include": "none"
       },
       "name": "Noop Return",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "typeVersion": 3.2,
       "position": [760, 380]
     }
   ],
