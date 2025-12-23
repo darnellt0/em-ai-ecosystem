@@ -10,31 +10,31 @@
               "mode": "everyWeek",
               "hour": 8,
               "minute": 30,
-              "weekday": 1
+              "weekday": "1"
             },
             {
               "mode": "everyWeek",
               "hour": 8,
               "minute": 30,
-              "weekday": 2
+              "weekday": "2"
             },
             {
               "mode": "everyWeek",
               "hour": 8,
               "minute": 30,
-              "weekday": 3
+              "weekday": "3"
             },
             {
               "mode": "everyWeek",
               "hour": 8,
               "minute": 30,
-              "weekday": 4
+              "weekday": "4"
             },
             {
               "mode": "everyWeek",
               "hour": 8,
               "minute": 30,
-              "weekday": 5
+              "weekday": "5"
             }
           ]
         }
