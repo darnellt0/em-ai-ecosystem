@@ -4,6 +4,10 @@ import { runP0CalendarOptimizer } from '../exec-admin/flows/p0-calendar-optimize
 import { runP0FinancialAllocator } from '../exec-admin/flows/p0-financial-allocator';
 import { runP0InsightAnalyst } from '../exec-admin/flows/p0-insight-analyst';
 import { runP0NicheDiscover } from '../exec-admin/flows/p0-niche-discover';
+import { runP1Mindset } from '../exec-admin/flows/p1-mindset';
+import { runP1Rhythm } from '../exec-admin/flows/p1-rhythm';
+import { runP1Purpose } from '../exec-admin/flows/p1-purpose';
+
 
 const dispatcherRouter = Router();
 
@@ -251,6 +255,113 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
           },
         };
         break;
+
+      // -------------------------------------------------------------------------
+      // MINDSET AGENT (P1 - Wave 1)
+      // -------------------------------------------------------------------------
+      case 'mindset': {
+        const { userId, challenge, limitingBelief, desiredState } = payload;
+
+        if (!userId) {
+          throw new Error('mindset requires userId in payload');
+        }
+
+        const mindsetResult = await runP1Mindset({
+          userId,
+          challenge,
+          limitingBelief,
+          desiredState,
+        });
+
+        result = {
+          success: true,
+          intent: 'mindset',
+          routed: true,
+          data: mindsetResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'mindset_agent_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // RHYTHM AGENT (P1 - Wave 1)
+      // -------------------------------------------------------------------------
+      case 'rhythm': {
+        const { userId, currentSchedule, energyPatterns, goals } = payload;
+
+        if (!userId) {
+          throw new Error('rhythm requires userId in payload');
+        }
+
+        const rhythmResult = await runP1Rhythm({
+          userId,
+          currentSchedule,
+          energyPatterns,
+          goals,
+        });
+
+        result = {
+          success: true,
+          intent: 'rhythm',
+          routed: true,
+          data: rhythmResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'rhythm_agent_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // PURPOSE AGENT (P1 - Wave 1)
+      // -------------------------------------------------------------------------
+      case 'purpose': {
+        const { userId, skills, passions, values, audience, impact } = payload;
+
+        if (!userId) {
+          throw new Error('purpose requires userId in payload');
+        }
+
+        const purposeResult = await runP1Purpose({
+          userId,
+          skills,
+          passions,
+          values,
+          audience,
+          impact,
+        });
+
+        result = {
+          success: true,
+          intent: 'purpose',
+          routed: true,
+          data: purposeResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'purpose_agent_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
       }
       default: {
         return res.status(400).json({

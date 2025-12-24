@@ -249,9 +249,143 @@ export function evaluateNicheDiscoverOutput(output: any): QaGateResult {
   return buildResult(issues);
 }
 
+
+// -------------------------------------------------------------------------
+// WAVE P1.1: MINDSET AGENT EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateMindsetOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectArray(output.beliefs, 'beliefs', issues);
+
+  if (Array.isArray(output.beliefs)) {
+    if (output.beliefs.length === 0) {
+      issues.push({ field: 'beliefs', message: 'Expected at least 1 belief', severity: 'block' });
+    }
+    output.beliefs.forEach((belief: any, idx: number) => {
+      expectString(belief?.limiting, `beliefs[${idx}].limiting`, issues);
+      expectString(belief?.reframe, `beliefs[${idx}].reframe`, issues);
+      expectString(belief?.evidence, `beliefs[${idx}].evidence`, issues);
+      expectString(belief?.actionStep, `beliefs[${idx}].actionStep`, issues);
+    });
+  }
+
+  if (typeof output.offline !== 'boolean') {
+    issues.push({ field: 'offline', message: 'Expected boolean', severity: 'block' });
+  }
+
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.1: RHYTHM AGENT EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateRhythmOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectObject(output.energyMap, 'energyMap', issues);
+
+  if (output.energyMap && typeof output.energyMap === 'object') {
+    expectArray(output.energyMap.peak, 'energyMap.peak', issues);
+    expectArray(output.energyMap.low, 'energyMap.low', issues);
+    expectArray(output.energyMap.moderate, 'energyMap.moderate', issues);
+  }
+
+  expectArray(output.recommendations, 'recommendations', issues);
+
+  if (Array.isArray(output.recommendations)) {
+    if (output.recommendations.length === 0) {
+      issues.push({ field: 'recommendations', message: 'Expected at least 1 recommendation', severity: 'block' });
+    }
+    output.recommendations.forEach((rec: any, idx: number) => {
+      expectString(rec?.timeBlock, `recommendations[${idx}].timeBlock`, issues);
+      expectString(rec?.activity, `recommendations[${idx}].activity`, issues);
+      expectString(rec?.reason, `recommendations[${idx}].reason`, issues);
+    });
+  }
+
+  if (typeof output.offline !== 'boolean') {
+    issues.push({ field: 'offline', message: 'Expected boolean', severity: 'block' });
+  }
+
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.1: PURPOSE AGENT EVALUATION
+// -------------------------------------------------------------------------
+export function evaluatePurposeOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectObject(output.ikigai, 'ikigai', issues);
+
+  if (output.ikigai && typeof output.ikigai === 'object') {
+    expectArray(output.ikigai.skills, 'ikigai.skills', issues);
+    expectArray(output.ikigai.passions, 'ikigai.passions', issues);
+    expectArray(output.ikigai.values, 'ikigai.values', issues);
+    expectString(output.ikigai.audience, 'ikigai.audience', issues);
+    expectString(output.ikigai.impact, 'ikigai.impact', issues);
+  }
+
+  expectString(output.purposeStatement, 'purposeStatement', issues);
+  expectObject(output.alignment, 'alignment', issues);
+
+  if (output.alignment && typeof output.alignment === 'object') {
+    expectNumber(output.alignment.skillsMatch, 'alignment.skillsMatch', issues);
+    expectNumber(output.alignment.passionMatch, 'alignment.passionMatch', issues);
+    expectNumber(output.alignment.valuesMatch, 'alignment.valuesMatch', issues);
+    expectNumber(output.alignment.overall, 'alignment.overall', issues);
+
+    // Validate score ranges
+    ['skillsMatch', 'passionMatch', 'valuesMatch', 'overall'].forEach(field => {
+      const score = output.alignment[field];
+      if (typeof score === 'number' && (score < 0 || score > 100)) {
+        issues.push({ field: `alignment.${field}`, message: 'Score must be between 0 and 100', severity: 'block' });
+      }
+    });
+  }
+
+  expectArray(output.recommendations, 'recommendations', issues);
+
+  if (Array.isArray(output.recommendations) && output.recommendations.length === 0) {
+    issues.push({ field: 'recommendations', message: 'Expected at least 1 recommendation', severity: 'block' });
+  }
+
+  if (typeof output.offline !== 'boolean') {
+    issues.push({ field: 'offline', message: 'Expected boolean', severity: 'block' });
+  }
+
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
 export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate' | 'insights' | 'nicheDiscover';
 
-export function runP0QaGate(kind: P0AgentKind, output: unknown): QaGateResult {
+export type P1AgentKind = 'mindset' | 'rhythm' | 'purpose';
+
+export type AgentKind = P0AgentKind | P1AgentKind;
+
+export function runP0QaGate(kind: AgentKind, output: unknown): QaGateResult {
   if (kind === 'dailyFocus') {
     return evaluateDailyFocusOutput(output);
   }
@@ -270,5 +404,14 @@ export function runP0QaGate(kind: P0AgentKind, output: unknown): QaGateResult {
   if (kind === 'nicheDiscover') {
     return evaluateNicheDiscoverOutput(output);
   }
-  throw new Error(`Unknown P0 agent kind: ${kind}`);
+  if (kind === 'mindset') {
+    return evaluateMindsetOutput(output);
+  }
+  if (kind === 'rhythm') {
+    return evaluateRhythmOutput(output);
+  }
+  if (kind === 'purpose') {
+    return evaluatePurposeOutput(output);
+  }
+    throw new Error(`Unknown P0 agent kind: ${kind}`);
 }
