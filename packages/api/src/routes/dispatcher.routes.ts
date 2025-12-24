@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
 import { runP0CalendarOptimizer } from '../exec-admin/flows/p0-calendar-optimizer';
 import { runP0FinancialAllocator } from '../exec-admin/flows/p0-financial-allocator';
+import { runP0InsightAnalyst } from '../exec-admin/flows/p0-insight-analyst';
+import { runP0NicheDiscover } from '../exec-admin/flows/p0-niche-discover';
 
 const dispatcherRouter = Router();
 
@@ -46,14 +48,15 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
           data: {
             status: 'healthy',
             dispatcher: 'online',
-            wave: 2,
+            wave: 3,
+            p0Status: 'COMPLETE',
             p0Agents: {
               daily_brief: 'active',
               journal: 'active_separate_route',
               calendar_optimize: 'active',
               financial_allocate: 'active',
-              insights: 'wave_3',
-              niche_discover: 'wave_3',
+              insights: 'active',
+              niche_discover: 'active',
             },
           },
           qa: {
@@ -172,6 +175,76 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
             checks: [
               'dispatcher_routed',
               'financial_allocator_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // INSIGHT ANALYST (P0 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'insights': {
+        const { userId, timeframe, includeEnergy, includeBurnoutRisk } = payload;
+
+        if (!userId) {
+          throw new Error('insights requires userId in payload');
+        }
+
+        const insResult = await runP0InsightAnalyst({
+          userId,
+          timeframe,
+          includeEnergy,
+          includeBurnoutRisk,
+        });
+
+        result = {
+          success: true,
+          intent: 'insights',
+          routed: true,
+          data: insResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'insight_analyst_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // NICHE DISCOVERY (P0 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'niche_discover': {
+        const { userId, stage, responses, currentResponse } = payload;
+
+        if (!userId) {
+          throw new Error('niche_discover requires userId in payload');
+        }
+
+        const nicheResult = await runP0NicheDiscover({
+          userId,
+          stage,
+          responses,
+          currentResponse,
+        });
+
+        result = {
+          success: true,
+          intent: 'niche_discover',
+          routed: true,
+          data: nicheResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'niche_discover_executed',
               'runId_generated',
               'response_structure_valid',
             ],

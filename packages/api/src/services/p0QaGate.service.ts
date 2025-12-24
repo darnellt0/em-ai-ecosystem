@@ -195,7 +195,61 @@ export function evaluateFinancialAllocatorOutput(output: any): QaGateResult {
   return buildResult(issues);
 }
 
-export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate';
+
+// -------------------------------------------------------------------------
+// WAVE 3: Insight Analyst Evaluation
+// -------------------------------------------------------------------------
+export function evaluateInsightAnalystOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectString(output.timeframe, 'timeframe', issues);
+  expectObject(output.period, 'period', issues);
+  expectArray(output.insights, 'insights', issues);
+  expectString(output.summary, 'summary', issues);
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  if (Array.isArray(output.insights) && output.insights.length === 0) {
+    issues.push({ field: 'insights', message: 'Expected at least 1 insight', severity: 'block' });
+  }
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE 3: Niche Discovery Evaluation
+// -------------------------------------------------------------------------
+export function evaluateNicheDiscoverOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectString(output.stage, 'stage', issues);
+  expectNumber(output.progress, 'progress', issues);
+  expectString(output.prompt, 'prompt', issues);
+  expectObject(output.previousResponses, 'previousResponses', issues);
+
+  if (typeof output.isComplete !== 'boolean') {
+    issues.push({ field: 'isComplete', message: 'Expected boolean', severity: 'block' });
+  }
+
+  if (typeof output.progress === 'number') {
+    if (output.progress < 0 || output.progress > 100) {
+      issues.push({ field: 'progress', message: 'Progress must be between 0 and 100', severity: 'block' });
+    }
+  }
+
+  return buildResult(issues);
+}
+
+export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate' | 'insights' | 'nicheDiscover';
 
 export function runP0QaGate(kind: P0AgentKind, output: unknown): QaGateResult {
   if (kind === 'dailyFocus') {
@@ -209,6 +263,12 @@ export function runP0QaGate(kind: P0AgentKind, output: unknown): QaGateResult {
   }
   if (kind === 'financialAllocate') {
     return evaluateFinancialAllocatorOutput(output);
+  }
+  if (kind === 'insights') {
+    return evaluateInsightAnalystOutput(output);
+  }
+  if (kind === 'nicheDiscover') {
+    return evaluateNicheDiscoverOutput(output);
   }
   throw new Error(`Unknown P0 agent kind: ${kind}`);
 }
