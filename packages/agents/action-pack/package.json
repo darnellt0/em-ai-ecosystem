@@ -1,0 +1,19 @@
+{
+  "name": "@em/action-pack",
+  "version": "1.0.0",
+  "description": "P0 Action Pack Agent - draft-only actions, follow-ups, and calendar intents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest"
+  },
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.2"
+  }
+}

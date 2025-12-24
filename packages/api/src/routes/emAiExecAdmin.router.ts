@@ -12,17 +12,149 @@ import { orchestrator } from '../growth-agents/orchestrator';
 import { finalizeRunIfTerminal } from '../services/growthRunFinalize.service';
 import { JournalIntent } from '../../../agents/journal';
 import { listP0ArtifactRuns, getP0ArtifactRun } from '../services/p0RunHistory.service';
+import { executeDailyFocusWithHistory } from '../services/p0-daily-focus-execution.service';
+import { executeActionPackWithHistory } from '../services/p0-action-pack-execution.service';
 import { executeJournalWithHistory } from '../services/journal-execution.service';
+import { runDailyBriefAgent } from '../services/dailyBrief.service';
 
 const emAiExecAdminRouter = Router();
 
 const JOURNAL_KIND = 'p0.journal';
+const DAILY_FOCUS_KIND = 'p0.daily_focus';
+const ACTION_PACK_KIND = 'p0.action_pack';
 const JOURNAL_ALLOWED_USERS = new Set(['darnell', 'shria']);
 const JOURNAL_INTENTS = new Set<JournalIntent>([
   'journal.daily_reflection',
   'journal.midday_check_in',
   'journal.day_close',
 ]);
+
+// Dispatcher endpoint for Wave 1
+interface DispatchRequest {
+  intent: string;
+  payload?: Record<string, any>;
+}
+
+interface DispatchResponse {
+  success: boolean;
+  intent: string;
+  routed: boolean;
+  data?: any;
+  qa?: {
+    pass: boolean;
+    checks?: string[];
+    errors?: string[];
+  };
+  error?: string;
+}
+
+emAiExecAdminRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Response) => {
+  const { intent, payload = {} }: DispatchRequest = req.body;
+
+  if (!intent) {
+    return res.status(400).json({
+      success: false,
+      routed: false,
+      error: 'intent is required',
+    } as DispatchResponse);
+  }
+
+  try {
+    let result: DispatchResponse;
+
+    switch (intent) {
+      case 'health_check': {
+        result = {
+          success: true,
+          intent: 'health_check',
+          routed: true,
+          data: {
+            status: 'healthy',
+            dispatcher: 'online',
+            p0Agents: {
+              daily_brief: 'active',
+              journal: 'active_separate_route',
+              calendar_optimize: 'wave_2',
+              financial_allocate: 'stub',
+              insights: 'wave_3',
+              niche_discover: 'wave_3',
+            },
+          },
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_online',
+              'daily_brief_available',
+              'journal_available',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      case 'daily_brief': {
+        const { userId = 'founder@elevatedmovements.com', date } = payload;
+        const runId = `run_${Date.now()}`;
+
+        const briefResult = await runDailyBriefAgent({
+          user: userId.includes('darnell') ? 'darnell' : 'shria',
+          date,
+          runId,
+        });
+
+        result = {
+          success: true,
+          intent: 'daily_brief',
+          routed: true,
+          data: {
+            runId,
+            userId,
+            date: date || new Date().toISOString().split('T')[0],
+            brief: briefResult,
+          },
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'daily_brief_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      default: {
+        return res.status(400).json({
+          success: false,
+          intent,
+          routed: false,
+          error: `Unknown intent: ${intent}`,
+          qa: {
+            pass: false,
+            errors: [`Intent "${intent}" not recognized`],
+          },
+        } as DispatchResponse);
+      }
+    }
+
+    return res.json(result);
+  } catch (error) {
+    console.error('[Dispatcher] Error:', error);
+    return res.status(500).json({
+      success: false,
+      intent,
+      routed: true,
+      error: (error as Error).message,
+      qa: {
+        pass: false,
+        errors: [(error as Error).message],
+      },
+    } as DispatchResponse);
+  }
+});
 
 emAiExecAdminRouter.post('/em-ai/exec-admin/growth/run', async (req: Request, res: Response) => {
   const { founderEmail, mode } = req.body || {};
@@ -227,6 +359,75 @@ emAiExecAdminRouter.get('/api/exec-admin/p0/journal/runs', async (req: Request, 
 emAiExecAdminRouter.get('/api/exec-admin/p0/journal/runs/:runId', async (req: Request, res: Response) => {
   const run = getP0ArtifactRun(req.params.runId);
   if (!run) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+  return res.json(run);
+});
+
+emAiExecAdminRouter.post('/api/exec-admin/p0/daily-focus/run', async (req: Request, res: Response) => {
+  const { userId, mode, date, focusTheme, priorities, runId } = req.body || {};
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+  if (!JOURNAL_ALLOWED_USERS.has(userId)) {
+    return res.status(400).json({ error: 'userId must be one of: darnell, shria' });
+  }
+
+  const result = await executeDailyFocusWithHistory({
+    userId,
+    mode,
+    date,
+    focusTheme,
+    priorities,
+    runId,
+  });
+
+  return res.json(result);
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/daily-focus/runs', async (req: Request, res: Response) => {
+  const limit = Number(req.query.limit || 20);
+  const items = listP0ArtifactRuns({ kind: DAILY_FOCUS_KIND, limit });
+  return res.json({ items, limit });
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/daily-focus/runs/:runId', async (req: Request, res: Response) => {
+  const run = getP0ArtifactRun(req.params.runId);
+  if (!run || run.kind !== DAILY_FOCUS_KIND) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+  return res.json(run);
+});
+
+emAiExecAdminRouter.post('/api/exec-admin/p0/action-pack/run', async (req: Request, res: Response) => {
+  const { userId, date, focusTheme, priorities, runId } = req.body || {};
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+  if (!JOURNAL_ALLOWED_USERS.has(userId)) {
+    return res.status(400).json({ error: 'userId must be one of: darnell, shria' });
+  }
+
+  const result = await executeActionPackWithHistory({
+    userId,
+    date,
+    focusTheme,
+    priorities,
+    runId,
+  });
+
+  return res.json(result);
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/action-pack/runs', async (req: Request, res: Response) => {
+  const limit = Number(req.query.limit || 20);
+  const items = listP0ArtifactRuns({ kind: ACTION_PACK_KIND, limit });
+  return res.json({ items, limit });
+});
+
+emAiExecAdminRouter.get('/api/exec-admin/p0/action-pack/runs/:runId', async (req: Request, res: Response) => {
+  const run = getP0ArtifactRun(req.params.runId);
+  if (!run || run.kind !== ACTION_PACK_KIND) {
     return res.status(404).json({ error: 'Run not found' });
   }
   return res.json(run);

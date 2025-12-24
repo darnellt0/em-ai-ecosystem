@@ -314,6 +314,7 @@ app.use(p0DailyFocusRouter);
 console.log('[Routes] mounted p0DailyFocusRouter -> POST /api/exec-admin/p0/daily-focus');
 app.use('/', p0RunsRouter);
 app.use(p1ActionPackRouter);
+console.log('[Routes] mounted emAiExecAdminRouter -> includes POST /api/exec-admin/dispatch');
 
 /**
  * Serve growth agents monitoring UI (only if dashboard is enabled)
@@ -490,6 +491,7 @@ app.use((req: Request, res: Response) => {
       '/api/config',
       '/api/executions',
       '/api/dashboard',
+      '/api/exec-admin/dispatch',
       '/api/exec-admin/p0/daily-focus',
       '/api/exec-admin/p0/journal/run',
       '/api/exec-admin/p0/journal/runs',

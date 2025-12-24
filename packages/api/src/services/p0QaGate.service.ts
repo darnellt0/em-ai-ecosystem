@@ -1,0 +1,128 @@
+export type QaSeverity = 'info' | 'warn' | 'block';
+
+export type QaIssue = {
+  field: string;
+  message: string;
+  severity: QaSeverity;
+};
+
+export type QaGateResult = {
+  qa_pass: boolean;
+  issues: QaIssue[];
+  severity: QaSeverity;
+};
+
+const severityRank: Record<QaSeverity, number> = {
+  info: 0,
+  warn: 1,
+  block: 2,
+};
+
+function summarizeSeverity(issues: QaIssue[]): QaSeverity {
+  if (!issues.length) return 'info';
+  return issues.reduce<QaSeverity>((max, issue) => {
+    return severityRank[issue.severity] > severityRank[max] ? issue.severity : max;
+  }, 'info');
+}
+
+function buildResult(issues: QaIssue[]): QaGateResult {
+  const severity = summarizeSeverity(issues);
+  const qa_pass = !issues.some((issue) => issue.severity === 'block');
+  return { qa_pass, issues, severity };
+}
+
+function expectString(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
+  if (typeof value !== 'string' || !value.trim()) {
+    issues.push({ field, message: 'Expected non-empty string', severity });
+  }
+}
+
+function expectArray(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
+  if (!Array.isArray(value)) {
+    issues.push({ field, message: 'Expected array', severity });
+  }
+}
+
+export function evaluateDailyFocusOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.focusTheme, 'focusTheme', issues);
+  expectArray(output.priorities, 'priorities', issues);
+  if (Array.isArray(output.priorities)) {
+    output.priorities.forEach((priority: any, idx: number) => {
+      expectString(priority?.title, `priorities[${idx}].title`, issues);
+      expectString(priority?.detail, `priorities[${idx}].detail`, issues);
+    });
+  }
+
+  if (!output.emailDraft || typeof output.emailDraft !== 'object') {
+    issues.push({ field: 'emailDraft', message: 'Expected emailDraft object', severity: 'block' });
+  } else {
+    expectString(output.emailDraft.subject, 'emailDraft.subject', issues);
+    expectString(output.emailDraft.body, 'emailDraft.body', issues);
+    if (output.emailDraft.status !== 'draft') {
+      issues.push({ field: 'emailDraft.status', message: 'Email draft must be draft-only', severity: 'block' });
+    }
+  }
+
+  if (!output.metadata || typeof output.metadata !== 'object') {
+    issues.push({ field: 'metadata', message: 'Expected metadata object', severity: 'block' });
+  } else {
+    expectString(output.metadata.userId, 'metadata.userId', issues);
+    expectString(output.metadata.generatedAt, 'metadata.generatedAt', issues);
+  }
+
+  return buildResult(issues);
+}
+
+export function evaluateActionPackOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectArray(output.actions, 'actions', issues);
+  if (Array.isArray(output.actions)) {
+    output.actions.forEach((action: any, idx: number) => {
+      expectString(action?.title, `actions[${idx}].title`, issues);
+      expectString(action?.detail, `actions[${idx}].detail`, issues);
+      if (action?.status !== 'draft') {
+        issues.push({ field: `actions[${idx}].status`, message: 'Actions must be draft-only', severity: 'block' });
+      }
+    });
+  }
+
+  expectArray(output.followUps, 'followUps', issues);
+  if (Array.isArray(output.followUps)) {
+    output.followUps.forEach((followUp: any, idx: number) => {
+      expectString(followUp?.channel, `followUps[${idx}].channel`, issues);
+      if (followUp?.status !== 'draft') {
+        issues.push({ field: `followUps[${idx}].status`, message: 'Follow-ups must be draft-only', severity: 'block' });
+      }
+    });
+  }
+
+  expectArray(output.calendarIntentsDraft, 'calendarIntentsDraft', issues);
+  if (Array.isArray(output.calendarIntentsDraft)) {
+    output.calendarIntentsDraft.forEach((intent: any, idx: number) => {
+      expectString(intent?.title, `calendarIntentsDraft[${idx}].title`, issues);
+      if (intent?.status !== 'draft') {
+        issues.push({ field: `calendarIntentsDraft[${idx}].status`, message: 'Calendar intents must be draft-only', severity: 'block' });
+      }
+    });
+  }
+
+  return buildResult(issues);
+}
+
+export function runP0QaGate(kind: 'dailyFocus' | 'actionPack', output: unknown): QaGateResult {
+  if (kind === 'dailyFocus') {
+    return evaluateDailyFocusOutput(output);
+  }
+  return evaluateActionPackOutput(output);
+}
