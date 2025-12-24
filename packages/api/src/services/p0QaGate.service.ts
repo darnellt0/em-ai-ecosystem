@@ -43,6 +43,18 @@ function expectArray(value: unknown, field: string, issues: QaIssue[], severity:
   }
 }
 
+
+function expectNumber(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
+  if (typeof value !== 'number' || isNaN(value)) {
+    issues.push({ field, message: 'Expected number', severity });
+  }
+}
+
+function expectObject(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    issues.push({ field, message: 'Expected object', severity });
+  }
+}
 export function evaluateDailyFocusOutput(output: any): QaGateResult {
   const issues: QaIssue[] = [];
 
@@ -120,9 +132,83 @@ export function evaluateActionPackOutput(output: any): QaGateResult {
   return buildResult(issues);
 }
 
-export function runP0QaGate(kind: 'dailyFocus' | 'actionPack', output: unknown): QaGateResult {
+export function evaluateCalendarOptimizerOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectString(output.calendarId, 'calendarId', issues);
+  expectObject(output.analyzedPeriod, 'analyzedPeriod', issues);
+  expectObject(output.currentLoad, 'currentLoad', issues);
+  expectArray(output.suggestedBlocks, 'suggestedBlocks', issues);
+  expectArray(output.recommendations, 'recommendations', issues);
+  expectNumber(output.optimizationScore, 'optimizationScore', issues);
+
+  if (Array.isArray(output.recommendations) && output.recommendations.length === 0) {
+    issues.push({ field: 'recommendations', message: 'Expected at least 1 recommendation', severity: 'block' });
+  }
+
+  if (typeof output.optimizationScore === 'number') {
+    if (output.optimizationScore < 0 || output.optimizationScore > 100) {
+      issues.push({ field: 'optimizationScore', message: 'Score must be between 0 and 100', severity: 'block' });
+    }
+  }
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE 2: Financial Allocator Evaluation
+// -------------------------------------------------------------------------
+export function evaluateFinancialAllocatorOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectNumber(output.inputAmount, 'inputAmount', issues);
+  expectString(output.currency, 'currency', issues);
+  expectObject(output.allocations, 'allocations', issues);
+  expectNumber(output.totalAllocated, 'totalAllocated', issues);
+  expectObject(output.ratiosUsed, 'ratiosUsed', issues);
+  expectArray(output.recommendations, 'recommendations', issues);
+  expectString(output.allocationDate, 'allocationDate', issues);
+
+  if (typeof output.inputAmount === 'number' && output.inputAmount <= 0) {
+    issues.push({ field: 'inputAmount', message: 'Amount must be positive', severity: 'block' });
+  }
+
+  if (output.allocations && typeof output.allocations === 'object') {
+    const requiredCategories = ['ownerPay', 'taxes', 'expenses', 'rndGrowth', 'savings', 'btc'];
+    requiredCategories.forEach(cat => {
+      if (!output.allocations[cat]) {
+        issues.push({ field: `allocations.${cat}`, message: 'Missing allocation category', severity: 'block' });
+      }
+    });
+  }
+
+  return buildResult(issues);
+}
+
+export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate';
+
+export function runP0QaGate(kind: P0AgentKind, output: unknown): QaGateResult {
   if (kind === 'dailyFocus') {
     return evaluateDailyFocusOutput(output);
   }
-  return evaluateActionPackOutput(output);
+  if (kind === 'actionPack') {
+    return evaluateActionPackOutput(output);
+  }
+  if (kind === 'calendarOptimize') {
+    return evaluateCalendarOptimizerOutput(output);
+  }
+  if (kind === 'financialAllocate') {
+    return evaluateFinancialAllocatorOutput(output);
+  }
+  throw new Error(`Unknown P0 agent kind: ${kind}`);
 }

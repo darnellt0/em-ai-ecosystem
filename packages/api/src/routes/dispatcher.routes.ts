@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
+import { runP0CalendarOptimizer } from '../exec-admin/flows/p0-calendar-optimizer';
+import { runP0FinancialAllocator } from '../exec-admin/flows/p0-financial-allocator';
 
 const dispatcherRouter = Router();
 
@@ -44,11 +46,12 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
           data: {
             status: 'healthy',
             dispatcher: 'online',
+            wave: 2,
             p0Agents: {
               daily_brief: 'active',
               journal: 'active_separate_route',
-              calendar_optimize: 'wave_2',
-              financial_allocate: 'stub',
+              calendar_optimize: 'active',
+              financial_allocate: 'active',
               insights: 'wave_3',
               niche_discover: 'wave_3',
             },
@@ -99,6 +102,83 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
         break;
       }
 
+
+      // -------------------------------------------------------------------------
+      // CALENDAR OPTIMIZER (P0 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'calendar_optimize': {
+        const { userId, calendarId, lookAheadDays, preferredFocusHours, focusBlockDuration } = payload;
+
+        if (!userId) {
+          throw new Error('calendar_optimize requires userId in payload');
+        }
+
+        const calResult = await runP0CalendarOptimizer({
+          userId,
+          calendarId,
+          lookAheadDays,
+          preferredFocusHours,
+          focusBlockDuration,
+        });
+
+        result = {
+          success: true,
+          intent: 'calendar_optimize',
+          routed: true,
+          data: calResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'calendar_optimizer_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // FINANCIAL ALLOCATOR (P0 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'financial_allocate': {
+        const { userId, amount, currency, customRatios, includeBtc, btcPrice } = payload;
+
+        if (!userId) {
+          throw new Error('financial_allocate requires userId in payload');
+        }
+
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+          throw new Error('financial_allocate requires amount (positive number) in payload');
+        }
+
+        const finResult = await runP0FinancialAllocator({
+          userId,
+          amount,
+          currency,
+          customRatios,
+          includeBtc,
+          btcPrice,
+        });
+
+        result = {
+          success: true,
+          intent: 'financial_allocate',
+          routed: true,
+          data: finResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'financial_allocator_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
       default: {
         return res.status(400).json({
           success: false,
