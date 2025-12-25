@@ -16,6 +16,7 @@ import { executeDailyFocusWithHistory } from '../services/p0-daily-focus-executi
 import { executeActionPackWithHistory } from '../services/p0-action-pack-execution.service';
 import { executeJournalWithHistory } from '../services/journal-execution.service';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
+import { runP0DailyFocusExecAdmin } from '../exec-admin/flows/p0-daily-focus';
 
 const emAiExecAdminRouter = Router();
 
@@ -47,6 +48,29 @@ interface DispatchResponse {
   };
   error?: string;
 }
+
+emAiExecAdminRouter.post('/em-ai/exec-admin', async (req: Request, res: Response) => {
+  const { intent, payload = {} } = req.body || {};
+
+  if (!intent) {
+    return res.status(400).json({ success: false, error: 'intent is required' });
+  }
+
+  if (intent === 'p0.daily_focus') {
+    try {
+      const result = await runP0DailyFocusExecAdmin(payload);
+      return res.json({
+        success: true,
+        data: result.data || {},
+        qaStatus: result.data?.qaStatus,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error?.message || 'daily focus failed' });
+    }
+  }
+
+  return res.status(400).json({ success: false, error: `Unsupported intent: ${intent}` });
+});
 
 emAiExecAdminRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Response) => {
   const { intent, payload = {} }: DispatchRequest = req.body;

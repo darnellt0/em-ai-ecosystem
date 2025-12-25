@@ -1,6 +1,8 @@
 import { callEmExecutiveAdmin, ExecAdminRequest } from './executiveAdmin.service';
 import { createTraceContext } from '../utils/tracing';
 import { orchestrator, AGENT_CONFIG } from '../growth-agents/orchestrator';
+import { savePlannedAction } from '../actions/action.store';
+import { recordGrowthRunStart, listGrowthRuns, getGrowthRun } from './growthRunHistory.service';
 
 export interface CallEmAgentRequest {
   agentId: string;
@@ -25,6 +27,8 @@ export interface GrowthPackResult {
   launchedAgents: string[];
   jobIds: string[];
   timestamp: string;
+  runId: string;
+  plannedActionIds?: string[];
 }
 
 export interface GrowthPackStatus {
@@ -113,6 +117,19 @@ export async function launchGrowthPack(req: GrowthPackRequest): Promise<GrowthPa
   const registry = Object.keys(AGENT_CONFIG);
 
   const { jobIds, count } = await orchestrator.launchAllAgents();
+  const run = await recordGrowthRunStart({
+    founderEmail: req.founderEmail,
+    mode,
+    launchedAgents: registry,
+    jobIds,
+  });
+  const plannedAction = savePlannedAction({
+    type: 'growth.followup',
+    requiresApproval: false,
+    payload: { founderEmail: req.founderEmail, mode },
+    risk: 'low',
+    priority: 'medium',
+  });
 
   return {
     success: true,
@@ -120,7 +137,17 @@ export async function launchGrowthPack(req: GrowthPackRequest): Promise<GrowthPa
     launchedAgents: registry,
     jobIds,
     timestamp: new Date().toISOString(),
+    runId: run.runId,
+    plannedActionIds: [plannedAction.id],
   };
+}
+
+export async function listGrowthRunRecords(founderEmail: string, limit = 10) {
+  return listGrowthRuns(founderEmail, limit);
+}
+
+export async function getGrowthRunRecord(runId: string) {
+  return getGrowthRun(runId);
 }
 
 export async function getGrowthStatus(): Promise<GrowthPackStatus> {

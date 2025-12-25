@@ -36,6 +36,10 @@ import p0DailyBriefRouter from './routes/p0-daily-brief.routes';
 import p0DailyFocusRouter from './routes/p0-daily-focus.routes';
 import p1ActionPackRouter from './routes/p1-action-pack.routes';
 import { performHealthCheck } from './services/health.service';
+import systemRouter from './routes/system.routes';
+import contentRouter from './routes/content.routes';
+import actionsRouter from './routes/actions.routes';
+import p1Router from './routes/p1.routes';
 
 // Initialize Sentry after env is loaded
 initSentry();
@@ -43,6 +47,7 @@ initSentry();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const VOICE_ENABLED = process.env.EM_ENABLE_VOICE === 'true';
 
 // ============================================================================
 // MIDDLEWARE
@@ -68,11 +73,6 @@ app.use(cors(corsOptions));
 // JSON body parsing
 app.use(express.json());
 
-// EM AI agent catalog + execution
-app.use('/em-ai/agents', emAiAgentsRouter);
-app.use('/', emotionalSessionRouter);
-app.use('/', leadershipSessionRouter);
-
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
@@ -82,6 +82,17 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   });
   next();
 });
+
+// System routes available regardless of feature flags
+app.use('/', systemRouter);
+app.use('/api', contentRouter);
+app.use('/', actionsRouter);
+app.use('/', p1Router);
+
+// EM AI agent catalog + execution
+app.use('/em-ai/agents', emAiAgentsRouter);
+app.use('/', emotionalSessionRouter);
+app.use('/', leadershipSessionRouter);
 
 // ============================================================================
 // SIMULATED AGENT DATA (for dashboard endpoints)
@@ -273,27 +284,16 @@ app.post('/api/agents/daily-brief/run', async (req: Request, res: Response) => {
 /**
  * Natural language intent endpoint with planner support
  */
-app.use('/api/voice', intentRouter);
-
-/**
- * Mount voice router with voice-first endpoints
- */
-app.use('/api/voice', voiceRouter);
-
-/**
- * Audio generation endpoints for ElevenLabs TTS integration
- */
-app.use('/api/voice', voiceAudioRouter);
-
-/**
- * Speech-to-text transcription endpoints
- */
-app.use('/api/voice', transcribeRouter);
-
-/**
- * Voice turn endpoint - unified audio/text → command → response
- */
-app.use('/api/voice', voiceTurnRouter);
+if (VOICE_ENABLED) {
+  app.use('/api/voice', intentRouter);
+  app.use('/api/voice', voiceRouter);
+  app.use('/api/voice', voiceAudioRouter);
+  app.use('/api/voice', transcribeRouter);
+  app.use('/api/voice', voiceTurnRouter);
+  console.log('🎤 Voice routes enabled (EM_ENABLE_VOICE=true)');
+} else {
+  console.log('🔇 Voice routes disabled (set EM_ENABLE_VOICE=true to enable)');
+}
 
 // ============================================================================
 // ROUTES - GROWTH AGENTS ORCHESTRATOR (PHASE 6)

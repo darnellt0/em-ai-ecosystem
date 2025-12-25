@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
 process.env.PORT = '0';
+process.env.EM_ENABLE_VOICE = 'true';
 
 jest.mock('openai', () => {
   const OpenAI = jest.fn().mockImplementation(() => ({}));
@@ -82,4 +83,3 @@ jest.mock('ws', () => {
   const WebSocket = jest.fn();
   return { __esModule: true, WebSocketServer, WebSocket };
 });
-

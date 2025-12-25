@@ -1,6 +1,5 @@
 import express from 'express';
-import { getAgent } from '../../orchestrator/src/registry/agent-registry';
-import { runAgentsConcurrently } from '../../orchestrator/src/dispatcher';
+import { getAgent, runAgentsConcurrently } from '@em/orchestrator';
 import { savePlannedAction } from '../actions/action.store';
 import { ensureP1AgentsRegistered } from '../orchestrator/registerP1Agents';
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import { generateContentPack } from '../services/contentPack.service';
 import { getContentPack, listContentPacks } from '../content/contentPack.store';
+import { runWeeklyContentPack } from '../services/contentWeek.service';
 
 const router = express.Router();
 
@@ -27,6 +28,24 @@ router.get('/content/packs/:packId', (req, res) => {
   const pack = getContentPack(req.params.packId);
   if (!pack) return res.status(404).json({ success: false, error: 'Not found' });
   return res.json({ success: true, pack });
+});
+
+router.post('/content/week', async (req, res) => {
+  const { scope, channels, focus, tone } = req.body || {};
+  if (!Array.isArray(channels) || channels.length === 0) {
+    return res.status(400).json({ success: false, error: 'channels must include at least one entry' });
+  }
+  try {
+    const pack = await runWeeklyContentPack({
+      scope: scope || 'elevated_movements',
+      channels,
+      focus: focus || 'default',
+      tone: tone || 'standard_week',
+    });
+    return res.json({ success: true, pack });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to generate content week pack' });
+  }
 });
 
 export default router;

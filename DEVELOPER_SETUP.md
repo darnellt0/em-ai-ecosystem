@@ -79,6 +79,15 @@ REDIS_URL=redis://localhost:6380
 DATABASE_URL=postgresql://elevated_movements:changeme@localhost:5433/em_ecosystem
 ```
 
+## API Port Conflicts
+
+If port **3000** is already in use on your machine, start the API on an alternate port:
+
+```bash
+# Run the API on port 3001 to avoid dashboard clashes
+PORT=3001 npm -w packages/api run dev
+```
+
 ## Development Scripts
 
 ```bash
