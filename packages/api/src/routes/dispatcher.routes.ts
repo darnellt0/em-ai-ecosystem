@@ -7,6 +7,8 @@ import { runP0NicheDiscover } from '../exec-admin/flows/p0-niche-discover';
 import { runP1Mindset } from '../exec-admin/flows/p1-mindset';
 import { runP1Rhythm } from '../exec-admin/flows/p1-rhythm';
 import { runP1Purpose } from '../exec-admin/flows/p1-purpose';
+import { runP1IntegratedStrategist } from '../exec-admin/flows/p1-integrated-strategist';
+import { runP1SystemsArchitect } from '../exec-admin/flows/p1-systems-architect';
 
 
 const dispatcherRouter = Router();
@@ -61,6 +63,13 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
               financial_allocate: 'active',
               insights: 'active',
               niche_discover: 'active',
+            },
+            p1Agents: {
+              mindset: 'active',
+              rhythm: 'active',
+              purpose: 'active',
+              strategy_sync: 'active',
+              systems_design: 'active',
             },
           },
           qa: {
@@ -355,6 +364,79 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
             checks: [
               'dispatcher_routed',
               'purpose_agent_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // INTEGRATED STRATEGIST (P1 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'strategy_sync': {
+        const { userId, systems, timeHorizon, focusArea, mode } = payload;
+
+        if (!userId) {
+          throw new Error('strategy_sync requires userId in payload');
+        }
+
+        const strategyResult = await runP1IntegratedStrategist({
+          userId,
+          systems,
+          timeHorizon,
+          focusArea,
+          mode,
+        });
+
+        result = {
+          success: true,
+          intent: 'strategy_sync',
+          routed: true,
+          data: strategyResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'integrated_strategist_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // SYSTEMS ARCHITECT (P1 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'systems_design': {
+        const { userId, requestType, context, currentSystems, constraints, mode } = payload;
+
+        if (!userId) {
+          throw new Error('systems_design requires userId in payload');
+        }
+
+        const architectResult = await runP1SystemsArchitect({
+          userId,
+          requestType,
+          context,
+          currentSystems,
+          constraints,
+          mode,
+        });
+
+        result = {
+          success: true,
+          intent: 'systems_design',
+          routed: true,
+          data: architectResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'systems_architect_executed',
               'runId_generated',
               'response_structure_valid',
             ],
