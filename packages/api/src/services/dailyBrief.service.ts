@@ -3,6 +3,7 @@ import { runDailyBriefService, DailyBriefPayload, DailyBriefResult } from '../..
 import { calendarService } from './calendar.service';
 import { insightsService } from './insights.service';
 import logger from '../utils/logger';
+import { getGrowthStatus } from './emAi.service';
 
 const DEFAULT_TZ = 'America/Los_Angeles';
 
@@ -15,11 +16,12 @@ function resolveEmail(user: DailyBriefPayload['user']): string {
   return recipientsByUser[user]?.[0] || '';
 }
 
-export async function runDailyBriefAgent(input: { user: DailyBriefPayload['user']; date?: string; runId?: string }): Promise<DailyBriefResult> {
+export async function runDailyBriefAgent(input: { user?: DailyBriefPayload['user']; userId?: string; date?: string; runId?: string }): Promise<DailyBriefResult> {
+  const user = (input.user || input.userId || 'darnell') as DailyBriefPayload['user'];
   const runId = input.runId || randomUUID();
   const timezone = process.env.TZ || DEFAULT_TZ;
 
-  const payload: DailyBriefPayload = { user: input.user, date: input.date, runId };
+  const payload: DailyBriefPayload = { user, date: input.date, runId };
 
   const output = await runDailyBriefService(payload, {
     logger,
@@ -65,5 +67,32 @@ export async function runDailyBriefAgent(input: { user: DailyBriefPayload['user'
     throw new Error(output.error || 'daily brief failed');
   }
 
-  return output.output;
+  const includeGrowth = process.env.INCLUDE_GROWTH_IN_DAILY_BRIEF === 'true';
+  const growthMode = process.env.GROWTH_DAILY_BRIEF_MODE === 'full' ? 'full' : 'summary';
+  let growthHighlights: Array<{ agent: string; percent?: string; note?: string }> = [];
+
+  if (includeGrowth) {
+    try {
+      const growth = await getGrowthStatus();
+      const items = (growth?.recentProgress as any[]) || [];
+      const limit = growthMode === 'summary' ? 3 : items.length;
+      growthHighlights = items.slice(0, limit);
+    } catch (err: any) {
+      console.warn('[DailyBrief] growth snapshot unavailable', err?.message || err);
+    }
+  }
+
+  const growthSection =
+    includeGrowth && growthHighlights.length
+      ? `<h3>Growth Pack Snapshot</h3><ul>${growthHighlights
+          .map((item) => `<li>${item.agent || 'agent'} ${item.percent ? `${item.percent}%` : ''} ${item.note || ''}</li>`)
+          .join('')}</ul>`
+      : '';
+
+  const renderedHtml = `<div><h2>Daily Brief for ${user}</h2>${growthSection}</div>`;
+
+  return {
+    ...output.output,
+    rendered: { html: renderedHtml },
+  };
 }

@@ -37,9 +37,14 @@ const upload = multer({
       'audio/ogg',
       'audio/m4a',
       'audio/mp4',
+      'video/webm',
     ];
 
-    if (allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
+    if (
+      allowedMimes.includes(file.mimetype) ||
+      file.mimetype.startsWith('audio/') ||
+      file.mimetype.startsWith('video/')
+    ) {
       cb(null, true);
     } else {
       cb(new Error(`Unsupported file type: ${file.mimetype}. Please upload an audio file.`));
@@ -122,6 +127,17 @@ router.post('/turn', (req: Request, res: Response) => {
     upload.single('audio')(req, res, async (err) => {
       // Handle multer errors
       if (err) {
+        if (err.message && err.message.includes('Boundary')) {
+          return res.status(400).json({
+            status: 'error',
+            assistant: {
+              kind: 'error',
+              text: 'No audio file uploaded. Please include an "audio" field in your form-data.',
+            },
+            error: 'No audio file uploaded. Please include an "audio" field in your form-data.',
+          });
+        }
+
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
@@ -187,11 +203,14 @@ router.post('/turn', (req: Request, res: Response) => {
         const transcriptionResult = await transcribeAudio(audioBuffer, filename);
 
         if (!transcriptionResult.success || !transcriptionResult.text) {
+          const failureMessage = transcriptionResult.error
+            ? `Transcription failed: ${transcriptionResult.error}`
+            : 'Transcription failed';
           return res.status(500).json({
             status: 'error',
             assistant: {
               kind: 'error',
-              text: transcriptionResult.error || 'Transcription failed',
+              text: failureMessage,
             },
             error: transcriptionResult.error || 'Transcription failed',
           });
