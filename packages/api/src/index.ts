@@ -23,11 +23,15 @@ import transcribeRouter from './voice/transcribe.router';
 import voiceTurnRouter from './voice/voiceTurn.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
+import actionsRouter from './routes/actions.routes';
+import contentRouter from './routes/content.routes';
 import emAiAgentsRouter from './routes/emAiAgents.router';
 import emotionalSessionRouter from './routes/emotional-session.router';
+import execAdminRouter from './routes/execAdmin.router';
 import leadershipSessionRouter from './routes/leadership-session.router';
 import emAiExecAdminRouter from './routes/emAiExecAdmin.router';
 import p0RunsRouter from './routes/p0-runs.routes';
+import p1Router from './routes/p1.routes';
 import { validateAgentRegistry } from './growth-agents/agent-registry';
 import { initSentry, captureException, flushSentry } from './services/sentry';
 import { runDailyBriefAgent } from './services/dailyBrief.service';
@@ -36,6 +40,7 @@ import p0DailyBriefRouter from './routes/p0-daily-brief.routes';
 import p0DailyFocusRouter from './routes/p0-daily-focus.routes';
 import p1ActionPackRouter from './routes/p1-action-pack.routes';
 import { performHealthCheck } from './services/health.service';
+import systemRouter from './routes/system.routes';
 
 // Initialize Sentry after env is loaded
 initSentry();
@@ -43,6 +48,7 @@ initSentry();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const enableVoice = process.env.EM_ENABLE_VOICE === 'true';
 
 // ============================================================================
 // MIDDLEWARE
@@ -72,6 +78,11 @@ app.use(express.json());
 app.use('/em-ai/agents', emAiAgentsRouter);
 app.use('/', emotionalSessionRouter);
 app.use('/', leadershipSessionRouter);
+app.use('/', execAdminRouter);
+app.use('/', systemRouter);
+app.use('/', actionsRouter);
+app.use('/api', contentRouter);
+app.use('/', p1Router);
 
 // Request logging middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -273,27 +284,31 @@ app.post('/api/agents/daily-brief/run', async (req: Request, res: Response) => {
 /**
  * Natural language intent endpoint with planner support
  */
-app.use('/api/voice', intentRouter);
+if (enableVoice) {
+  app.use('/api/voice', intentRouter);
 
 /**
  * Mount voice router with voice-first endpoints
  */
-app.use('/api/voice', voiceRouter);
+  app.use('/api/voice', voiceRouter);
 
 /**
  * Audio generation endpoints for ElevenLabs TTS integration
  */
-app.use('/api/voice', voiceAudioRouter);
+  app.use('/api/voice', voiceAudioRouter);
 
 /**
  * Speech-to-text transcription endpoints
  */
-app.use('/api/voice', transcribeRouter);
+  app.use('/api/voice', transcribeRouter);
 
 /**
  * Voice turn endpoint - unified audio/text → command → response
  */
-app.use('/api/voice', voiceTurnRouter);
+  app.use('/api/voice', voiceTurnRouter);
+} else {
+  console.log('?? Voice API routes disabled (set EM_ENABLE_VOICE=true to enable)');
+}
 
 // ============================================================================
 // ROUTES - GROWTH AGENTS ORCHESTRATOR (PHASE 6)
@@ -574,7 +589,7 @@ if (NODE_ENV !== 'test') {
     console.log(`   POST /api/voice/support/follow-up       - Create reminder`);
   });
 
-  if (!(global as any).__VOICE_WSS_INITIALIZED__) {
+  if (enableVoice && !(global as any).__VOICE_WSS_INITIALIZED__) {
     initVoiceRealtimeWSS(server);
     (global as any).__VOICE_WSS_INITIALIZED__ = true;
   }

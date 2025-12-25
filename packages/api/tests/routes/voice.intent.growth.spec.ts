@@ -72,6 +72,7 @@ beforeAll(() => {
   process.env.PORT = '0';
   process.env.ENABLE_GROWTH_AGENTS = 'true';
   process.env.FOUNDER_SHRIA_EMAIL = 'shria@elevatedmovements.com';
+  process.env.EM_ENABLE_VOICE = 'true';
   app = require('../../src').default;
 });
 

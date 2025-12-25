@@ -11,6 +11,7 @@
     "dev:watch": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js",
     "test:voice": "jest --testPathPattern=voice.router.spec.ts --verbose",
     "test:calendar": "jest --testPathPattern=calendar.service.spec.ts --verbose",
     "test:watch": "jest --watch",

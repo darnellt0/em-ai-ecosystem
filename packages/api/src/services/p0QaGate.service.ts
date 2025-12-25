@@ -50,9 +50,32 @@ function expectNumber(value: unknown, field: string, issues: QaIssue[], severity
   }
 }
 
+function expectBoolean(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
+  if (typeof value !== 'boolean') {
+    issues.push({ field, message: 'Expected boolean', severity });
+  }
+}
+
 function expectObject(value: unknown, field: string, issues: QaIssue[], severity: QaSeverity = 'block') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     issues.push({ field, message: 'Expected object', severity });
+  }
+}
+
+function expectNumberInRange(
+  value: unknown,
+  field: string,
+  min: number,
+  max: number,
+  issues: QaIssue[],
+  severity: QaSeverity = 'block'
+) {
+  if (typeof value !== 'number' || isNaN(value)) {
+    issues.push({ field, message: 'Expected number', severity });
+    return;
+  }
+  if (value < min || value > max) {
+    issues.push({ field, message: `Expected number between ${min} and ${max}`, severity });
   }
 }
 export function evaluateDailyFocusOutput(output: any): QaGateResult {
@@ -379,9 +402,250 @@ export function evaluatePurposeOutput(output: any): QaGateResult {
   return buildResult(issues);
 }
 
+// -------------------------------------------------------------------------
+// WAVE P1.2: INBOX ASSISTANT EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateInboxAssistantOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  const isOffline = output.offline === true || output.mode === 'offline';
+  const allowStub = output.allowStub === true;
+  const stubAllowed = isOffline || allowStub;
+
+  if ((output.status === 'stub' || output.status === 'not_implemented') && !stubAllowed) {
+    issues.push({ field: 'status', message: 'Stub output allowed only in offline mode', severity: 'block' });
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectObject(output.summary, 'summary', issues);
+
+  if (output.summary && typeof output.summary === 'object') {
+    expectNumber(output.summary.total, 'summary.total', issues);
+    expectNumber(output.summary.urgent, 'summary.urgent', issues);
+    expectNumber(output.summary.important, 'summary.important', issues);
+    expectNumber(output.summary.needsReply, 'summary.needsReply', issues);
+    expectNumber(output.summary.readLater, 'summary.readLater', issues);
+  }
+
+  expectArray(output.topEmails, 'topEmails', issues);
+  if (Array.isArray(output.topEmails)) {
+    if (output.topEmails.length === 0) {
+      issues.push({
+        field: 'topEmails',
+        message: 'Expected at least 1 email',
+        severity: stubAllowed ? 'warn' : 'block',
+      });
+    }
+    output.topEmails.forEach((email: any, idx: number) => {
+      expectString(email?.id, `topEmails[${idx}].id`, issues);
+      expectString(email?.from, `topEmails[${idx}].from`, issues);
+      expectString(email?.subject, `topEmails[${idx}].subject`, issues);
+      expectString(email?.snippet, `topEmails[${idx}].snippet`, issues);
+      if (email?.labels !== undefined) {
+        expectArray(email.labels, `topEmails[${idx}].labels`, issues, 'warn');
+      }
+    });
+  }
+
+  expectArray(output.recommendedActions, 'recommendedActions', issues);
+  if (Array.isArray(output.recommendedActions) && output.recommendedActions.length === 0) {
+    issues.push({
+      field: 'recommendedActions',
+      message: 'Expected at least 1 recommended action',
+      severity: stubAllowed ? 'warn' : 'block',
+    });
+  }
+
+  if (output.draftReplies !== undefined) {
+    expectArray(output.draftReplies, 'draftReplies', issues);
+    if (Array.isArray(output.draftReplies)) {
+      output.draftReplies.forEach((draft: any, idx: number) => {
+        expectString(draft?.emailId, `draftReplies[${idx}].emailId`, issues);
+        expectArray(draft?.suggestions, `draftReplies[${idx}].suggestions`, issues);
+        if (Array.isArray(draft?.suggestions) && draft.suggestions.length === 0) {
+          issues.push({
+            field: `draftReplies[${idx}].suggestions`,
+            message: 'Expected at least 1 suggestion',
+            severity: stubAllowed ? 'warn' : 'block',
+          });
+        }
+      });
+    }
+  }
+
+  expectBoolean(output.offline, 'offline', issues);
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.2: DEEP WORK DEFENDER EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateDeepWorkDefenderOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  const isOffline = output.offline === true || output.mode === 'offline';
+  const allowStub = output.allowStub === true;
+  const stubAllowed = isOffline || allowStub;
+
+  if ((output.status === 'stub' || output.status === 'not_implemented') && !stubAllowed) {
+    issues.push({ field: 'status', message: 'Stub output allowed only in offline mode', severity: 'block' });
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectNumber(output.horizonDays, 'horizonDays', issues);
+  expectNumber(output.targetFocusMinutes, 'targetFocusMinutes', issues);
+  expectString(output.workdayStart, 'workdayStart', issues);
+  expectString(output.workdayEnd, 'workdayEnd', issues);
+  expectObject(output.meetingLoad, 'meetingLoad', issues);
+
+  if (output.meetingLoad && typeof output.meetingLoad === 'object') {
+    expectNumber(output.meetingLoad.totalMeetings, 'meetingLoad.totalMeetings', issues);
+    expectNumber(output.meetingLoad.meetingMinutes, 'meetingLoad.meetingMinutes', issues);
+  }
+
+  expectArray(output.suggestedFocusBlocks, 'suggestedFocusBlocks', issues);
+  if (Array.isArray(output.suggestedFocusBlocks)) {
+    if (output.suggestedFocusBlocks.length === 0) {
+      issues.push({
+        field: 'suggestedFocusBlocks',
+        message: 'Expected at least 1 focus block',
+        severity: stubAllowed ? 'warn' : 'block',
+      });
+    }
+    output.suggestedFocusBlocks.forEach((block: any, idx: number) => {
+      expectString(block?.start, `suggestedFocusBlocks[${idx}].start`, issues);
+      expectString(block?.end, `suggestedFocusBlocks[${idx}].end`, issues);
+      expectNumber(block?.minutes, `suggestedFocusBlocks[${idx}].minutes`, issues);
+      expectString(block?.reason, `suggestedFocusBlocks[${idx}].reason`, issues);
+    });
+  }
+
+  expectArray(output.conflicts, 'conflicts', issues);
+  if (Array.isArray(output.conflicts)) {
+    output.conflicts.forEach((conflict: any, idx: number) => {
+      expectString(conflict?.date, `conflicts[${idx}].date`, issues);
+      expectString(conflict?.reason, `conflicts[${idx}].reason`, issues);
+    });
+  }
+
+  expectArray(output.recommendations, 'recommendations', issues);
+  if (Array.isArray(output.recommendations) && output.recommendations.length === 0) {
+    issues.push({
+      field: 'recommendations',
+      message: 'Expected at least 1 recommendation',
+      severity: stubAllowed ? 'warn' : 'block',
+    });
+  }
+
+  expectBoolean(output.offline, 'offline', issues);
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.4: BRAND STORYTELLER EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateBrandStorytellerOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.runId, 'runId', issues);
+  expectString(output.userId, 'userId', issues);
+  expectString(output.context, 'context', issues);
+  expectString(output.audience, 'audience', issues);
+  expectString(output.alignedContent, 'alignedContent', issues);
+  expectArray(output.voiceNotes, 'voiceNotes', issues);
+
+  if (Array.isArray(output.voiceNotes) && output.voiceNotes.length === 0) {
+    issues.push({ field: 'voiceNotes', message: 'Expected at least 1 voice note', severity: 'block' });
+  }
+
+  expectNumberInRange(output.confidenceScore, 'confidenceScore', 0, 1, issues);
+  expectString(output.recommendedNextAction, 'recommendedNextAction', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.4: MEMBERSHIP GUARDIAN EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateMembershipGuardianOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  const validStatuses = ['healthy', 'watch', 'at_risk'];
+  const validInterventions = ['check_in', 'content_nudge', 'pause', 'escalate'];
+
+  expectString(output.runId, 'runId', issues);
+  expectString(output.memberId, 'memberId', issues);
+  expectString(output.timeframe, 'timeframe', issues);
+
+  if (!validStatuses.includes(output.status)) {
+    issues.push({ field: 'status', message: 'Invalid status', severity: 'block' });
+  }
+
+  expectArray(output.signalsDetected, 'signalsDetected', issues);
+  if (output.status !== 'healthy' && Array.isArray(output.signalsDetected) && output.signalsDetected.length === 0) {
+    issues.push({
+      field: 'signalsDetected',
+      message: 'Expected non-empty signalsDetected when status is not healthy',
+      severity: 'block',
+    });
+  }
+
+  expectObject(output.recommendedIntervention, 'recommendedIntervention', issues);
+  if (output.recommendedIntervention && typeof output.recommendedIntervention === 'object') {
+    if (!validInterventions.includes(output.recommendedIntervention.type)) {
+      issues.push({
+        field: 'recommendedIntervention.type',
+        message: 'Invalid intervention type',
+        severity: 'block',
+      });
+    }
+    expectString(output.recommendedIntervention.messageDraft, 'recommendedIntervention.messageDraft', issues);
+    if (
+      output.recommendedIntervention.notes !== undefined
+      && typeof output.recommendedIntervention.notes !== 'string'
+    ) {
+      issues.push({
+        field: 'recommendedIntervention.notes',
+        message: 'Expected notes to be a string',
+        severity: 'warn',
+      });
+    }
+  }
+
+  expectNumberInRange(output.confidenceScore, 'confidenceScore', 0, 1, issues);
+
+  return buildResult(issues);
+}
+
 export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate' | 'insights' | 'nicheDiscover';
 
-export type P1AgentKind = 'mindset' | 'rhythm' | 'purpose';
+export type P1AgentKind = 'mindset'
+  | 'rhythm'
+  | 'purpose'
+  | 'inboxAssistant'
+  | 'deepWorkDefender'
+  | 'brandStory'
+  | 'membershipGuardian';
 
 export type AgentKind = P0AgentKind | P1AgentKind;
 
@@ -413,5 +677,17 @@ export function runP0QaGate(kind: AgentKind, output: unknown): QaGateResult {
   if (kind === 'purpose') {
     return evaluatePurposeOutput(output);
   }
-    throw new Error(`Unknown P0 agent kind: ${kind}`);
+  if (kind === 'inboxAssistant') {
+    return evaluateInboxAssistantOutput(output);
+  }
+  if (kind === 'deepWorkDefender') {
+    return evaluateDeepWorkDefenderOutput(output);
+  }
+  if (kind === 'brandStory') {
+    return evaluateBrandStorytellerOutput(output);
+  }
+  if (kind === 'membershipGuardian') {
+    return evaluateMembershipGuardianOutput(output);
+  }
+  throw new Error(`Unknown agent kind: ${kind}`);
 }

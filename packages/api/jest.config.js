@@ -17,6 +17,11 @@ module.exports = {
     '^@em/orchestrator/(.*)$': '<rootDir>/../orchestrator/src/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup-tests.ts'],
+  testPathIgnorePatterns: [
+    '<rootDir>/tests/integration',
+    '\\\\.int\\\\.spec\\\\.ts$',
+    '\\\\.integration\\\\.spec\\\\.ts$',
+  ],
   coveragePathIgnorePatterns: [
     'node_modules',
     'dist',

@@ -7,6 +7,7 @@ import {
   GrowthAgentInput,
 } from './growthAgents.service';
 import { runDailyBriefAgent } from './dailyBrief.service';
+import { runWeeklyContentPack } from './contentWeek.service';
 
 export interface ExecAdminAgentAdapterContext {
   mode: 'single' | 'orchestrated';
@@ -37,6 +38,10 @@ const EXEC_ADMIN_AGENT_ADAPTERS: Record<string, ExecAdminAgentAdapter> = {
   'productivity.dailyBrief': async (ctx) => {
     const { userId = 'darnell', date } = ctx.payload;
     return runDailyBriefAgent({ user: userId as 'darnell' | 'shria', date });
+  },
+  'content.weeklyPack': async (ctx) => {
+    const pack = await runWeeklyContentPack(ctx.payload);
+    return { summary: pack.weekSummary || 'Weekly content pack ready', pack };
   },
 };
 

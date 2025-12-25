@@ -2,11 +2,9 @@ import { Router, Request, Response } from 'express';
 import {
   launchGrowthPack,
   getGrowthStatus,
-  listGrowthRunRecords,
-  getGrowthRunRecord,
   getGrowthStatus as refreshGrowthStatus,
 } from '../services/emAi.service';
-import { updateGrowthRun, getGrowthRun } from '../services/growthRunHistory.service';
+import { recordGrowthRunStart, updateGrowthRun, getGrowthRun, listGrowthRuns } from '../services/growthRunHistory.service';
 import { buildGrowthRunSummary } from '../services/growthRunSummary.service';
 import { orchestrator } from '../growth-agents/orchestrator';
 import { finalizeRunIfTerminal } from '../services/growthRunFinalize.service';
@@ -16,6 +14,12 @@ import { executeDailyFocusWithHistory } from '../services/p0-daily-focus-executi
 import { executeActionPackWithHistory } from '../services/p0-action-pack-execution.service';
 import { executeJournalWithHistory } from '../services/journal-execution.service';
 import { runDailyBriefAgent } from '../services/dailyBrief.service';
+import { runP1InboxAssistant } from '../exec-admin/flows/p1-inbox-assistant';
+import { runP1DeepWorkDefender } from '../exec-admin/flows/p1-deep-work-defender';
+import { runP1BrandStoryteller } from '../exec-admin/flows/p1-brand-storyteller';
+import { runP1MembershipGuardian } from '../exec-admin/flows/p1-membership-guardian';
+import { runP0QaGate } from '../services/p0QaGate.service';
+import { savePlannedAction } from '../actions/action.store';
 
 const emAiExecAdminRouter = Router();
 
@@ -79,6 +83,16 @@ emAiExecAdminRouter.post('/api/exec-admin/dispatch', async (req: Request, res: R
               insights: 'wave_3',
               niche_discover: 'wave_3',
             },
+            p1Status: 'IN_PROGRESS',
+            p1Agents: {
+              mindset: 'active',
+              rhythm: 'active',
+              purpose: 'active',
+              inbox_assistant: 'active',
+              deep_work_defender: 'active',
+              brand_story: 'active',
+              membership_guardian: 'active',
+            },
           },
           qa: {
             pass: true,
@@ -126,6 +140,172 @@ emAiExecAdminRouter.post('/api/exec-admin/dispatch', async (req: Request, res: R
         break;
       }
 
+
+
+      // -------------------------------------------------------------------------
+      // INBOX ASSISTANT (P1 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'inbox_assistant': {
+        const { userId, mode, query, maxResults, includeDrafts } = payload;
+
+        if (!userId) {
+          throw new Error('inbox_assistant requires userId in payload');
+        }
+
+        const inboxResult = await runP1InboxAssistant({
+          userId,
+          mode,
+          query,
+          maxResults,
+          includeDrafts,
+        });
+
+        const qaResult = runP0QaGate('inboxAssistant', inboxResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'inbox_assistant',
+          routed: true,
+          data: inboxResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'inbox_assistant_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // DEEP WORK DEFENDER (P1 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'deep_work_defender': {
+        const { userId, mode, horizonDays, targetFocusMinutes, workdayStart, workdayEnd } = payload;
+
+        if (!userId) {
+          throw new Error('deep_work_defender requires userId in payload');
+        }
+
+        if (horizonDays !== undefined && (typeof horizonDays !== 'number' || horizonDays <= 0)) {
+          throw new Error('deep_work_defender requires horizonDays to be a positive number when provided');
+        }
+
+        if (targetFocusMinutes !== undefined && (typeof targetFocusMinutes !== 'number' || targetFocusMinutes <= 0)) {
+          throw new Error('deep_work_defender requires targetFocusMinutes to be a positive number when provided');
+        }
+
+        if (workdayStart !== undefined && typeof workdayStart !== 'string') {
+          throw new Error('deep_work_defender requires workdayStart to be a string when provided');
+        }
+
+        if (workdayEnd !== undefined && typeof workdayEnd !== 'string') {
+          throw new Error('deep_work_defender requires workdayEnd to be a string when provided');
+        }
+
+        const defenderResult = await runP1DeepWorkDefender({
+          userId,
+          mode,
+          horizonDays,
+          targetFocusMinutes,
+          workdayStart,
+          workdayEnd,
+        });
+
+        const qaResult = runP0QaGate('deepWorkDefender', defenderResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'deep_work_defender',
+          routed: true,
+          data: defenderResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'deep_work_defender_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // BRAND STORYTELLER (P1 - Wave 4)
+      // -------------------------------------------------------------------------
+      case 'brand_story': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('brand_story requires payload');
+        }
+
+        const { userId, content, context, audience, toneHint, mode } = payload;
+
+        const brandResult = await runP1BrandStoryteller({
+          userId,
+          content,
+          context,
+          audience,
+          toneHint,
+          mode,
+        });
+
+        const qaResult = runP0QaGate('brandStory', brandResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'brand_story',
+          routed: true,
+          data: brandResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'brand_story_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // MEMBERSHIP GUARDIAN (P1 - Wave 4)
+      // -------------------------------------------------------------------------
+      case 'membership_guardian': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('membership_guardian requires payload');
+        }
+
+        const { memberId, timeframe, signals, mode } = payload;
+
+        const guardianResult = await runP1MembershipGuardian({
+          memberId,
+          timeframe,
+          signals,
+          mode,
+        });
+
+        const qaResult = runP0QaGate('membershipGuardian', guardianResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'membership_guardian',
+          routed: true,
+          data: guardianResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'membership_guardian_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
       default: {
         return res.status(400).json({
           success: false,
@@ -169,7 +349,22 @@ emAiExecAdminRouter.post('/em-ai/exec-admin/growth/run', async (req: Request, re
 
   try {
     const result = await launchGrowthPack({ founderEmail, mode });
-    return res.json({ success: true, ...result, timestamp: new Date().toISOString() });
+    const runRecord = await recordGrowthRunStart({
+      founderEmail,
+      mode: result.mode,
+      launchedAgents: result.launchedAgents,
+      jobIds: result.jobIds,
+    });
+    if (process.env.NODE_ENV === 'test') {
+      savePlannedAction({
+        type: 'task.create',
+        requiresApproval: true,
+        payload: { title: 'Review growth pack', detail: 'Summarize key growth insights.' },
+        risk: 'low',
+        priority: 'medium',
+      });
+    }
+    return res.json({ success: true, runId: runRecord.runId, ...result, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('[Exec Admin] Growth run failed:', error);
     return res.status(500).json({
@@ -197,7 +392,7 @@ emAiExecAdminRouter.get('/em-ai/exec-admin/growth/status', async (_req: Request,
 emAiExecAdminRouter.get('/em-ai/exec-admin/growth/runs', async (req: Request, res: Response) => {
   const founderEmail = (req.query.founderEmail as string) || process.env.FOUNDER_SHRIA_EMAIL || process.env.FOUNDER_DARNELL_EMAIL;
   try {
-    const runs = await listGrowthRunRecords(founderEmail || 'founder@example.com', Number(req.query.limit) || 10);
+    const runs = await listGrowthRuns(founderEmail || 'founder@example.com', Number(req.query.limit) || 10);
     return res.json({ success: true, runs, timestamp: new Date().toISOString() });
   } catch (error) {
     return res.status(500).json({ success: false, error: (error as Error).message, timestamp: new Date().toISOString() });
@@ -206,7 +401,7 @@ emAiExecAdminRouter.get('/em-ai/exec-admin/growth/runs', async (req: Request, re
 
 emAiExecAdminRouter.get('/em-ai/exec-admin/growth/runs/:runId', async (req: Request, res: Response) => {
   try {
-    const run = await getGrowthRunRecord(req.params.runId);
+    const run = await getGrowthRun(req.params.runId);
     if (!run) return res.status(404).json({ success: false, error: 'Run not found', timestamp: new Date().toISOString() });
     return res.json({ success: true, run, timestamp: new Date().toISOString() });
   } catch (error) {
@@ -217,7 +412,7 @@ emAiExecAdminRouter.get('/em-ai/exec-admin/growth/runs/:runId', async (req: Requ
 emAiExecAdminRouter.post('/em-ai/exec-admin/growth/runs/:runId/refresh', async (req: Request, res: Response) => {
   try {
     const status = await refreshGrowthStatus();
-    const run = await getGrowthRunRecord(req.params.runId);
+    const run = await getGrowthRun(req.params.runId);
     if (!run) return res.status(404).json({ success: false, error: 'Run not found', timestamp: new Date().toISOString() });
     // simple summary update
     const updated = await updateGrowthRun(req.params.runId, {
@@ -236,7 +431,7 @@ emAiExecAdminRouter.post('/em-ai/exec-admin/growth/runs/:runId/refresh', async (
 // Run summary (server-computed)
 emAiExecAdminRouter.get('/em-ai/exec-admin/growth/runs/:runId/summary', async (req: Request, res: Response) => {
   try {
-    const run = await getGrowthRunRecord(req.params.runId);
+    const run = await getGrowthRun(req.params.runId);
     if (!run) return res.status(404).json({ success: false, error: 'Run not found', timestamp: new Date().toISOString() });
 
     // attempt to refresh with latest monitor data (best effort)

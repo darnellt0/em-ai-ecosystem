@@ -7,6 +7,11 @@ import { runP0NicheDiscover } from '../exec-admin/flows/p0-niche-discover';
 import { runP1Mindset } from '../exec-admin/flows/p1-mindset';
 import { runP1Rhythm } from '../exec-admin/flows/p1-rhythm';
 import { runP1Purpose } from '../exec-admin/flows/p1-purpose';
+import { runP1InboxAssistant } from '../exec-admin/flows/p1-inbox-assistant';
+import { runP1DeepWorkDefender } from '../exec-admin/flows/p1-deep-work-defender';
+import { runP1BrandStoryteller } from '../exec-admin/flows/p1-brand-storyteller';
+import { runP1MembershipGuardian } from '../exec-admin/flows/p1-membership-guardian';
+import { runP0QaGate } from '../services/p0QaGate.service';
 
 
 const dispatcherRouter = Router();
@@ -61,6 +66,16 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
               financial_allocate: 'active',
               insights: 'active',
               niche_discover: 'active',
+            },
+            p1Status: 'IN_PROGRESS',
+            p1Agents: {
+              mindset: 'active',
+              rhythm: 'active',
+              purpose: 'active',
+              inbox_assistant: 'active',
+              deep_work_defender: 'active',
+              brand_story: 'active',
+              membership_guardian: 'active',
             },
           },
           qa: {
@@ -255,6 +270,7 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
           },
         };
         break;
+      }
 
       // -------------------------------------------------------------------------
       // MINDSET AGENT (P1 - Wave 1)
@@ -362,6 +378,171 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
         };
         break;
       }
+
+
+      // -------------------------------------------------------------------------
+      // INBOX ASSISTANT (P1 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'inbox_assistant': {
+        const { userId, mode, query, maxResults, includeDrafts } = payload;
+
+        if (!userId) {
+          throw new Error('inbox_assistant requires userId in payload');
+        }
+
+        const inboxResult = await runP1InboxAssistant({
+          userId,
+          mode,
+          query,
+          maxResults,
+          includeDrafts,
+        });
+
+        const qaResult = runP0QaGate('inboxAssistant', inboxResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'inbox_assistant',
+          routed: true,
+          data: inboxResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'inbox_assistant_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // DEEP WORK DEFENDER (P1 - Wave 2)
+      // -------------------------------------------------------------------------
+      case 'deep_work_defender': {
+        const { userId, mode, horizonDays, targetFocusMinutes, workdayStart, workdayEnd } = payload;
+
+        if (!userId) {
+          throw new Error('deep_work_defender requires userId in payload');
+        }
+
+        if (horizonDays !== undefined && (typeof horizonDays !== 'number' || horizonDays <= 0)) {
+          throw new Error('deep_work_defender requires horizonDays to be a positive number when provided');
+        }
+
+        if (targetFocusMinutes !== undefined && (typeof targetFocusMinutes !== 'number' || targetFocusMinutes <= 0)) {
+          throw new Error('deep_work_defender requires targetFocusMinutes to be a positive number when provided');
+        }
+
+        if (workdayStart !== undefined && typeof workdayStart !== 'string') {
+          throw new Error('deep_work_defender requires workdayStart to be a string when provided');
+        }
+
+        if (workdayEnd !== undefined && typeof workdayEnd !== 'string') {
+          throw new Error('deep_work_defender requires workdayEnd to be a string when provided');
+        }
+
+        const defenderResult = await runP1DeepWorkDefender({
+          userId,
+          mode,
+          horizonDays,
+          targetFocusMinutes,
+          workdayStart,
+          workdayEnd,
+        });
+
+        const qaResult = runP0QaGate('deepWorkDefender', defenderResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'deep_work_defender',
+          routed: true,
+          data: defenderResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'deep_work_defender_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // BRAND STORYTELLER (P1 - Wave 4)
+      // -------------------------------------------------------------------------
+      case 'brand_story': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('brand_story requires payload');
+        }
+
+        const { userId, content, context, audience, toneHint, mode } = payload;
+
+        const brandResult = await runP1BrandStoryteller({
+          userId,
+          content,
+          context,
+          audience,
+          toneHint,
+          mode,
+        });
+
+        const qaResult = runP0QaGate('brandStory', brandResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'brand_story',
+          routed: true,
+          data: brandResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'brand_story_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // MEMBERSHIP GUARDIAN (P1 - Wave 4)
+      // -------------------------------------------------------------------------
+      case 'membership_guardian': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('membership_guardian requires payload');
+        }
+
+        const { memberId, timeframe, signals, mode } = payload;
+
+        const guardianResult = await runP1MembershipGuardian({
+          memberId,
+          timeframe,
+          signals,
+          mode,
+        });
+
+        const qaResult = runP0QaGate('membershipGuardian', guardianResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'membership_guardian',
+          routed: true,
+          data: guardianResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'membership_guardian_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
       }
       default: {
         return res.status(400).json({

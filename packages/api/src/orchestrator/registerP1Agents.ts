@@ -1,4 +1,4 @@
-import { registerAgent } from '../../orchestrator/src/registry/agent-registry';
+import { registerAgent } from '../../../orchestrator/src/registry/agent-registry';
 import { runBrandStorytellerAdapter } from '../../../agents/brand-storyteller/adapter';
 import { runCreativeDirectorAdapter } from '../../../agents/creative-director/adapter';
 import { runIntegratedStrategistAdapter } from '../../../agents/integrated-strategist/adapter';

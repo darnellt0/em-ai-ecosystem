@@ -1,8 +1,22 @@
 import express from 'express';
 import { generateContentPack } from '../services/contentPack.service';
+import { generateWeeklyContentPack } from '../workflows/contentWeekEngine';
 import { getContentPack, listContentPacks } from '../content/contentPack.store';
 
 const router = express.Router();
+
+router.post('/content/week', async (req, res) => {
+  try {
+    const { scope, channels, focus, tone } = req.body || {};
+    if (channels && (!Array.isArray(channels) || channels.length === 0)) {
+      return res.status(400).json({ success: false, error: 'channels must be a non-empty array' });
+    }
+    const pack = await generateWeeklyContentPack({ scope, channels, focus, tone });
+    return res.json({ success: true, pack });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err?.message || 'Failed to generate weekly content' });
+  }
+});
 
 router.post('/content/packs/generate', async (req, res) => {
   try {

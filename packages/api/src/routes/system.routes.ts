@@ -14,6 +14,8 @@ router.get('/api/system/health', async (_req, res) => {
       ENABLE_SHEETS_WRITES: process.env.ENABLE_SHEETS_WRITES === 'true',
     };
     res.json({
+      ok: true,
+      service: 'api',
       success: true,
       environment: process.env.NODE_ENV || 'development',
       agentCount: agents.length,
