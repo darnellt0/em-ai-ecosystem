@@ -4,7 +4,7 @@
  * Per MAB v1.0 Section 4.3:
  * "Aligns schedule with energy & goals; auto-proposes blocks."
  *
- * This flow uses the existing CalendarService to:
+ * This flow uses the Hybrid Calendar Service (MCP-first, fallback to direct API) to:
  * 1. List upcoming events
  * 2. Find available focus blocks
  * 3. Check for conflicts
@@ -12,6 +12,7 @@
  */
 
 import { calendarService } from '../../services/calendar.service';
+import { HybridCalendarService } from '../../services/calendar.hybrid.service';
 
 export interface CalendarOptimizerInput {
   userId: string;
@@ -56,6 +57,7 @@ export async function runP0CalendarOptimizer(
   const focusBlockDuration = input.focusBlockDuration || 90;
 
   console.log(`[P0 Calendar Optimizer] Starting run ${runId} for ${input.userId}`);
+  console.log(`[P0 Calendar Optimizer] MCP mode: ${HybridCalendarService.getMode()}`);
 
   // Check if calendar service is initialized
   const status = calendarService.getStatus();

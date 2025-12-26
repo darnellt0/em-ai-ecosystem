@@ -82,3 +82,5 @@ out/
 credentials/*.json
 .env.production
 logs/*.log
+logs/*.log
+data/journals/*.json

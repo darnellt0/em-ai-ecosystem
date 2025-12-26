@@ -42,6 +42,7 @@ import p0DailyFocusRouter from './routes/p0-daily-focus.routes';
 import p1ActionPackRouter from './routes/p1-action-pack.routes';
 import { performHealthCheck } from './services/health.service';
 import systemRouter from './routes/system.routes';
+import { mcpManager } from './services/mcp';
 
 // Initialize Sentry after env is loaded
 initSentry();
@@ -184,6 +185,8 @@ app.get('/api/config', (_req: Request, res: Response) => {
     elevenlabs_key: process.env.ELEVENLABS_API_KEY ? 'configured' : 'not configured',
     voice_api_token: process.env.VOICE_API_TOKEN ? 'configured' : 'not configured',
     smtp_configured: process.env.SMTP_HOST ? true : false,
+    mcp_enabled: process.env.USE_MCP === 'true',
+    mcp_servers: mcpManager.listServers(),
     founders: [
       {
         name: 'Darnell',
@@ -571,14 +574,35 @@ if (!registryValidation.valid) {
   console.log('✅ Agent registry validation passed');
 }
 
+/**
+ * Initialize MCP servers on startup
+ */
+async function initializeMCP() {
+  if (process.env.USE_MCP === 'true') {
+    console.log('[MCP] Initializing MCP servers...');
+    try {
+      await mcpManager.initialize();
+      console.log('[MCP] MCP servers initialized');
+    } catch (error) {
+      console.error('[MCP] Failed to initialize MCP:', error);
+      console.log('[MCP] Falling back to direct API mode');
+    }
+  } else {
+    console.log('[MCP] MCP disabled (set USE_MCP=true to enable)');
+  }
+}
+
 let server: ReturnType<typeof app.listen> | null = null;
 
 if (NODE_ENV !== 'test') {
-  server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', () => {
+  server = app.listen(parseInt(String(PORT), 10), '0.0.0.0', async () => {
     console.log('\n✅ Elevated Movements AI Ecosystem API Server');
     console.log(`   Port: ${PORT}`);
     console.log(`   Environment: ${NODE_ENV}`);
     console.log(`   Status: Running\n`);
+
+    // Initialize MCP after server starts
+    await initializeMCP();
     console.log(`📊 DASHBOARD ENDPOINTS:`);
     console.log(`   GET /health                        - Health check`);
     console.log(`   GET /api/agents                    - List all agents`);
@@ -603,10 +627,11 @@ if (NODE_ENV !== 'test') {
   // Start Daily Brief cron schedules (PT)
   scheduleDailyBriefCron();
 
-  // Graceful shutdown with Sentry flush
+  // Graceful shutdown with Sentry flush and MCP cleanup
   process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down gracefully...');
     server?.close(async () => {
+      await mcpManager.shutdown();
       await flushSentry();
       console.log('Server closed');
       process.exit(0);
@@ -616,6 +641,7 @@ if (NODE_ENV !== 'test') {
   process.on('SIGINT', async () => {
     console.log('SIGINT received, shutting down gracefully...');
     server?.close(async () => {
+      await mcpManager.shutdown();
       await flushSentry();
       console.log('Server closed');
       process.exit(0);
