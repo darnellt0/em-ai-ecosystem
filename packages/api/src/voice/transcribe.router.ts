@@ -27,15 +27,21 @@ const upload = multer({
     // Accept common audio formats
     const allowedMimes = [
       'audio/webm',
+      'video/webm',
       'audio/mpeg',
       'audio/mp3',
       'audio/wav',
       'audio/ogg',
       'audio/m4a',
       'audio/mp4',
+      'application/octet-stream',
     ];
 
-    if (allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
+    if (
+      allowedMimes.includes(file.mimetype) ||
+      file.mimetype.startsWith('audio/') ||
+      file.mimetype.startsWith('video/')
+    ) {
       cb(null, true);
     } else {
       cb(new Error(`Unsupported file type: ${file.mimetype}. Please upload an audio file.`));
@@ -96,9 +102,16 @@ router.post('/transcribe', (req: Request, res: Response) => {
           });
         }
 
+        const message = err.message || 'File upload failed';
+        if (message.toLowerCase().includes('boundary') || message.toLowerCase().includes('multipart')) {
+          return res.status(400).json({
+            status: 'error',
+            error: 'No audio file uploaded. Please include an "audio" field in your form-data.',
+          });
+        }
         return res.status(400).json({
           status: 'error',
-          error: err.message || 'File upload failed',
+          error: message,
         });
       }
 

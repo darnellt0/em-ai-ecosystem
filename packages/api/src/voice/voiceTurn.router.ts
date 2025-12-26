@@ -31,15 +31,21 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const allowedMimes = [
       'audio/webm',
+      'video/webm',
       'audio/mpeg',
       'audio/mp3',
       'audio/wav',
       'audio/ogg',
       'audio/m4a',
       'audio/mp4',
+      'application/octet-stream',
     ];
 
-    if (allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
+    if (
+      allowedMimes.includes(file.mimetype) ||
+      file.mimetype.startsWith('audio/') ||
+      file.mimetype.startsWith('video/')
+    ) {
       cb(null, true);
     } else {
       cb(new Error(`Unsupported file type: ${file.mimetype}. Please upload an audio file.`));
@@ -143,13 +149,24 @@ router.post('/turn', (req: Request, res: Response) => {
           });
         }
 
+        const message = err.message || 'File upload failed';
+        if (message.toLowerCase().includes('boundary') || message.toLowerCase().includes('multipart')) {
+          return res.status(400).json({
+            status: 'error',
+            assistant: {
+              kind: 'error',
+              text: 'No audio file uploaded. Please include an "audio" field in your form-data.',
+            },
+            error: 'No audio file uploaded. Please include an "audio" field in your form-data.',
+          });
+        }
         return res.status(400).json({
           status: 'error',
           assistant: {
             kind: 'error',
-            text: err.message || 'File upload failed',
+            text: message,
           },
-          error: err.message || 'File upload failed',
+          error: message,
         });
       }
 
@@ -187,13 +204,14 @@ router.post('/turn', (req: Request, res: Response) => {
         const transcriptionResult = await transcribeAudio(audioBuffer, filename);
 
         if (!transcriptionResult.success || !transcriptionResult.text) {
+          const failureMessage = transcriptionResult.error || 'Transcription failed';
           return res.status(500).json({
             status: 'error',
             assistant: {
               kind: 'error',
-              text: transcriptionResult.error || 'Transcription failed',
+              text: 'Transcription failed',
             },
-            error: transcriptionResult.error || 'Transcription failed',
+            error: failureMessage,
           });
         }
 

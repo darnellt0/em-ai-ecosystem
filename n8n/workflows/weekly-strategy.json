@@ -1,0 +1,328 @@
+{
+  "name": "Weekly Strategy - Sunday Evening Planning",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * 0"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Weekly Strategy",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Triggers every Sunday at 7:00 PM PT"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISPATCHER_URL}}/api/exec-admin/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "intent",
+              "value": "strategy_sync"
+            },
+            {
+              "name": "payload",
+              "value": "={{ { \"userId\": $env.FOUNDER_EMAIL, \"systems\": [\"em\", \"quicklist\", \"grants\", \"meal-vision\"], \"timeHorizon\": \"30d\", \"focusArea\": \"all\" } }}"
+            }
+          ]
+        }
+      },
+      "name": "Call Dispatcher - Strategy Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Dispatcher API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISPATCHER_URL}}/api/exec-admin/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "intent",
+              "value": "insights"
+            },
+            {
+              "name": "payload",
+              "value": "={{ { \"userId\": $env.FOUNDER_EMAIL, \"timeframe\": \"7d\", \"includeEnergy\": true, \"includeBurnoutRisk\": true } }}"
+            }
+          ]
+        }
+      },
+      "name": "Call Dispatcher - Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Dispatcher API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const strategyData = $node['Call Dispatcher - Strategy Sync'].json.data;\nconst insightsData = $node['Call Dispatcher - Insights'].json.data;\n\nconst alignmentScore = strategyData.strategicAlignment.score;\nconst gaps = strategyData.strategicAlignment.gaps;\nconst synergies = strategyData.strategicAlignment.synergies;\nconst recommendations = strategyData.recommendations.slice(0, 5);\n\nconst burnoutRisk = insightsData.burnoutRisk;\nconst energyTrend = insightsData.energyAnalysis?.trend || 'stable';\nconst keyInsights = insightsData.insights.slice(0, 3);\n\nreturn {\n  json: {\n    strategySync: {\n      alignmentScore,\n      gaps,\n      synergies,\n      recommendations\n    },\n    insights: {\n      burnoutRisk,\n      energyTrend,\n      keyInsights\n    },\n    generatedAt: new Date().toISOString()\n  }\n};"
+      },
+      "name": "Merge Strategy & Insights",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=🎯 *Weekly Strategy Review - Week of {{$now.format('MMM d')}}*\\n\\n*Strategic Alignment*: {{$json.strategySync.alignmentScore}}/100\\n\\n*Top Gaps*:\\n{{$json.strategySync.gaps.slice(0, 3).map(g => `• ${g}`).join('\\n')}}\\n\\n*Synergies Identified*:\\n{{$json.strategySync.synergies.slice(0, 2).map(s => `• ${s}`).join('\\n')}}\\n\\n*Top 3 Recommendations*:\\n{{$json.strategySync.recommendations.slice(0, 3).map((r, i) => `${i+1}. [${r.priority.toUpperCase()}] ${r.system}: ${r.action}`).join('\\n')}}\\n\\n---\\n\\n*Burnout Risk*: {{$json.insights.burnoutRisk}}%\\n*Energy Trend*: {{$json.insights.energyTrend}}\\n\\n*Key Insights*:\\n{{$json.insights.keyInsights.map(i => `• ${i}`).join('\\n')}}"
+            },
+            {
+              "name": "username",
+              "value": "Weekly Strategy Planner"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":chart_with_upwards_trend:"
+            }
+          ]
+        }
+      },
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": "={{$env.NOTION_WEEKLY_STRATEGY_DB_ID}}",
+        "simple": false,
+        "properties": {
+          "properties": [
+            {
+              "key": "Name",
+              "type": "title",
+              "title": "=Week of {{$now.format('MMM d, yyyy')}}"
+            },
+            {
+              "key": "Alignment Score",
+              "type": "number",
+              "numberValue": "={{$json.strategySync.alignmentScore}}"
+            },
+            {
+              "key": "Burnout Risk",
+              "type": "number",
+              "numberValue": "={{$json.insights.burnoutRisk}}"
+            },
+            {
+              "key": "Energy Trend",
+              "type": "select",
+              "selectValue": "={{$json.insights.energyTrend}}"
+            },
+            {
+              "key": "Top Gaps",
+              "type": "rich_text",
+              "richText": "={{$json.strategySync.gaps.join('\\n')}}"
+            },
+            {
+              "key": "Recommendations",
+              "type": "rich_text",
+              "richText": "={{$json.strategySync.recommendations.map(r => `[${r.priority}] ${r.system}: ${r.action} - ${r.rationale}`).join('\\n\\n')}}"
+            },
+            {
+              "key": "Insights",
+              "type": "rich_text",
+              "richText": "={{$json.insights.keyInsights.join('\\n')}}"
+            },
+            {
+              "key": "Date",
+              "type": "date",
+              "date": "={{$now.toISO()}}"
+            }
+          ]
+        }
+      },
+      "name": "Log to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1050, 400],
+      "credentials": {
+        "notionApi": {
+          "id": "5",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "fromEmail": "={{$env.SENDER_EMAIL}}",
+        "toEmail": "={{$env.FOUNDER_EMAIL}}",
+        "subject": "=Weekly Strategy Review - Week of {{$now.format('MMM d, yyyy')}}",
+        "emailFormat": "html",
+        "html": "=<h2>🎯 Weekly Strategy Review</h2>\\n\\n<h3>Strategic Alignment: {{$json.strategySync.alignmentScore}}/100</h3>\\n\\n<h4>Top Gaps:</h4>\\n<ul>\\n{{$json.strategySync.gaps.map(g => `<li>${g}</li>`).join('')}}\\n</ul>\\n\\n<h4>Synergies Identified:</h4>\\n<ul>\\n{{$json.strategySync.synergies.map(s => `<li>${s}</li>`).join('')}}\\n</ul>\\n\\n<h4>Top Recommendations:</h4>\\n<ol>\\n{{$json.strategySync.recommendations.map(r => `<li><strong>[${r.priority.toUpperCase()}]</strong> ${r.system}: ${r.action}<br><em>${r.rationale}</em></li>`).join('')}}\\n</ol>\\n\\n<hr>\\n\\n<h3>Weekly Insights</h3>\\n<p><strong>Burnout Risk:</strong> {{$json.insights.burnoutRisk}}%</p>\\n<p><strong>Energy Trend:</strong> {{$json.insights.energyTrend}}</p>\\n\\n<h4>Key Insights:</h4>\\n<ul>\\n{{$json.insights.keyInsights.map(i => `<li>${i}</li>`).join('')}}\\n</ul>\\n\\n<p style=\\\"margin-top: 30px; color: #666;\\\">Generated by EM Agent Dispatcher on {{$now.format('MMMM d, yyyy \\\\at h:mm a')}}</p>",
+        "options": {}
+      },
+      "name": "Send Email Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 400],
+      "credentials": {
+        "smtp": {
+          "id": "6",
+          "name": "SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Weekly Strategy": {
+      "main": [
+        [
+          {
+            "node": "Call Dispatcher - Strategy Sync",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call Dispatcher - Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Dispatcher - Strategy Sync": {
+      "main": [
+        [
+          {
+            "node": "Merge Strategy & Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Dispatcher - Insights": {
+      "main": [
+        [
+          {
+            "node": "Merge Strategy & Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Strategy & Insights": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Slack": {
+      "main": [
+        [
+          {
+            "node": "Log to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Notion": {
+      "main": [
+        [
+          {
+            "node": "Send Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "P1",
+      "id": "1"
+    },
+    {
+      "name": "strategy",
+      "id": "2"
+    },
+    {
+      "name": "weekly",
+      "id": "3"
+    },
+    {
+      "name": "dispatcher",
+      "id": "4"
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "description": "Weekly strategy review workflow that combines strategy_sync and insights agents. Runs every Sunday at 7 PM PT. Sends comprehensive report to Slack, logs to Notion, and emails a formatted summary."
+  }
+}
