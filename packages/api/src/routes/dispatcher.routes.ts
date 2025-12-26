@@ -72,7 +72,7 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
               insights: 'active',
               niche_discover: 'active',
             },
-            p1Status: 'IN_PROGRESS',
+            p1Status: 'COMPLETE',
             p1Agents: {
               mindset: 'active',
               rhythm: 'active',
@@ -83,6 +83,9 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
               systems_design: 'active',
               brand_story: 'active',
               membership_guardian: 'active',
+              relationship_track: 'active',
+              voice_companion: 'active',
+              creative_direct: 'active',
             },
           },
           qa: {
@@ -617,6 +620,116 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
             pass: qaResult.qa_pass,
             checks: qaResult.qa_pass
               ? ['dispatcher_routed', 'membership_guardian_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // RELATIONSHIP TRACKER (P1 - Wave 5)
+      // -------------------------------------------------------------------------
+      case 'relationship_track': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('relationship_track requires payload');
+        }
+
+        const { userId, action, contactId, filters } = payload;
+
+        const relationshipResult = await runP1RelationshipTracker({
+          userId,
+          action,
+          contactId,
+          filters,
+        });
+
+        const qaResult = runP0QaGate('relationshipTracker', relationshipResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'relationship_track',
+          routed: true,
+          data: relationshipResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'relationship_tracker_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // VOICE COMPANION (P1 - Wave 5)
+      // -------------------------------------------------------------------------
+      case 'voice_companion': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('voice_companion requires payload');
+        }
+
+        const { userId, sessionId, userMessage, context } = payload;
+
+        const voiceResult = await runP1VoiceCompanion({
+          userId,
+          sessionId,
+          userMessage,
+          context,
+        });
+
+        const qaResult = runP0QaGate('voiceCompanion', voiceResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'voice_companion',
+          routed: true,
+          data: voiceResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'voice_companion_executed', 'response_structure_valid']
+              : undefined,
+            errors: qaResult.qa_pass ? undefined : qaErrors,
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // CREATIVE DIRECTOR (P1 - Wave 5)
+      // -------------------------------------------------------------------------
+      case 'creative_direct': {
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('creative_direct requires payload');
+        }
+
+        const { userId, requestType, business, idea, existingAsset, targetPlatform } = payload;
+
+        const creativeResult = await runP1CreativeDirector({
+          userId,
+          requestType,
+          business,
+          idea,
+          existingAsset,
+          targetPlatform,
+        });
+
+        const qaResult = runP0QaGate('creativeDirector', creativeResult.data);
+        const qaErrors = qaResult.issues.map((issue) => `${issue.field}: ${issue.message}`);
+
+        result = {
+          success: true,
+          intent: 'creative_direct',
+          routed: true,
+          data: creativeResult.data,
+          qa: {
+            pass: qaResult.qa_pass,
+            checks: qaResult.qa_pass
+              ? ['dispatcher_routed', 'creative_director_executed', 'response_structure_valid']
               : undefined,
             errors: qaResult.qa_pass ? undefined : qaErrors,
           },

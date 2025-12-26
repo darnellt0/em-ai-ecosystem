@@ -275,7 +275,7 @@ function checkBrandAlignment(input: CreativeDirectorInput): CreativeDirectorOutp
   // Check existing asset colors
   if (input.existingAsset?.colors && input.existingAsset.colors.length > 0) {
     const brandColors = BRAND_COLORS[business] || BRAND_COLORS.em;
-    const brandHexes = Object.values(brandColors).map(c => c.hex.toLowerCase());
+    const brandHexes = Object.values(brandColors).map((c: any) => c.hex.toLowerCase());
 
     const matchingColors = input.existingAsset.colors.filter(c =>
       brandHexes.includes(c.toLowerCase())

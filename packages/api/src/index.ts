@@ -321,11 +321,12 @@ if (enableVoice) {
 app.use('/api/orchestrator', orchestratorRouter);
 
 /**
- * Executive Admin growth pack endpoints (Phase 6)
-/**
  * Full duplex voice API - Audio in -> Dispatcher -> Audio out
  */
-  app.use(voiceDuplexRouter);
+app.use(voiceDuplexRouter);
+
+/**
+ * Executive Admin growth pack endpoints (Phase 6)
  */
 app.use('/', emAiExecAdminRouter);
 app.use('/', p0DailyBriefRouter);
