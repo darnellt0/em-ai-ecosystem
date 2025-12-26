@@ -81,7 +81,9 @@
       "Bash(git clean:*)",
       "Bash(npm test:*)",
       "Bash(npm -w packages/api run test)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
