@@ -11,6 +11,8 @@ import { runP1InboxAssistant } from '../exec-admin/flows/p1-inbox-assistant';
 import { runP1DeepWorkDefender } from '../exec-admin/flows/p1-deep-work-defender';
 import { runP1BrandStoryteller } from '../exec-admin/flows/p1-brand-storyteller';
 import { runP1MembershipGuardian } from '../exec-admin/flows/p1-membership-guardian';
+import { runP1IntegratedStrategist } from '../exec-admin/flows/p1-integrated-strategist';
+import { runP1SystemsArchitect } from '../exec-admin/flows/p1-systems-architect';
 import { runP0QaGate } from '../services/p0QaGate.service';
 
 
@@ -74,6 +76,8 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
               purpose: 'active',
               inbox_assistant: 'active',
               deep_work_defender: 'active',
+              strategy_sync: 'active',
+              systems_design: 'active',
               brand_story: 'active',
               membership_guardian: 'active',
             },
@@ -379,6 +383,78 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
         break;
       }
 
+      // -------------------------------------------------------------------------
+      // INTEGRATED STRATEGIST (P1 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'strategy_sync': {
+        const { userId, systems, timeHorizon, focusArea, mode } = payload;
+
+        if (!userId) {
+          throw new Error('strategy_sync requires userId in payload');
+        }
+
+        const strategyResult = await runP1IntegratedStrategist({
+          userId,
+          systems,
+          timeHorizon,
+          focusArea,
+          mode,
+        });
+
+        result = {
+          success: true,
+          intent: 'strategy_sync',
+          routed: true,
+          data: strategyResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'integrated_strategist_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
+
+      // -------------------------------------------------------------------------
+      // SYSTEMS ARCHITECT (P1 - Wave 3)
+      // -------------------------------------------------------------------------
+      case 'systems_design': {
+        const { userId, requestType, context, currentSystems, constraints, mode } = payload;
+
+        if (!userId) {
+          throw new Error('systems_design requires userId in payload');
+        }
+
+        const architectResult = await runP1SystemsArchitect({
+          userId,
+          requestType,
+          context,
+          currentSystems,
+          constraints,
+          mode,
+        });
+
+        result = {
+          success: true,
+          intent: 'systems_design',
+          routed: true,
+          data: architectResult.data,
+          qa: {
+            pass: true,
+            checks: [
+              'dispatcher_routed',
+              'systems_architect_executed',
+              'runId_generated',
+              'response_structure_valid',
+            ],
+          },
+        };
+        break;
+      }
 
       // -------------------------------------------------------------------------
       // INBOX ASSISTANT (P1 - Wave 2)

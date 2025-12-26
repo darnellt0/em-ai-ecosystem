@@ -636,6 +636,147 @@ export function evaluateMembershipGuardianOutput(output: any): QaGateResult {
 
   return buildResult(issues);
 }
+// -------------------------------------------------------------------------
+// WAVE P1.3: INTEGRATED STRATEGIST EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateIntegratedStrategistOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectString(output.timeHorizon, 'timeHorizon', issues);
+  expectString(output.focusArea, 'focusArea', issues);
+  expectArray(output.systemsAnalyzed, 'systemsAnalyzed', issues);
+  expectObject(output.strategicAlignment, 'strategicAlignment', issues);
+
+  if (output.strategicAlignment && typeof output.strategicAlignment === 'object') {
+    expectNumber(output.strategicAlignment.score, 'strategicAlignment.score', issues);
+    expectArray(output.strategicAlignment.gaps, 'strategicAlignment.gaps', issues);
+    expectArray(output.strategicAlignment.synergies, 'strategicAlignment.synergies', issues);
+
+    if (typeof output.strategicAlignment.score === 'number') {
+      if (output.strategicAlignment.score < 0 || output.strategicAlignment.score > 100) {
+        issues.push({ field: 'strategicAlignment.score', message: 'Score must be between 0 and 100', severity: 'block' });
+      }
+    }
+  }
+
+  expectArray(output.recommendations, 'recommendations', issues);
+
+  if (Array.isArray(output.recommendations)) {
+    if (output.recommendations.length === 0) {
+      issues.push({ field: 'recommendations', message: 'Expected at least 1 recommendation', severity: 'block' });
+    }
+    output.recommendations.forEach((rec: any, idx: number) => {
+      expectString(rec?.priority, `recommendations[${idx}].priority`, issues);
+      expectString(rec?.system, `recommendations[${idx}].system`, issues);
+      expectString(rec?.action, `recommendations[${idx}].action`, issues);
+      expectString(rec?.rationale, `recommendations[${idx}].rationale`, issues);
+      expectString(rec?.timeline, `recommendations[${idx}].timeline`, issues);
+    });
+  }
+
+  expectArray(output.crossSystemOpportunities, 'crossSystemOpportunities', issues);
+  expectNumber(output.confidenceScore, 'confidenceScore', issues);
+
+  if (typeof output.confidenceScore === 'number') {
+    if (output.confidenceScore < 0 || output.confidenceScore > 1) {
+      issues.push({ field: 'confidenceScore', message: 'Confidence must be between 0 and 1', severity: 'block' });
+    }
+  }
+
+  expectString(output.insight, 'insight', issues);
+  expectString(output.recommendedNextAction, 'recommendedNextAction', issues);
+  expectString(output.mode, 'mode', issues);
+
+  if (typeof output.offline !== 'boolean') {
+    issues.push({ field: 'offline', message: 'Expected boolean', severity: 'block' });
+  }
+
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
+
+// -------------------------------------------------------------------------
+// WAVE P1.3: SYSTEMS ARCHITECT EVALUATION
+// -------------------------------------------------------------------------
+export function evaluateSystemsArchitectOutput(output: any): QaGateResult {
+  const issues: QaIssue[] = [];
+
+  if (!output || typeof output !== 'object') {
+    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);
+  }
+
+  expectString(output.userId, 'userId', issues);
+  expectString(output.requestType, 'requestType', issues);
+  expectObject(output.analysis, 'analysis', issues);
+
+  if (output.analysis && typeof output.analysis === 'object') {
+    expectString(output.analysis.currentState, 'analysis.currentState', issues);
+    expectString(output.analysis.proposedState, 'analysis.proposedState', issues);
+    expectString(output.analysis.complexity, 'analysis.complexity', issues);
+    expectString(output.analysis.estimatedEffort, 'analysis.estimatedEffort', issues);
+
+    if (output.analysis.complexity && !['low', 'medium', 'high'].includes(output.analysis.complexity)) {
+      issues.push({ field: 'analysis.complexity', message: 'Complexity must be low, medium, or high', severity: 'block' });
+    }
+  }
+
+  expectArray(output.designRecommendations, 'designRecommendations', issues);
+
+  if (Array.isArray(output.designRecommendations)) {
+    if (output.designRecommendations.length === 0) {
+      issues.push({ field: 'designRecommendations', message: 'Expected at least 1 design recommendation', severity: 'block' });
+    }
+    output.designRecommendations.forEach((rec: any, idx: number) => {
+      expectString(rec?.component, `designRecommendations[${idx}].component`, issues);
+      expectString(rec?.recommendation, `designRecommendations[${idx}].recommendation`, issues);
+      expectString(rec?.rationale, `designRecommendations[${idx}].rationale`, issues);
+      expectArray(rec?.dependencies, `designRecommendations[${idx}].dependencies`, issues);
+    });
+  }
+
+  expectArray(output.automationOpportunities, 'automationOpportunities', issues);
+
+  if (Array.isArray(output.automationOpportunities)) {
+    output.automationOpportunities.forEach((opp: any, idx: number) => {
+      expectString(opp?.trigger, `automationOpportunities[${idx}].trigger`, issues);
+      expectString(opp?.action, `automationOpportunities[${idx}].action`, issues);
+      expectString(opp?.expectedSavings, `automationOpportunities[${idx}].expectedSavings`, issues);
+      expectString(opp?.implementationNotes, `automationOpportunities[${idx}].implementationNotes`, issues);
+    });
+  }
+
+  expectArray(output.nextSteps, 'nextSteps', issues);
+
+  if (Array.isArray(output.nextSteps) && output.nextSteps.length === 0) {
+    issues.push({ field: 'nextSteps', message: 'Expected at least 1 next step', severity: 'block' });
+  }
+
+  expectNumber(output.confidenceScore, 'confidenceScore', issues);
+
+  if (typeof output.confidenceScore === 'number') {
+    if (output.confidenceScore < 0 || output.confidenceScore > 1) {
+      issues.push({ field: 'confidenceScore', message: 'Confidence must be between 0 and 1', severity: 'block' });
+    }
+  }
+
+  expectString(output.insight, 'insight', issues);
+  expectString(output.recommendedNextAction, 'recommendedNextAction', issues);
+  expectString(output.mode, 'mode', issues);
+
+  if (typeof output.offline !== 'boolean') {
+    issues.push({ field: 'offline', message: 'Expected boolean', severity: 'block' });
+  }
+
+  expectString(output.generatedAt, 'generatedAt', issues);
+
+  return buildResult(issues);
+}
 
 export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate' | 'insights' | 'nicheDiscover';
 
@@ -644,6 +785,8 @@ export type P1AgentKind = 'mindset'
   | 'purpose'
   | 'inboxAssistant'
   | 'deepWorkDefender'
+  | 'integratedStrategist'
+  | 'systemsArchitect'
   | 'brandStory'
   | 'membershipGuardian';
 
@@ -682,6 +825,12 @@ export function runP0QaGate(kind: AgentKind, output: unknown): QaGateResult {
   }
   if (kind === 'deepWorkDefender') {
     return evaluateDeepWorkDefenderOutput(output);
+  }
+  if (kind === 'integratedStrategist') {
+    return evaluateIntegratedStrategistOutput(output);
+  }
+  if (kind === 'systemsArchitect') {
+    return evaluateSystemsArchitectOutput(output);
   }
   if (kind === 'brandStory') {
     return evaluateBrandStorytellerOutput(output);
