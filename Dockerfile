@@ -1,33 +1,53 @@
-FROM node:20-alpine
+# ============================================
+# EM-AI ECOSYSTEM - PRODUCTION DOCKERFILE
+# ============================================
+
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files first for better layer caching
+# Install dependencies
 COPY package*.json ./
 COPY packages/api/package*.json ./packages/api/
-COPY packages/orchestrator/package*.json ./packages/orchestrator/
 
-# Install dependencies (use npm ci for faster, reproducible builds)
-RUN npm ci --workspaces --include-workspace-root || npm install --workspaces --include-workspace-root
+RUN npm ci --workspace=packages/api
 
-# Copy source code (includes packages/shared needed by orchestrator)
-COPY packages ./packages
+# Copy source
+COPY packages/api ./packages/api
+COPY tsconfig*.json ./
 
-# Skip TypeScript build - use ts-node at runtime for development
-# Both API and orchestrator will use ts-node with runtime compilation
-# RUN cd packages/orchestrator && npm run build
-# RUN cd packages/api && npm run build
+# Build
+RUN npm run build --workspace=packages/api
 
-# Create non-root user for security
+# ============================================
+# PRODUCTION IMAGE
+# ============================================
+
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+COPY packages/api/package*.json ./packages/api/
+
+RUN npm ci --workspace=packages/api --omit=dev
+
+# Copy built files
+COPY --from=builder /app/packages/api/dist ./packages/api/dist
+
+# Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    mkdir -p /app/logs /app/data && \
-    chown -R nodejs:nodejs /app
+    adduser -S nodejs -u 1001
 
 USER nodejs
 
-EXPOSE 3000
-ENV PORT=3000 NODE_ENV=production
+# Expose port
+EXPOSE 3001
 
-# Use ts-node for runtime TypeScript execution
-CMD ["npx", "ts-node", "packages/api/src/index.ts"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+# Start
+CMD ["node", "packages/api/dist/index.js"]

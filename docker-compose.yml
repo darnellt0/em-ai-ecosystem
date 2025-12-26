@@ -1,182 +1,93 @@
+version: '3.8'
+
 services:
-  # API Server - Express with Voice API Integration
+  # ============================================
+  # API SERVER
+  # ============================================
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: em-api:latest
     container_name: em-api
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - LOG_LEVEL=info
-      - DATABASE_URL=postgresql://postgres:postgres@database:5432/elevated_movements
-      - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/config/google-credentials.json
-      - GOOGLE_CALENDAR_ID=primary
-      - GOOGLE_CREDENTIALS_PATH=/app/config/google-credentials.json
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - FOUNDER_DARNELL_EMAIL=${FOUNDER_DARNELL_EMAIL}
-      - FOUNDER_SHRIA_EMAIL=${FOUNDER_SHRIA_EMAIL}
-      - VOICE_API_TOKEN=${VOICE_API_TOKEN}
-      - STT_PROVIDER=${STT_PROVIDER:-openai}
-      - STT_OPENAI_API_KEY=${STT_OPENAI_API_KEY:-${OPENAI_API_KEY}}
-    depends_on:
-      - database
-      - redis
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    working_dir: /app
-    command: ["npx", "ts-node", "packages/api/src/index.ts"]
-    networks:
-      - em-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    restart: unless-stopped
-
-  # Dashboard - Next.js Frontend
-  dashboard:
-    build:
-      context: .
-      dockerfile: packages/dashboard/Dockerfile
-    image: em-dashboard:latest
-    container_name: em-dashboard
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+    env_file:
+      - .env.production
+    volumes:
+      - ./logs:/app/logs
+      - ./credentials:/app/credentials:ro
     depends_on:
-      - api
-    networks:
-      - em-network
+      - postgres
+      - redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # PostgreSQL Database
-  database:
+  # ============================================
+  # POSTGRESQL DATABASE
+  # ============================================
+  postgres:
     image: postgres:15-alpine
-    container_name: em-database
+    container_name: em-postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=elevated_movements
+      POSTGRES_USER: ${POSTGRES_USER:-emadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-empassword}
+      POSTGRES_DB: ${POSTGRES_DB:-em_ecosystem}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - em-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d elevated_movements"]
+      test: ["CMD-SHELL", "pg_isready -U emadmin -d em_ecosystem"]
       interval: 10s
       timeout: 5s
-      retries: 3
-    restart: unless-stopped
+      retries: 5
 
-  # Redis Cache
+  # ============================================
+  # REDIS (Queue + Cache)
+  # ============================================
   redis:
     image: redis:7-alpine
     container_name: em-redis
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - em-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 3
-    restart: unless-stopped
+      retries: 5
 
-  # Growth Agents Worker - BullMQ Job Processor
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: em-api:latest
-    container_name: em-worker
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=info
-      - DATABASE_URL=postgresql://postgres:postgres@database:5432/elevated_movements
-      - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GOOGLE_SERVICE_ACCOUNT_JSON_B64=${GOOGLE_SERVICE_ACCOUNT_JSON_B64}
-      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
-      - GMAIL_SENDER_ADDRESS=${GMAIL_SENDER_ADDRESS}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-    depends_on:
-      - database
-      - redis
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    working_dir: /app
-    command: ["npx", "ts-node", "packages/api/src/growth-agents/worker.ts"]
-    networks:
-      - em-network
-    restart: unless-stopped
-
-  # n8n Workflow Automation
+  # ============================================
+  # N8N WORKFLOW ENGINE
+  # ============================================
   n8n:
     image: n8nio/n8n:latest
     container_name: em-n8n
     ports:
-      - "5679:5678"
+      - "5678:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme}
-      - N8N_HOST=n8n.localhost
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-changeme}
+      - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
-      - NODE_ENV=production
-      - API_BASE_URL=http://host.docker.internal:3000
-      - DASHBOARD_BASE_URL=http://host.docker.internal:3001
-      - SLACK_WEBHOOK_URL=   # optional
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Los_Angeles
     volumes:
       - n8n_data:/home/node/.n8n
-    networks:
-      - em-network
-    depends_on:
-      - database
-    restart: unless-stopped
-
-  # Caddy Reverse Proxy
-  caddy:
-    image: caddy:latest
-    container_name: em-caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - em-network
+      - ./n8n/workflows:/home/node/workflows:ro
     depends_on:
       - api
     restart: unless-stopped
@@ -185,9 +96,7 @@ volumes:
   postgres_data:
   redis_data:
   n8n_data:
-  caddy_data:
-  caddy_config:
 
 networks:
-  em-network:
-    driver: bridge
+  default:
+    name: em-network
