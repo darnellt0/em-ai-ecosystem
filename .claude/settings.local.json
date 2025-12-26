@@ -78,7 +78,10 @@
       "Bash(powershell.exe -ExecutionPolicy Bypass -File scripts/merge-to-main.ps1)",
       "Bash(git stash:*)",
       "Bash(git pull:*)",
-      "Bash(git clean:*)"
+      "Bash(git clean:*)",
+      "Bash(npm test:*)",
+      "Bash(npm -w packages/api run test)",
+      "Bash(npx:*)"
     ],
     "deny": [],
     "ask": []

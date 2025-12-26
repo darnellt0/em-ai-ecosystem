@@ -13,6 +13,9 @@ import { runP1BrandStoryteller } from '../exec-admin/flows/p1-brand-storyteller'
 import { runP1MembershipGuardian } from '../exec-admin/flows/p1-membership-guardian';
 import { runP1IntegratedStrategist } from '../exec-admin/flows/p1-integrated-strategist';
 import { runP1SystemsArchitect } from '../exec-admin/flows/p1-systems-architect';
+import { runP1RelationshipTracker } from '../exec-admin/flows/p1-relationship-tracker';
+import { runP1VoiceCompanion } from '../exec-admin/flows/p1-voice-companion';
+import { runP1CreativeDirector } from '../exec-admin/flows/p1-creative-director';
 import { runP0QaGate } from '../services/p0QaGate.service';
 
 
@@ -59,7 +62,7 @@ dispatcherRouter.post('/api/exec-admin/dispatch', async (req: Request, res: Resp
           data: {
             status: 'healthy',
             dispatcher: 'online',
-            wave: 3,
+            wave: 5,
             p0Status: 'COMPLETE',
             p0Agents: {
               daily_brief: 'active',

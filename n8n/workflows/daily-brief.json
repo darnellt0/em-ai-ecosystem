@@ -1,0 +1,249 @@
+{
+  "name": "Daily Brief - Morning Agent Dispatch",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Daily Brief",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Triggers every day at 6:00 AM PT (14:00 UTC)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISPATCHER_URL}}/api/exec-admin/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "intent",
+              "value": "daily_brief"
+            },
+            {
+              "name": "payload",
+              "value": "={{ { \"userId\": $env.FOUNDER_EMAIL, \"date\": $now.format('yyyy-MM-dd') } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Call Dispatcher - Daily Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Dispatcher API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=Daily Brief Generated ✅\\n\\nRunID: {{$json.data.runId}}\\nDate: {{$json.data.date}}\\n\\nTop Priority: {{$json.data.brief.topPriority}}\\nFocus Blocks: {{$json.data.brief.focusBlocks.length}}"
+            },
+            {
+              "name": "username",
+              "value": "EM Agent Dispatcher"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":robot_face:"
+            }
+          ]
+        }
+      },
+      "name": "Notify Slack - Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=Daily Brief Failed ❌\\n\\nError: {{$json.error}}\\nIntent: {{$json.intent}}"
+            },
+            {
+              "name": "username",
+              "value": "EM Agent Dispatcher"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":warning:"
+            }
+          ]
+        }
+      },
+      "name": "Notify Slack - Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendarId": "={{$env.GOOGLE_CALENDAR_ID}}",
+        "start": "={{$now.set({hour: 6, minute: 0}).toISO()}}",
+        "end": "={{$now.set({hour: 6, minute: 15}).toISO()}}",
+        "summary": "Daily Brief Review",
+        "description": "=Review your daily brief:\\n\\nRunID: {{$json.data.runId}}\\nTop Priority: {{$json.data.brief.topPriority}}\\nEnergy Level: {{$json.data.brief.energyForecast}}\\n\\n{{$json.data.brief.recommendations.join('\\n')}}",
+        "options": {
+          "sendUpdates": "all"
+        }
+      },
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [1050, 200],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "2",
+          "name": "Google Calendar"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Daily Brief": {
+      "main": [
+        [
+          {
+            "node": "Call Dispatcher - Daily Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Dispatcher - Daily Brief": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack - Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Slack - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack - Success": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "P0",
+      "id": "1"
+    },
+    {
+      "name": "daily",
+      "id": "2"
+    },
+    {
+      "name": "dispatcher",
+      "id": "3"
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "description": "Scheduled workflow that calls the daily_brief agent via dispatcher every morning at 6 AM PT, sends Slack notification, and creates a calendar review event."
+  }
+}

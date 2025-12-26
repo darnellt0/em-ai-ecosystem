@@ -1,0 +1,332 @@
+{
+  "name": "Voice Capture - Audio to Agent Dispatch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-capture",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Voice Capture",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "voice-capture-webhook",
+      "notes": "Receives audio file or URL from mobile app/voice interface"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json.body;\nconst audioUrl = body.audioUrl;\nconst userId = body.userId || $env.FOUNDER_EMAIL;\nconst sessionId = body.sessionId || `session_${Date.now()}`;\n\nreturn {\n  json: {\n    audioUrl,\n    userId,\n    sessionId,\n    receivedAt: new Date().toISOString()\n  }\n};"
+      },
+      "name": "Parse Webhook Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.WHISPER_API_URL}}/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{$json.audioUrl}}"
+            },
+            {
+              "name": "model",
+              "value": "whisper-1"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        }
+      },
+      "name": "Transcribe with Whisper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISPATCHER_URL}}/api/exec-admin/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "intent",
+              "value": "voice_companion"
+            },
+            {
+              "name": "payload",
+              "value": "={{ { \"userId\": $node['Parse Webhook Payload'].json.userId, \"sessionId\": $node['Parse Webhook Payload'].json.sessionId, \"userMessage\": $json.text } }}"
+            }
+          ]
+        }
+      },
+      "name": "Call Dispatcher - Voice Companion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Dispatcher API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.ELEVENLABS_API_URL}}/v1/text-to-speech/{{$env.ELEVENLABS_VOICE_ID}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{$env.ELEVENLABS_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.data.response}}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_monolingual_v1"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={{ { \"stability\": 0.5, \"similarity_boost\": 0.75 } }}"
+            }
+          ]
+        },
+        "options": {
+          "responseType": "arraybuffer"
+        }
+      },
+      "name": "Generate Audio with ElevenLabs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4",
+          "name": "ElevenLabs API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const audioBuffer = $input.first().binary.data;\nconst voiceResponse = $node['Call Dispatcher - Voice Companion'].json.data;\nconst sessionId = $node['Parse Webhook Payload'].json.sessionId;\n\n// Save audio to temporary storage\nconst audioUrl = `${$env.STORAGE_BASE_URL}/voice-responses/${sessionId}.mp3`;\n\nreturn {\n  json: {\n    success: true,\n    sessionId,\n    transcription: $node['Transcribe with Whisper'].json.text,\n    textResponse: voiceResponse.response,\n    audioUrl,\n    detectedIntent: voiceResponse.detectedIntent,\n    detectedMood: voiceResponse.detectedMood,\n    followUpSuggestions: voiceResponse.followUpSuggestions,\n    shouldEndSession: voiceResponse.shouldEndSession,\n    sessionContext: voiceResponse.sessionContext\n  },\n  binary: {\n    data: audioBuffer\n  }\n};"
+      },
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=🎙️ *Voice Interaction Processed*\\n\\n*Session*: {{$json.sessionId}}\\n*Transcription*: \"{{$json.transcription}}\"\\n*Intent*: {{$json.detectedIntent}}\\n*Mood*: {{$json.detectedMood}}\\n*Response*: \"{{$json.textResponse.substring(0, 100)}}...\"\\n*Turn Count*: {{$json.sessionContext.turnCount}}"
+            },
+            {
+              "name": "username",
+              "value": "Voice Companion"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":microphone:"
+            }
+          ]
+        }
+      },
+      "name": "Log to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 500]
+    }
+  ],
+  "connections": {
+    "Webhook - Voice Capture": {
+      "main": [
+        [
+          {
+            "node": "Parse Webhook Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Webhook Payload": {
+      "main": [
+        [
+          {
+            "node": "Transcribe with Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe with Whisper": {
+      "main": [
+        [
+          {
+            "node": "Call Dispatcher - Voice Companion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Dispatcher - Voice Companion": {
+      "main": [
+        [
+          {
+            "node": "Generate Audio with ElevenLabs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Audio with ElevenLabs": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "P1",
+      "id": "1"
+    },
+    {
+      "name": "voice",
+      "id": "2"
+    },
+    {
+      "name": "webhook",
+      "id": "3"
+    },
+    {
+      "name": "dispatcher",
+      "id": "4"
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "description": "Webhook-triggered workflow for voice capture. Transcribes audio with Whisper, sends to voice_companion agent via dispatcher, generates audio response with ElevenLabs, and returns full-duplex audio interaction."
+  }
+}

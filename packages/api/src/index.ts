@@ -21,6 +21,7 @@ import voiceAudioRouter from './voice/voice.audio.router';
 import intentRouter from './voice/intent.router';
 import transcribeRouter from './voice/transcribe.router';
 import voiceTurnRouter from './voice/voiceTurn.router';
+import voiceDuplexRouter from './voice/voiceDuplex.router';
 import { initVoiceRealtimeWSS } from './voice-realtime/ws.server';
 import orchestratorRouter from './growth-agents/orchestrator.router';
 import actionsRouter from './routes/actions.routes';
@@ -321,6 +322,10 @@ app.use('/api/orchestrator', orchestratorRouter);
 
 /**
  * Executive Admin growth pack endpoints (Phase 6)
+/**
+ * Full duplex voice API - Audio in -> Dispatcher -> Audio out
+ */
+  app.use(voiceDuplexRouter);
  */
 app.use('/', emAiExecAdminRouter);
 app.use('/', p0DailyBriefRouter);

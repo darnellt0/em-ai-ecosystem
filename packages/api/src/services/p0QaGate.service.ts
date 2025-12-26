@@ -778,17 +778,10 @@ export function evaluateSystemsArchitectOutput(output: any): QaGateResult {
   return buildResult(issues);
 }
 
+// -------------------------------------------------------------------------// WAVE P1.5: RELATIONSHIP TRACKER EVALUATION// -------------------------------------------------------------------------export function evaluateRelationshipTrackerOutput(output: any): QaGateResult {  const issues: QaIssue[] = [];  if (!output || typeof output !== 'object') {    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);  }  expectString(output.runId, 'runId', issues);  expectString(output.userId, 'userId', issues);  expectString(output.action, 'action', issues);  expectNumberInRange(output.confidenceScore, 'confidenceScore', 0, 1, issues);  expectString(output.insight, 'insight', issues);  expectString(output.recommendedNextAction, 'recommendedNextAction', issues);  if (output.contacts) {    expectArray(output.contacts, 'contacts', issues);  }  if (output.stats) {    expectObject(output.stats, 'stats', issues);    if (output.stats && typeof output.stats === 'object') {      expectNumber(output.stats.totalContacts, 'stats.totalContacts', issues);      expectNumber(output.stats.overdue, 'stats.overdue', issues);      expectNumber(output.stats.dueSoon, 'stats.dueSoon', issues);      expectNumber(output.stats.ok, 'stats.ok', issues);    }  }  return buildResult(issues);}// -------------------------------------------------------------------------// WAVE P1.5: VOICE COMPANION EVALUATION// -------------------------------------------------------------------------export function evaluateVoiceCompanionOutput(output: any): QaGateResult {  const issues: QaIssue[] = [];  if (!output || typeof output !== 'object') {    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);  }  expectString(output.runId, 'runId', issues);  expectString(output.userId, 'userId', issues);  expectString(output.sessionId, 'sessionId', issues);  expectString(output.response, 'response', issues);  expectNumberInRange(output.confidenceScore, 'confidenceScore', 0, 1, issues);  expectBoolean(output.shouldEndSession, 'shouldEndSession', issues);  if (output.sessionContext) {    expectObject(output.sessionContext, 'sessionContext', issues);    if (output.sessionContext && typeof output.sessionContext === 'object') {      expectNumber(output.sessionContext.turnCount, 'sessionContext.turnCount', issues);      expectString(output.sessionContext.startedAt, 'sessionContext.startedAt', issues);      expectString(output.sessionContext.lastUpdatedAt, 'sessionContext.lastUpdatedAt', issues);      expectArray(output.sessionContext.topics, 'sessionContext.topics', issues);    }  }  return buildResult(issues);}// -------------------------------------------------------------------------// WAVE P1.5: CREATIVE DIRECTOR EVALUATION// -------------------------------------------------------------------------export function evaluateCreativeDirectorOutput(output: any): QaGateResult {  const issues: QaIssue[] = [];  if (!output || typeof output !== 'object') {    return buildResult([{ field: 'output', message: 'Output must be an object', severity: 'block' }]);  }  expectString(output.runId, 'runId', issues);  expectString(output.userId, 'userId', issues);  expectString(output.requestType, 'requestType', issues);  expectNumberInRange(output.confidenceScore, 'confidenceScore', 0, 1, issues);  expectString(output.insight, 'insight', issues);  expectString(output.recommendedNextAction, 'recommendedNextAction', issues);  if (output.concepts) {    expectArray(output.concepts, 'concepts', issues);  }  if (output.brandCheck) {    expectObject(output.brandCheck, 'brandCheck', issues);  }  if (output.campaignTheme) {    expectObject(output.campaignTheme, 'campaignTheme', issues);  }  return buildResult(issues);}
 export type P0AgentKind = 'dailyFocus' | 'actionPack' | 'calendarOptimize' | 'financialAllocate' | 'insights' | 'nicheDiscover';
 
-export type P1AgentKind = 'mindset'
-  | 'rhythm'
-  | 'purpose'
-  | 'inboxAssistant'
-  | 'deepWorkDefender'
-  | 'integratedStrategist'
-  | 'systemsArchitect'
-  | 'brandStory'
-  | 'membershipGuardian';
+export type P1AgentKind = 'mindset' | 'rhythm' | 'purpose' | 'inboxAssistant' | 'deepWorkDefender' | 'integratedStrategist' | 'systemsArchitect' | 'brandStory' | 'membershipGuardian' | 'relationshipTracker' | 'voiceCompanion' | 'creativeDirector';
 
 export type AgentKind = P0AgentKind | P1AgentKind;
 
@@ -837,6 +830,15 @@ export function runP0QaGate(kind: AgentKind, output: unknown): QaGateResult {
   }
   if (kind === 'membershipGuardian') {
     return evaluateMembershipGuardianOutput(output);
+  }
+  if (kind === 'relationshipTracker') {
+    return evaluateRelationshipTrackerOutput(output);
+  }
+  if (kind === 'voiceCompanion') {
+    return evaluateVoiceCompanionOutput(output);
+  }
+  if (kind === 'creativeDirector') {
+    return evaluateCreativeDirectorOutput(output);
   }
   throw new Error(`Unknown agent kind: ${kind}`);
 }

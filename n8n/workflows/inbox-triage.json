@@ -1,0 +1,284 @@
+{
+  "name": "Inbox Triage - Automated Email Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "name": "Schedule Inbox Triage",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Triggers every 2 hours during work hours (8 AM - 6 PM PT)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$now.hour()}}",
+              "operation": "largerEqual",
+              "value2": 8
+            },
+            {
+              "value1": "={{$now.hour()}}",
+              "operation": "smallerEqual",
+              "value2": 18
+            }
+          ]
+        }
+      },
+      "name": "Check Work Hours",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "notes": "Only run during 8 AM - 6 PM PT"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISPATCHER_URL}}/api/exec-admin/dispatch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "intent",
+              "value": "inbox_assistant"
+            },
+            {
+              "name": "payload",
+              "value": "={{ { \"userId\": $env.FOUNDER_EMAIL, \"mode\": \"scan\", \"maxResults\": 20 } }}"
+            }
+          ]
+        }
+      },
+      "name": "Call Dispatcher - Inbox Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Dispatcher API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = $input.first().json;\nconst emails = response.data.emails || [];\n\n// Filter high priority and action-required emails\nconst highPriority = emails.filter(e => e.priority === 'high');\nconst actionRequired = emails.filter(e => e.actionRequired);\nconst urgent = emails.filter(e => e.urgency === 'urgent');\n\nreturn {\n  json: {\n    totalScanned: emails.length,\n    highPriority: highPriority.length,\n    actionRequired: actionRequired.length,\n    urgent: urgent.length,\n    summaries: emails.slice(0, 5).map(e => ({\n      from: e.from,\n      subject: e.subject,\n      priority: e.priority,\n      summary: e.summary\n    })),\n    recommendations: response.data.recommendations || []\n  }\n};"
+      },
+      "name": "Process Email Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.urgent}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Check Urgent Emails",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=📬 *Inbox Triage Complete*\\n\\n*Scanned*: {{$json.totalScanned}} emails\\n*High Priority*: {{$json.highPriority}}\\n*Action Required*: {{$json.actionRequired}}\\n*Urgent*: {{$json.urgent}} ⚠️\\n\\n*Top 5 Summaries*:\\n{{$json.summaries.map(s => `• ${s.from}: ${s.subject} (${s.priority})`).join('\\n')}}\\n\\n*Recommendations*:\\n{{$json.recommendations.slice(0, 3).join('\\n')}}"
+            },
+            {
+              "name": "username",
+              "value": "Inbox Assistant"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":inbox_tray:"
+            }
+          ]
+        }
+      },
+      "name": "Notify Slack - Urgent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=📬 Inbox Triage Complete\\n\\nScanned: {{$json.totalScanned}} | High: {{$json.highPriority}} | Action: {{$json.actionRequired}}"
+            },
+            {
+              "name": "username",
+              "value": "Inbox Assistant"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":inbox_tray:"
+            }
+          ]
+        }
+      },
+      "name": "Notify Slack - Normal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {},
+      "name": "No Op - Outside Work Hours",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [650, 400],
+      "notes": "Workflow ends if outside work hours"
+    }
+  ],
+  "connections": {
+    "Schedule Inbox Triage": {
+      "main": [
+        [
+          {
+            "node": "Check Work Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Work Hours": {
+      "main": [
+        [
+          {
+            "node": "Call Dispatcher - Inbox Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Op - Outside Work Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Dispatcher - Inbox Assistant": {
+      "main": [
+        [
+          {
+            "node": "Process Email Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Email Results": {
+      "main": [
+        [
+          {
+            "node": "Check Urgent Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Urgent Emails": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack - Urgent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Slack - Normal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Los_Angeles"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "P1",
+      "id": "1"
+    },
+    {
+      "name": "inbox",
+      "id": "2"
+    },
+    {
+      "name": "dispatcher",
+      "id": "3"
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "description": "Automated inbox triage every 2 hours during work hours. Scans emails, prioritizes, and sends Slack notifications for urgent items."
+  }
+}
