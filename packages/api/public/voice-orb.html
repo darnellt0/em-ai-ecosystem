@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EM Executive Admin - Voice Orb</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --space-900: #050511;
+      --em-plum: #36013f;
+      --em-teal: #176161;
+      --em-gold: #e0cd67;
+      --orb-idle: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      --orb-listening: linear-gradient(135deg, #00c6fb 0%, #005bea 50%, #764ba2 100%);
+      --orb-processing: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #f093fb 100%);
+      --orb-speaking: linear-gradient(135deg, #11998e 0%, #38ef7d 50%, #11998e 100%);
+    }
+
+    body {
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      background: var(--space-900);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      overflow: hidden;
+    }
+
+    /* Animated background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.4;
+      animation: blob 18s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .blob-1 {
+      width: 500px;
+      height: 500px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      top: -200px;
+      left: -100px;
+    }
+
+    .blob-2 {
+      width: 400px;
+      height: 400px;
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      bottom: -150px;
+      right: -100px;
+      animation-delay: -5s;
+    }
+
+    .blob-3 {
+      width: 300px;
+      height: 300px;
+      background: linear-gradient(135deg, #11998e, #38ef7d);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -10s;
+      opacity: 0.2;
+    }
+
+    @keyframes blob {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 8px;
+    }
+
+    .header .prompt {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      transition: opacity 0.3s;
+    }
+
+    /* Voice Orb */
+    .orb-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+
+    .orb {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--orb-idle);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .orb:hover {
+      transform: scale(1.05);
+    }
+
+    .orb:active {
+      transform: scale(0.95);
+    }
+
+    /* Orb glow ring */
+    .orb::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background: inherit;
+      filter: blur(20px);
+      opacity: 0.5;
+      z-index: -1;
+      transition: opacity 0.3s, filter 0.3s;
+    }
+
+    /* Orb states */
+    .orb.idle {
+      background: var(--orb-idle);
+      animation: pulse-idle 4s ease-in-out infinite;
+    }
+
+    .orb.listening {
+      background: var(--orb-listening);
+      animation: pulse-listening 1s ease-in-out infinite;
+      box-shadow: 0 0 60px rgba(0, 198, 251, 0.6);
+    }
+
+    .orb.processing {
+      background: var(--orb-processing);
+      animation: spin-processing 2s linear infinite;
+    }
+
+    .orb.speaking {
+      background: var(--orb-speaking);
+      animation: pulse-speaking 0.5s ease-in-out infinite;
+      box-shadow: 0 0 60px rgba(56, 239, 125, 0.6);
+    }
+
+    .orb.error {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes pulse-idle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.02); opacity: 0.9; }
+    }
+
+    @keyframes pulse-listening {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes spin-processing {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+
+    @keyframes pulse-speaking {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    /* Orb icon */
+    .orb-icon {
+      width: 60px;
+      height: 60px;
+      fill: white;
+      opacity: 0.9;
+      transition: transform 0.3s;
+    }
+
+    .orb.listening .orb-icon {
+      animation: icon-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes icon-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    /* Waveform visualization */
+    .waveform {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      height: 30px;
+      align-items: flex-end;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .orb.listening + .waveform,
+    .orb.speaking + .waveform {
+      opacity: 1;
+    }
+
+    .waveform-bar {
+      width: 4px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 2px;
+      animation: wave 0.5s ease-in-out infinite;
+    }
+
+    .waveform-bar:nth-child(1) { animation-delay: 0s; }
+    .waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+    .waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+    .waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+    .waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes wave {
+      0%, 100% { height: 8px; }
+      50% { height: 25px; }
+    }
+
+    /* Status text */
+    .status {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      opacity: 0.7;
+      min-height: 24px;
+      transition: opacity 0.3s;
+    }
+
+    /* Response area */
+    .response-area {
+      width: 100%;
+      max-width: 600px;
+      min-height: 100px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 20px;
+    }
+
+    .response-area h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.5;
+      margin-bottom: 12px;
+    }
+
+    .transcript {
+      font-size: 0.9rem;
+      opacity: 0.7;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    .response {
+      font-size: 1rem;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+
+    .response:empty::before {
+      content: 'Tap the orb and speak...';
+      opacity: 0.4;
+    }
+
+    /* Conversation history */
+    .history {
+      width: 100%;
+      max-width: 600px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+    }
+
+    .history-item {
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .history-item.user {
+      background: rgba(102, 126, 234, 0.2);
+      margin-left: 20%;
+      text-align: right;
+    }
+
+    .history-item.assistant {
+      background: rgba(17, 153, 142, 0.2);
+      margin-right: 20%;
+    }
+
+    /* Instructions */
+    .instructions {
+      position: fixed;
+      bottom: 20px;
+      font-size: 0.75rem;
+      opacity: 0.4;
+      text-align: center;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      .orb-container {
+        width: 150px;
+        height: 150px;
+      }
+
+      .orb-icon {
+        width: 45px;
+        height: 45px;
+      }
+
+      .response-area {
+        margin: 20px 10px;
+        padding: 15px;
+      }
+    }
+
+    /* Audio player (hidden) */
+    #audio-player {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- Main container -->
+  <div class="container">
+    <div class="header">
+      <h1>EM Executive Admin</h1>
+      <p class="prompt" id="prompt">How can I help you today?</p>
+    </div>
+
+    <div class="orb-container">
+      <div class="orb idle" id="orb">
+        <!-- Microphone icon -->
+        <svg class="orb-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </div>
+      <div class="waveform">
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+      </div>
+    </div>
+
+    <div class="status" id="status">Ready</div>
+
+    <div class="response-area">
+      <h3>Conversation</h3>
+      <div class="transcript" id="transcript"></div>
+      <div class="response" id="response"></div>
+    </div>
+
+    <div class="history" id="history"></div>
+  </div>
+
+  <div class="instructions">
+    Click and hold to speak - Release to send - Press Escape to cancel
+  </div>
+
+  <!-- Hidden audio player -->
+  <audio id="audio-player"></audio>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const VOICE_ENDPOINT = `${API_BASE}/api/voice/duplex`;
+    const TEXT_ENDPOINT = `${API_BASE}/api/exec-admin/dispatch`;
+
+    let state = 'idle';
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let sessionId = generateSessionId();
+
+    const orb = document.getElementById('orb');
+    const status = document.getElementById('status');
+    const prompt = document.getElementById('prompt');
+    const transcriptEl = document.getElementById('transcript');
+    const responseEl = document.getElementById('response');
+    const historyEl = document.getElementById('history');
+    const audioPlayer = document.getElementById('audio-player');
+
+    function setState(newState, message = '') {
+      state = newState;
+      orb.className = `orb ${newState}`;
+
+      const statusMessages = {
+        idle: 'Ready',
+        listening: 'Listening...',
+        processing: 'Thinking...',
+        speaking: 'Speaking...',
+        error: message || 'Error'
+      };
+
+      status.textContent = statusMessages[newState] || newState;
+
+      const prompts = {
+        idle: 'How can I help you today?',
+        listening: 'I am listening...',
+        processing: 'Let me think about that...',
+        speaking: '',
+        error: 'Something went wrong. Try again.'
+      };
+
+      if (prompts[newState]) {
+        prompt.textContent = prompts[newState];
+      }
+    }
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
+          }
+        });
+
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(track => track.stop());
+
+          if (audioChunks.length > 0 && state !== 'idle') {
+            await processAudio();
+          }
+        };
+
+        mediaRecorder.start(100);
+        setState('listening');
+      } catch (error) {
+        console.error('Microphone error:', error);
+        setState('error', 'Microphone access denied');
+        setTimeout(() => setState('idle'), 2000);
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        setState('processing');
+        mediaRecorder.stop();
+      }
+    }
+
+    function cancelRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audioChunks = [];
+        setState('idle');
+      }
+    }
+
+    async function processAudio() {
+      if (audioChunks.length === 0) {
+        setState('idle');
+        return;
+      }
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+      if (audioBlob.size < 1000) {
+        setState('idle');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('userId', 'darnell@elevatedmovements.com');
+        formData.append('sessionId', sessionId);
+        formData.append('intent', 'voice_companion');
+
+        const apiResponse = await fetch(VOICE_ENDPOINT, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!apiResponse.ok) {
+          throw new Error(`API error: ${apiResponse.status}`);
+        }
+
+        const transcription = apiResponse.headers.get('X-Transcription') || '';
+        const responseText = apiResponse.headers.get('X-Response-Text') || '';
+
+        if (transcription) {
+          transcriptEl.textContent = `You said: "${transcription}"`;
+          addToHistory('user', transcription);
+        }
+
+        const audioResponse = await apiResponse.blob();
+        if (audioResponse.size > 0) {
+          setState('speaking');
+          await playAudio(audioResponse);
+        }
+
+        if (responseText) {
+          responseEl.textContent = responseText;
+          addToHistory('assistant', responseText);
+        }
+
+        setState('idle');
+      } catch (error) {
+        console.error('Processing error:', error);
+        await fallbackToTextMode();
+      }
+    }
+
+    async function fallbackToTextMode() {
+      try {
+        const userText = 'Hello, I need assistance.';
+
+        transcriptEl.textContent = 'Voice mode requires API keys. Using demo mode.';
+
+        const payload = {
+          intent: 'voice_companion',
+          payload: {
+            userId: 'darnell@elevatedmovements.com',
+            mode: 'offline',
+            sessionId: sessionId,
+            userMessage: userText
+          }
+        };
+
+        const res = await fetch(TEXT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.success && data.data) {
+          const responseText = data.data.response || 'I received your message.';
+          responseEl.textContent = responseText;
+          addToHistory('assistant', responseText);
+        }
+
+        setState('idle');
+      } catch (error) {
+        console.error('Fallback error:', error);
+        setState('error', 'Connection failed');
+        setTimeout(() => setState('idle'), 2000);
+      }
+    }
+
+    async function playAudio(blob) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(blob);
+        audioPlayer.src = url;
+
+        audioPlayer.onended = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+
+        audioPlayer.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+
+        audioPlayer.play().catch(() => resolve());
+      });
+    }
+
+    function addToHistory(role, text) {
+      const item = document.createElement('div');
+      item.className = `history-item ${role}`;
+      item.textContent = text;
+      historyEl.appendChild(item);
+      historyEl.scrollTop = historyEl.scrollHeight;
+    }
+
+    function generateSessionId() {
+      return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    orb.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (state === 'idle') {
+        startRecording();
+      }
+    });
+
+    orb.addEventListener('mouseup', () => {
+      if (state === 'listening') {
+        stopRecording();
+      }
+    });
+
+    orb.addEventListener('mouseleave', () => {
+      if (state === 'listening') {
+        stopRecording();
+      }
+    });
+
+    orb.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (state === 'idle') {
+        startRecording();
+      }
+    });
+
+    orb.addEventListener('touchend', () => {
+      if (state === 'listening') {
+        stopRecording();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && state === 'idle' && e.target === document.body) {
+        e.preventDefault();
+        startRecording();
+      }
+      if (e.code === 'Escape') {
+        cancelRecording();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' && state === 'listening') {
+        stopRecording();
+      }
+    });
+
+    console.log('Voice Orb initialized');
+    console.log('Session ID:', sessionId);
+    console.log('Voice endpoint:', VOICE_ENDPOINT);
+    console.log('Text endpoint:', TEXT_ENDPOINT);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setState('error', 'Microphone not supported');
+    }
+  </script>
+</body>
+</html>

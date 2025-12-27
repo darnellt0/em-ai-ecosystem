@@ -76,6 +76,14 @@ app.use(cors(corsOptions));
 // JSON body parsing
 app.use(express.json());
 
+// Serve static files from public directory (voice orb)
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Convenience redirect for the voice orb
+app.get('/voice', (_req: Request, res: Response) => {
+  res.redirect('/voice-orb.html');
+});
+
 // EM AI agent catalog + execution
 app.use('/em-ai/agents', emAiAgentsRouter);
 app.use('/', emotionalSessionRouter);
